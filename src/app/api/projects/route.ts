@@ -29,6 +29,7 @@ const Create = z.object({
     'generic'
   ]).default('generic'),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  applicationId: z.string().optional(),
   teamId: z.string().optional(),
   ownerId: z.string().optional(),
   startDate: z.string().optional(),
@@ -46,6 +47,8 @@ export async function GET(req: NextRequest) {
     const q: any = {};
     const teamId = searchParams.get('teamId');
     if (teamId) q.teamId = teamId;
+    const applicationId = searchParams.get('applicationId');
+    if (applicationId) q.applicationId = applicationId;
     const status = searchParams.get('status');
     if (status) q.status = status;
     const lifecycle = searchParams.get('lifecycle');
@@ -115,6 +118,7 @@ export async function POST(req: NextRequest) {
       description: body.description || '',
       lifecycle: body.lifecycle,
       priority: body.priority || 'medium',
+      applicationId: body.applicationId || undefined,
       teamId: body.teamId || undefined,
       ownerId: body.ownerId || user.sub,
       startDate: body.startDate ? new Date(body.startDate) : undefined,

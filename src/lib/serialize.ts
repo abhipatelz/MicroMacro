@@ -43,6 +43,7 @@ export function project(p: any, extras: Any = {}) {
     lifecycle: p.lifecycle,
     status: p.status,
     priority: p.priority,
+    applicationId: id(p.applicationId),
     teamId: id(p.teamId),
     ownerId: id(p.ownerId),
     startDate: p.startDate,

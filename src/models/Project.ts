@@ -38,6 +38,7 @@ const ProjectSchema = new Schema(
       enum: ['low', 'medium', 'high', 'critical'],
       default: 'medium'
     },
+    applicationId: { type: Schema.Types.ObjectId, ref: 'Application' },
     teamId: { type: Schema.Types.ObjectId, ref: 'Team' },
     ownerId: { type: Schema.Types.ObjectId, ref: 'User' },
     startDate: { type: Date },
@@ -51,6 +52,7 @@ const ProjectSchema = new Schema(
 );
 
 ProjectSchema.index({ teamId: 1 });
+ProjectSchema.index({ applicationId: 1 });
 ProjectSchema.index({ status: 1 });
 
 export type ProjectDoc = InferSchemaType<typeof ProjectSchema> & { _id: mongoose.Types.ObjectId };
