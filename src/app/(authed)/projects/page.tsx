@@ -14,9 +14,11 @@ import {
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
+  const [apps, setApps] = useState<any[]>([]);
   const [lifecycles, setLifecycles] = useState<any[]>([]);
   const [q, setQ] = useState('');
   const [team, setTeam] = useState('');
+  const [appId, setAppId] = useState('');
   const [lc, setLc] = useState('');
   const [status, setStatus] = useState('');
 
@@ -24,6 +26,7 @@ export default function ProjectsPage() {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (team) params.set('teamId', team);
+    if (appId) params.set('applicationId', appId);
     if (lc) params.set('lifecycle', lc);
     if (status) params.set('status', status);
     api<any[]>(`/projects?${params.toString()}`).then(setProjects);
@@ -31,13 +34,16 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     api<any[]>('/teams').then(setTeams);
+    api<any[]>('/applications').then(setApps);
     api<any[]>('/lifecycles').then(setLifecycles);
   }, []);
 
   useEffect(() => {
     const id = setTimeout(load, 150);
     return () => clearTimeout(id);
-  }, [q, team, lc, status]);
+  }, [q, team, appId, lc, status]);
+
+  const appLookup = new Map(apps.map((a: any) => [a.id, a]));
 
   return (
     <div className="space-y-6">
@@ -54,13 +60,21 @@ export default function ProjectsPage() {
       </div>
 
       <Card>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <input
             className="input"
             placeholder="Search projects…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
+          <select className="select" value={appId} onChange={(e) => setAppId(e.target.value)}>
+            <option value="">All applications</option>
+            {apps.map((a: any) => (
+              <option key={a.id} value={a.id}>
+                {a.key} · {a.name}
+              </option>
+            ))}
+          </select>
           <select className="select" value={team} onChange={(e) => setTeam(e.target.value)}>
             <option value="">All teams</option>
             {teams.map((t) => (
@@ -91,6 +105,7 @@ export default function ProjectsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {projects.map((p) => {
           const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
+          const app = p.applicationId ? appLookup.get(p.applicationId) : null;
           return (
             <Link
               href={`/projects/${p.id}`}
@@ -99,7 +114,14 @@ export default function ProjectsPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-xs text-slate-500 font-mono">{p.code}</div>
+                  <div className="text-xs text-slate-500 font-mono flex items-center gap-2">
+                    <span>{p.code}</span>
+                    {app && (
+                      <span className="tag bg-brand-100 text-brand-700 text-[10px]">
+                        {app.key}
+                      </span>
+                    )}
+                  </div>
                   <div className="font-semibold text-slate-900 truncate">{p.name}</div>
                 </div>
                 <div className="flex gap-1 flex-wrap justify-end">

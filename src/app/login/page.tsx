@@ -36,11 +36,11 @@ export default function LoginPage() {
   }
 
   const demo = [
-    { label: 'Head of QI (manager)', email: 'priya@qinformx.local', password: 'priya123' },
-    { label: 'CSV Lead', email: 'rahul@qinformx.local', password: 'rahul123' },
-    { label: 'Data Integrity Lead', email: 'ananya@qinformx.local', password: 'ananya123' },
-    { label: 'PV Lead', email: 'dhruv@qinformx.local', password: 'dhruv123' },
-    { label: 'QA Analyst', email: 'karan@qinformx.local', password: 'karan123' }
+    { label: 'Satya · DGM (QI)', email: 'satya@qinformx.local', password: 'satya123' },
+    { label: 'Ravi · DGM (LIMS)', email: 'lims.dgm@qinformx.local', password: 'ravi123' },
+    { label: 'Karan · QA Analyst', email: 'karan@qinformx.local', password: 'karan123' },
+    { label: 'Vikram · CSV Engineer', email: 'vikram@qinformx.local', password: 'vikram123' },
+    { label: 'Admin', email: 'admin@qinformx.local', password: 'admin123' }
   ];
 
   return (
@@ -60,20 +60,22 @@ export default function LoginPage() {
               </div>
             </div>
             <h1 className="mt-10 text-3xl font-bold leading-tight">
-              Macro projects. Micro tasks. AI-assisted triage &amp; deadline risk.
+              From Excel tracker to Applications, macros &amp; micros — with AI bottleneck insight.
             </h1>
             <p className="mt-4 text-brand-100">
-              Built for pharma Quality Informatics — CSV / GAMP 5, Data Integrity (ALCOA+),
-              Deviation &amp; CAPA, Change Control, Audit readiness, Pharmacovigilance.
+              Organise every project under the business application it touches
+              (LIMS, MES, TrackWise, Documentum, e-logbook, …) and see progress,
+              risks and bottlenecks end-to-end without spreadsheet acrobatics.
             </p>
             <ul className="mt-6 space-y-2 text-brand-100 text-sm">
+              <li>🏗️ Applications: projects &amp; tasks nested under the software you actually own</li>
               <li>🧠 AI Triage: classifies and scores newly logged deviations &amp; issues</li>
               <li>📈 ML Risk: predicts which open tasks will miss their deadlines</li>
               <li>🏆 Yearly review: big deliveries and extra-effort early completions</li>
             </ul>
           </div>
           <div className="text-xs text-brand-100/80">
-            Single-tenant &amp; self-hostable. MongoDB (Atlas or self-hosted). No external AI APIs.
+            Open-source &amp; self-hostable. Bring your own MongoDB. No external AI APIs.
           </div>
         </div>
 

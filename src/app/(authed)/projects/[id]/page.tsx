@@ -109,6 +109,7 @@ export default function ProjectDetailPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [view, setView] = useState<'phases' | 'board'>('phases');
 
+  const [apps, setApps] = useState<any[]>([]);
   async function load() {
     const p = await api<any>(`/projects/${id}`);
     setProject(p);
@@ -116,6 +117,7 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     load();
     api<any[]>('/users').then(setUsers);
+    api<any[]>('/applications').then(setApps);
   }, [id]);
 
   if (!project) return <div className="text-slate-500">Loading…</div>;
@@ -172,6 +174,20 @@ export default function ProjectDetailPage() {
             <div>
               Owner: <span className="font-medium text-slate-700">{project.ownerName || '—'}</span>
             </div>
+            {project.applicationId && (() => {
+              const a = apps.find((x: any) => x.id === project.applicationId);
+              return (
+                <div>
+                  Application:{' '}
+                  <Link
+                    href={`/applications/${project.applicationId}`}
+                    className="text-brand-700 hover:underline"
+                  >
+                    {a?.key || '—'}
+                  </Link>
+                </div>
+              );
+            })()}
             <div>
               Team:{' '}
               {project.teamId ? (

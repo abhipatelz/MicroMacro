@@ -1,17 +1,19 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { Card } from '@/components/ui';
 
 export default function NewProjectPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [form, setForm] = useState({
     name: '',
     description: '',
     lifecycle: 'csv',
     priority: 'medium',
     gxpImpact: 'medium',
+    applicationId: searchParams?.get('applicationId') || '',
     teamId: '',
     startDate: '',
     dueDate: '',
@@ -19,6 +21,7 @@ export default function NewProjectPage() {
   });
   const [lifecycles, setLifecycles] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
   const [preview, setPreview] = useState<any>(null);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
@@ -26,7 +29,16 @@ export default function NewProjectPage() {
   useEffect(() => {
     api<any[]>('/lifecycles').then(setLifecycles);
     api<any[]>('/teams').then(setTeams);
-  }, []);
+    api<any[]>('/applications').then((apps) => {
+      setApplications(apps);
+      // if query-param gave us an app, inherit its default lifecycle
+      const pre = searchParams?.get('applicationId');
+      if (pre) {
+        const a = apps.find((x) => x.id === pre);
+        if (a) setForm((f) => ({ ...f, lifecycle: a.defaultLifecycle || f.lifecycle }));
+      }
+    });
+  }, [searchParams]);
   useEffect(() => {
     if (form.lifecycle) api<any>(`/lifecycles?key=${form.lifecycle}`).then(setPreview);
   }, [form.lifecycle]);
@@ -47,6 +59,7 @@ export default function NewProjectPage() {
         priority: form.priority,
         gxpImpact: form.gxpImpact,
         useTemplate: form.useTemplate,
+        applicationId: form.applicationId || undefined,
         teamId: form.teamId || undefined,
         startDate: form.startDate || undefined,
         dueDate: form.dueDate || undefined
@@ -133,20 +146,42 @@ export default function NewProjectPage() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="label">Team</label>
-                <select
-                  className="select"
-                  value={form.teamId}
-                  onChange={(e) => up('teamId', e.target.value)}
-                >
-                  <option value="">— Unassigned —</option>
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Application</label>
+                  <select
+                    className="select"
+                    value={form.applicationId}
+                    onChange={(e) => {
+                      const appId = e.target.value;
+                      up('applicationId', appId);
+                      const a = applications.find((x) => x.id === appId);
+                      if (a?.defaultLifecycle) up('lifecycle', a.defaultLifecycle);
+                    }}
+                  >
+                    <option value="">— None —</option>
+                    {applications.map((a: any) => (
+                      <option key={a.id} value={a.id}>
+                        {a.key} · {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Team</label>
+                  <select
+                    className="select"
+                    value={form.teamId}
+                    onChange={(e) => up('teamId', e.target.value)}
+                  >
+                    <option value="">— Unassigned —</option>
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </Card>
