@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
-import { Card, ProgressBar, LifecycleTag } from '@/components/ui';
+import { Card, ProgressBar, LifecycleTag, LoadingCard } from '@/components/ui';
 
 const STATUS_LABELS: Record<string, string> = {
   operational: 'Operational',
@@ -96,7 +96,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ApplicationsPage() {
-  const [apps, setApps] = useState<any[]>([]);
+  const [apps, setApps] = useState<any[] | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [me, setMe] = useState<any>(null);
   const [creating, setCreating] = useState(false);
@@ -195,7 +195,14 @@ export default function ApplicationsPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {apps.map((a) => {
+        {apps === null && (
+          <>
+            <LoadingCard />
+            <LoadingCard />
+            <LoadingCard />
+          </>
+        )}
+        {(apps || []).map((a) => {
           const pct = a.taskCount ? Math.round((a.tasksDone / a.taskCount) * 100) : 0;
           return (
             <Link
@@ -244,7 +251,7 @@ export default function ApplicationsPage() {
             </Link>
           );
         })}
-        {apps.length === 0 && (
+        {apps !== null && apps.length === 0 && (
           <Card>
             <div className="text-sm text-slate-500 py-6 text-center">
               No applications yet. {canCreate && 'Add your first one with the button above.'}

@@ -124,11 +124,34 @@ export function Card({
   );
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({
+  title,
+  hint,
+  action
+}: {
+  title: string;
+  hint?: string;
+  action?: ReactNode;
+}) {
   return (
     <div className="text-center py-10 text-slate-500">
       <div className="text-sm font-medium">{title}</div>
-      {hint && <div className="text-xs mt-1">{hint}</div>}
+      {hint && <div className="text-xs mt-1 max-w-md mx-auto">{hint}</div>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+export function SkeletonLine({ className = '' }: { className?: string }) {
+  return <div className={`h-4 bg-slate-200 rounded animate-pulse ${className}`} />;
+}
+
+export function LoadingCard({ lines = 3 }: { lines?: number }) {
+  return (
+    <div className="card p-4 space-y-3">
+      {Array.from({ length: lines }).map((_, i) => (
+        <SkeletonLine key={i} className={i === 0 ? 'w-1/3' : 'w-full'} />
+      ))}
     </div>
   );
 }

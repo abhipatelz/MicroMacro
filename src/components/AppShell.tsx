@@ -116,6 +116,12 @@ export default function AppShell({
             );
           })}
         </nav>
+        <div className="px-3 py-2 text-[10px] text-slate-500 border-t border-slate-800">
+          <span className="opacity-70">Tip:</span>{' '}
+          <kbd className="bg-slate-800 border border-slate-700 px-1 rounded">⌘</kbd>
+          <kbd className="bg-slate-800 border border-slate-700 px-1 rounded">K</kbd>{' '}
+          to jump anywhere
+        </div>
         <div className="p-3 border-t border-slate-800 flex items-center gap-2">
           <Avatar name={user.name} />
           <div className="flex-1 text-xs">
