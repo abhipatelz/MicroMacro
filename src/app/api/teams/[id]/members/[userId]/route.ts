@@ -12,7 +12,7 @@ export async function DELETE(
   { params }: { params: { id: string; userId: string } }
 ) {
   try {
-    const { error } = await requireRole(req, 'manager', 'admin', 'lead');
+    const { error } = await requireRole(req, 'pm');
     if (error) return error;
     await connectDB();
     await Team.updateOne(
