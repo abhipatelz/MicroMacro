@@ -5,6 +5,7 @@ import { api } from '@/lib/client/api';
 import { Card, EmptyState, LifecycleTag, PriorityTag, StatusTag, TaskLink, formatDate, daysUntil } from '@/components/ui';
 import { getTodaysPrinciple } from '@/lib/alp';
 import { getGreeting, getCelebrationAugment, getTodaysQuote } from '@/lib/culture';
+import { parseNaturalInput } from '@/lib/naturalDate';
 
 interface Summary {
   totalAssigned: number;
@@ -145,21 +146,29 @@ function QuickAdd({ projects, currentUserId, onAdded }: {
   onAdded: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('');
+  const [raw, setRaw] = useState('');
   const [projectId, setProjectId] = useState('');
-  const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Live parse as user types
+  const parsed = useMemo(() => parseNaturalInput(raw), [raw]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || !projectId) return;
+    if (!parsed.title.trim() || !projectId) return;
     setSaving(true);
     try {
       await api('/tasks', {
         method: 'POST',
-        body: { title: title.trim(), projectId, assigneeId: currentUserId, dueDate: dueDate || undefined }
+        body: {
+          title: parsed.title.trim(),
+          projectId,
+          assigneeId: currentUserId,
+          dueDate: parsed.dueDate || undefined,
+          priority: parsed.priority || undefined,
+        }
       });
-      setTitle(''); setProjectId(''); setDueDate('');
+      setRaw(''); setProjectId('');
       setOpen(false);
       onAdded();
     } finally {
@@ -172,7 +181,7 @@ function QuickAdd({ projects, currentUserId, onAdded }: {
       <button
         onClick={() => setOpen(true)}
         className="fixed bottom-8 right-8 w-14 h-14 bg-brand-600 text-white rounded-full shadow-xl hover:bg-brand-700 active:scale-95 flex items-center justify-center text-3xl z-40 transition-all"
-        title="Add a task — Think Big, start small"
+        title="Add a task — Bias for Action"
       >
         +
       </button>
@@ -182,23 +191,45 @@ function QuickAdd({ projects, currentUserId, onAdded }: {
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setOpen(false)} />
-      <div className="fixed bottom-8 right-8 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 w-80">
+      <div className="fixed bottom-8 right-8 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 w-84" style={{ width: 340 }}>
         <div className="flex justify-between items-center mb-1">
           <div className="font-semibold text-slate-800">Add a task</div>
           <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
         </div>
-        <p className="text-[10px] text-brand-500/70 uppercase tracking-wider font-semibold mb-4">
-          Bias for Action — start it now
+        <p className="text-[10px] text-brand-500/70 uppercase tracking-wider font-semibold mb-3">
+          Bias for Action — speak naturally
         </p>
         <form onSubmit={submit} className="space-y-3">
-          <input
-            autoFocus
-            className="input"
-            placeholder="What needs to get done?"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
+          <div>
+            <input
+              autoFocus
+              className="input"
+              placeholder='e.g. "review IDP docs by friday" or "urgent: fix login"'
+              value={raw}
+              onChange={(e) => setRaw(e.target.value)}
+              required
+            />
+            {/* Live parse preview */}
+            {raw.trim() && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {parsed.title !== raw.trim() && (
+                  <span className="text-[11px] bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full font-medium">
+                    📝 {parsed.title || '…'}
+                  </span>
+                )}
+                {parsed.dueDate && (
+                  <span className="text-[11px] bg-forest-50 text-forest-700 px-2 py-0.5 rounded-full font-medium">
+                    📅 {new Date(parsed.dueDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </span>
+                )}
+                {parsed.priority && (
+                  <span className="text-[11px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                    ⚡ {parsed.priority}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
           <select
             className="select"
             value={projectId}
@@ -212,19 +243,10 @@ function QuickAdd({ projects, currentUserId, onAdded }: {
               </option>
             ))}
           </select>
-          <div>
-            <label className="label">Due date (optional)</label>
-            <input
-              type="date"
-              className="input"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
-          </div>
           <button
             type="submit"
             className="btn-primary w-full justify-center"
-            disabled={saving || !title.trim() || !projectId}
+            disabled={saving || !parsed.title.trim() || !projectId}
           >
             {saving ? 'Adding…' : '+ Add task'}
           </button>

@@ -91,20 +91,25 @@ export default function ProjectsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {projects.map((p) => {
           const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
+          const overdueRatio = p.taskCount ? (p.tasksOverdue || 0) / p.taskCount : 0;
+          const health = overdueRatio > 0.3 ? 'critical' : overdueRatio > 0 ? 'at_risk' : 'healthy';
+          const healthDot = health === 'critical' ? '🔴' : health === 'at_risk' ? '🟡' : '🟢';
           return (
             <Link
               href={`/projects/${p.id}`}
               key={p.id}
-              className="card p-4 hover:shadow-md transition"
+              className="card p-4 hover:shadow-md transition group"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-xs text-slate-500 font-mono">{p.code}</div>
-                  <div className="font-semibold text-slate-900 truncate">{p.name}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-500 font-mono">{p.code}</span>
+                    <span title={`Health: ${health}`}>{healthDot}</span>
+                  </div>
+                  <div className="font-semibold text-slate-900 truncate group-hover:text-brand-700 transition-colors">{p.name}</div>
                 </div>
                 <div className="flex gap-1 flex-wrap justify-end">
                   <LifecycleTag lifecycle={p.lifecycle} />
-                  <PriorityTag priority={p.priority} />
                   <StatusTag status={p.status} />
                 </div>
               </div>
@@ -113,10 +118,8 @@ export default function ProjectsPage() {
               )}
               <div className="mt-3">
                 <div className="flex justify-between text-xs text-slate-500 mb-1">
-                  <span>
-                    {p.tasksDone}/{p.taskCount} tasks done
-                  </span>
-                  <span>{pct}%</span>
+                  <span>{p.tasksDone}/{p.taskCount} tasks done</span>
+                  <span className={pct >= 90 ? 'text-forest-600 font-semibold' : ''}>{pct}%</span>
                 </div>
                 <ProgressBar value={pct} />
               </div>

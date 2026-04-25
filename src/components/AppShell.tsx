@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Avatar } from './ui';
-import { LayoutDashboard, FolderKanban, Users, Calendar, PieChart, Sparkles, AlertTriangle, LogOut } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Users, Calendar, PieChart, Lightbulb, LogOut } from 'lucide-react';
 import { api } from '@/lib/client/api';
 
 export interface CurrentUser {
@@ -35,13 +35,12 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
   ];
 
   const pmNav = [
-    { href: '/',          label: 'Dashboard',     icon: LayoutDashboard },
-    { href: '/projects',  label: 'Projects',       icon: FolderKanban },
-    { href: '/teams',     label: 'Teams',           icon: Users },
-    { href: '/org',       label: 'Team Overview',   icon: PieChart },
-    { href: '/yearly',    label: 'Yearly View',     icon: Calendar },
-    { href: '/ai/triage', label: 'AI Triage',       icon: Sparkles,      badge: 'AI' },
-    { href: '/ai/risk',   label: 'Deadline Risk',   icon: AlertTriangle, badge: 'ML' },
+    { href: '/',          label: 'Dashboard',      icon: LayoutDashboard },
+    { href: '/projects',  label: 'Projects',        icon: FolderKanban },
+    { href: '/teams',     label: 'Teams',            icon: Users },
+    { href: '/org',       label: 'Team Overview',    icon: PieChart },
+    { href: '/yearly',    label: 'Yearly View',      icon: Calendar },
+    { href: '/insights',  label: 'Insights',         icon: Lightbulb,     badge: 'Live' },
   ];
 
   const nav = user.role === 'pm' ? pmNav : employeeNav;
