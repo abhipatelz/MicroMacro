@@ -5,18 +5,37 @@ import { api } from '@/lib/client/api';
 import { LifecycleTag, PriorityTag, TaskLink, StatusTag, formatDate, daysUntil } from '@/components/ui';
 import { getGreeting } from '@/lib/culture';
 import { parseNaturalInput } from '@/lib/naturalDate';
+import {
+  CheckCircle2, Clock, AlertTriangle, TrendingUp, FolderKanban,
+  Users, ChevronRight, Flame, Zap, Target,
+} from 'lucide-react';
 
+/* ─── Types ────────────────────────────────────────────────────────────── */
 interface Summary {
-  totalAssigned: number;
-  completed: number;
-  overdue: number;
-  dueThisWeek: number;
-  completionRate: number;
-  byStatus: Record<string, number>;
+  totalAssigned: number; completed: number; overdue: number;
+  dueThisWeek: number; completionRate: number; byStatus: Record<string, number>;
+}
+interface OrgOverview {
+  totals: { tasksOpen: number; tasksOverdue: number; activeProjects: number; users: number; doneThisMonth: number };
+  projects: Array<{
+    id: string; name: string; code: string; status: string;
+    taskCount: number; tasksDone: number; tasksOverdue: number;
+    health: 'good' | 'at_risk' | 'critical'; dueDate: string | null;
+  }>;
+  attention: Array<{ severity: 'critical' | 'warn'; label: string; detail: string; href: string }>;
 }
 
+/* ─── Helpers ──────────────────────────────────────────────────────────── */
 const CONFETTI_COLORS = ['#1565C0','#1E88E5','#43A047','#388E3C','#FFA726','#EF5350','#AB47BC','#26C6DA'];
+const HEALTH_COLOR = { good: '#22c55e', at_risk: '#f59e0b', critical: '#ef4444' };
+const HEALTH_BG    = { good: '#f0fdf4', at_risk: '#fffbeb', critical: '#fef2f2' };
+const HEALTH_LABEL = { good: 'On track', at_risk: 'At risk', critical: 'Critical' };
 
+function HealthDot({ h }: { h: 'good' | 'at_risk' | 'critical' }) {
+  return <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: HEALTH_COLOR[h] }} />;
+}
+
+/* ─── Celebration overlay ──────────────────────────────────────────────── */
 function Celebration({ taskTitle, onDone }: { taskTitle: string; onDone: () => void }) {
   useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, [onDone]);
   const dots = Array.from({ length: 60 }, (_, i) => ({
@@ -45,6 +64,7 @@ function Celebration({ taskTitle, onDone }: { taskTitle: string; onDone: () => v
   );
 }
 
+/* ─── QuickAdd modal ───────────────────────────────────────────────────── */
 function QuickAdd({ projects, currentUserId, onAdded, open, onClose }: {
   projects: any[]; currentUserId: string; onAdded: () => void;
   open: boolean; onClose: () => void;
@@ -70,7 +90,6 @@ function QuickAdd({ projects, currentUserId, onAdded, open, onClose }: {
   }
 
   if (!open) return null;
-
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
@@ -118,10 +137,153 @@ function QuickAdd({ projects, currentUserId, onAdded, open, onClose }: {
   );
 }
 
+/* ─── Stat card ────────────────────────────────────────────────────────── */
+function StatCard({ icon: Icon, label, value, color, bg, sub }: {
+  icon: any; label: string; value: string | number; color: string; bg: string; sub?: string;
+}) {
+  return (
+    <div className="rounded-xl px-4 py-3.5 flex items-center gap-3 border border-slate-100 bg-white shadow-sm">
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: bg }}>
+        <Icon size={17} style={{ color }} />
+      </div>
+      <div className="min-w-0">
+        <div style={{ fontSize: 10, letterSpacing: '0.07em' }} className="text-slate-400 uppercase font-semibold truncate">{label}</div>
+        <div className="text-2xl font-black tracking-tight leading-none mt-0.5" style={{ color }}>{value}</div>
+        {sub && <div style={{ fontSize: 10 }} className="text-slate-400 mt-0.5">{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Project health sidebar card ─────────────────────────────────────── */
+function ProjectHealthPanel({ projects }: { projects: OrgOverview['projects'] }) {
+  const active = projects.filter(p => p.status === 'in_progress').slice(0, 6);
+  if (!active.length) return null;
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+          <FolderKanban size={14} className="text-blue-500" /> Project Health
+        </h3>
+        <Link href="/org" className="text-xs text-blue-600 hover:underline">All →</Link>
+      </div>
+      <div className="divide-y divide-slate-50">
+        {active.map(p => {
+          const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
+          return (
+            <Link key={p.id} href={`/projects/${p.id}`}
+              className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors group">
+              <HealthDot h={p.health} />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-slate-700 truncate group-hover:text-blue-700 transition-colors">
+                  {p.code ? `${p.code}` : p.name}
+                </div>
+                <div className="mt-1 h-1 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{
+                    width: `${pct}%`,
+                    background: HEALTH_COLOR[p.health],
+                  }} />
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-xs font-bold" style={{ color: HEALTH_COLOR[p.health] }}>{pct}%</div>
+                {p.tasksOverdue > 0 && (
+                  <div style={{ fontSize: 9 }} className="text-red-400 font-medium">{p.tasksOverdue} late</div>
+                )}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Upcoming deadlines panel ─────────────────────────────────────────── */
+function UpcomingPanel({ tasks }: { tasks: any[] }) {
+  const upcoming = tasks
+    .filter(t => t.status !== 'done' && t.dueDate)
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .slice(0, 7);
+
+  if (!upcoming.length) return (
+    <div className="card px-4 py-5 text-center">
+      <div className="text-slate-300 text-xs">No upcoming deadlines</div>
+    </div>
+  );
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100">
+        <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+          <Clock size={14} className="text-amber-500" /> Upcoming Deadlines
+        </h3>
+      </div>
+      <div className="divide-y divide-slate-50">
+        {upcoming.map(t => {
+          const d = daysUntil(t.dueDate);
+          const overdue = d !== null && d < 0;
+          const today = d === 0;
+          const soon = d !== null && d <= 2 && d >= 0;
+          return (
+            <div key={t.id} className="flex items-start gap-3 px-4 py-2.5">
+              <div className={`mt-0.5 w-1.5 h-1.5 rounded-full shrink-0 ${overdue ? 'bg-red-500' : today || soon ? 'bg-amber-400' : 'bg-slate-200'}`} />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-slate-700 font-medium truncate leading-tight">{t.title}</div>
+                <div style={{ fontSize: 10 }} className="text-slate-400 font-mono mt-0.5">{t.projectCode || t.projectName}</div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className={`text-xs font-semibold ${overdue ? 'text-red-500' : today ? 'text-amber-600' : 'text-slate-500'}`}>
+                  {overdue ? `${Math.abs(d!)}d late` : today ? 'Today' : d === 1 ? 'Tomorrow' : formatDate(t.dueDate)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Needs attention panel ────────────────────────────────────────────── */
+function AttentionPanel({ items }: { items: OrgOverview['attention'] }) {
+  if (!items.length) return null;
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+          <AlertTriangle size={14} className="text-red-500" /> Needs Attention
+        </h3>
+        <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{items.length}</span>
+      </div>
+      <div className="divide-y divide-slate-50">
+        {items.slice(0, 5).map((a, i) => (
+          <Link key={i} href={a.href}
+            className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-slate-50 transition-colors">
+            <div className={`mt-0.5 w-1.5 h-1.5 rounded-full shrink-0 ${a.severity === 'critical' ? 'bg-red-500' : 'bg-amber-400'}`} />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold text-slate-700 truncate">{a.label}</div>
+              <div style={{ fontSize: 10 }} className="text-slate-400 mt-0.5">{a.detail}</div>
+            </div>
+            <ChevronRight size={12} className="text-slate-300 shrink-0 mt-0.5" />
+          </Link>
+        ))}
+      </div>
+      {items.length > 5 && (
+        <div className="px-4 py-2 border-t border-slate-50">
+          <Link href="/org" className="text-xs text-blue-600 hover:underline">View {items.length - 5} more →</Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main dashboard ───────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [data, setData] = useState<{ tasks: any[]; subtasks: any[] }>({ tasks: [], subtasks: [] });
   const [projects, setProjects] = useState<any[]>([]);
+  const [org, setOrg] = useState<OrgOverview | null>(null);
   const [filter, setFilter] = useState<'open' | 'overdue' | 'done' | 'all'>('open');
   const [me, setMe] = useState<any>(null);
   const [celebrating, setCelebrating] = useState<{ id: string; title: string } | null>(null);
@@ -134,7 +296,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     reload();
-    api('/auth/me').then((d: any) => setMe(d.user));
+    api('/auth/me').then((d: any) => {
+      setMe(d.user);
+      if (d.user?.role === 'pm') {
+        api<OrgOverview>('/analytics/org/overview').then(setOrg).catch(() => {});
+      }
+    });
     api('/projects').then(setProjects);
   }, [reload]);
 
@@ -169,214 +336,215 @@ export default function DashboardPage() {
     .slice(0, 5);
 
   const { text: greetText } = me ? getGreeting(me.name) : { text: 'Welcome back' };
-
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const isPM = me?.role === 'pm';
 
   return (
-    <div className="space-y-5 pb-24 max-w-4xl">
+    <div className="pb-24">
       {celebrating && <Celebration taskTitle={celebrating.title} onDone={() => setCelebrating(null)} />}
 
-      {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="flex items-end justify-between pt-1">
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="flex items-end justify-between pt-1 mb-5">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{greetText}</h1>
           <p className="text-xs text-slate-400 mt-0.5">{today}</p>
         </div>
-        <button
-          onClick={() => setQuickAddOpen(true)}
-          className="btn-primary text-xs"
-          style={{ background: '#1565C0' }}
-        >
+        <button onClick={() => setQuickAddOpen(true)} className="btn-primary text-xs" style={{ background: '#1565C0' }}>
           + Create task
         </button>
       </div>
 
-      {/* ── Stats ────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'Open',         value: openCount,                 color: '#0f172a', bg: '#fff',     border: '#e2e8f0' },
-          { label: 'Due this week',value: summary?.dueThisWeek ?? 0, color: '#1565C0', bg: '#EFF6FF',  border: '#BFDBFE' },
-          { label: 'Overdue',      value: overdueCount,              color: overdueCount > 0 ? '#dc2626' : '#0f172a', bg: overdueCount > 0 ? '#FEF2F2' : '#fff', border: overdueCount > 0 ? '#FECACA' : '#e2e8f0' },
-          { label: 'Completed',    value: summary?.completed ?? 0,   color: '#15803d', bg: '#F0FDF4',  border: '#BBF7D0' },
-        ].map(({ label, value, color, bg, border }) => (
-          <div key={label} className="rounded-xl px-4 py-3 border" style={{ background: bg, borderColor: border }}>
-            <div style={{ fontSize: 11, letterSpacing: '0.06em' }} className="text-slate-500 font-medium">{label}</div>
-            <div className="text-3xl font-black mt-1 tracking-tight" style={{ color }}>{value}</div>
-          </div>
-        ))}
+      {/* ── KPI strip ───────────────────────────────────────────────────── */}
+      <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+        <StatCard icon={Zap}          label="Open"          value={openCount}                color="#0f172a" bg="#f1f5f9"
+          sub={openCount === 0 ? 'All clear!' : `${openCount} task${openCount !== 1 ? 's' : ''}`} />
+        <StatCard icon={Clock}        label="Due this week" value={summary?.dueThisWeek ?? 0} color="#1565C0" bg="#EFF6FF" />
+        <StatCard icon={AlertTriangle} label="Overdue"      value={overdueCount}
+          color={overdueCount > 0 ? '#dc2626' : '#0f172a'} bg={overdueCount > 0 ? '#FEF2F2' : '#f1f5f9'}
+          sub={overdueCount > 0 ? 'Action needed' : 'None'} />
+        <StatCard icon={CheckCircle2} label="Completed"     value={summary?.completed ?? 0}  color="#15803d" bg="#F0FDF4" />
+        <StatCard icon={TrendingUp}   label="Completion"    value={`${summary?.completionRate ?? 0}%`} color="#7c3aed" bg="#f5f3ff" />
+        <StatCard icon={FolderKanban} label="Projects"
+          value={isPM ? (org?.totals.activeProjects ?? '—') : projects.length}
+          color="#0369a1" bg="#f0f9ff"
+          sub={isPM ? 'active' : undefined} />
       </div>
 
-      {/* ── My Work Items (Jira-style table) ─────────────────────────────── */}
-      <div className="card overflow-hidden">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
-          <h3 className="text-sm font-semibold text-slate-700">My Work Items</h3>
-          <div className="flex items-center gap-1">
-            {(['open', 'overdue', 'done', 'all'] as const).map((f) => (
-              <button key={f} onClick={() => setFilter(f)}
-                className="px-3 py-1 rounded text-xs font-medium transition-colors capitalize"
-                style={{
-                  background: filter === f ? '#1565C0' : 'transparent',
-                  color: filter === f ? '#fff' : '#94a3b8',
-                }}>
-                {f === 'open' ? `Open (${openCount})` : f === 'overdue' ? `Overdue (${overdueCount})` : f === 'done' ? 'Done' : 'All'}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* ── Main 2-column layout ─────────────────────────────────────────── */}
+      <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 280px' }}>
 
-        {/* Column headers */}
-        {filteredTasks.length > 0 && (
-          <div className="grid px-4 py-2 border-b border-slate-100 bg-slate-50/40"
-               style={{ gridTemplateColumns: '20px 1fr 110px 90px 80px 80px', gap: '0 12px' }}>
-            <div />
-            <div style={{ fontSize: 10, letterSpacing: '0.08em' }} className="text-slate-400 uppercase font-semibold">Summary</div>
-            <div style={{ fontSize: 10, letterSpacing: '0.08em' }} className="text-slate-400 uppercase font-semibold">Project</div>
-            <div style={{ fontSize: 10, letterSpacing: '0.08em' }} className="text-slate-400 uppercase font-semibold">Type</div>
-            <div style={{ fontSize: 10, letterSpacing: '0.08em' }} className="text-slate-400 uppercase font-semibold">Priority</div>
-            <div style={{ fontSize: 10, letterSpacing: '0.08em' }} className="text-slate-400 uppercase font-semibold text-right">Due</div>
-          </div>
-        )}
+        {/* Left column */}
+        <div className="space-y-4 min-w-0">
 
-        {filteredTasks.length === 0 ? (
-          <div className="py-12 text-center">
-            <div className="text-slate-400 text-sm font-medium">
-              {filter === 'open' ? 'No open tasks' : filter === 'overdue' ? 'No overdue tasks' : 'No tasks found'}
-            </div>
-            <div className="text-slate-300 text-xs mt-1">
-              {filter === 'open' ? 'All work items are up to date.' : 'Try changing the filter above.'}
-            </div>
-          </div>
-        ) : (
-          <div>
-            {filteredTasks.map((t, i) => {
-              const d = daysUntil(t.dueDate);
-              const overdue = d !== null && d < 0 && t.status !== 'done';
-              const done = t.status === 'done';
-              return (
-                <div key={t.id}
-                  className="grid items-center px-4 py-2.5 hover:bg-blue-50/30 transition-colors cursor-pointer"
-                  style={{ gridTemplateColumns: '20px 1fr 110px 90px 80px 80px', gap: '0 12px', borderTop: i > 0 ? '1px solid #f1f5f9' : undefined }}>
-
-                  {/* Check toggle */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); !done && markDone(t); }}
-                    disabled={done}
-                    className="w-4 h-4 rounded-full border transition-all flex items-center justify-center shrink-0"
+          {/* My Work Items */}
+          <div className="card overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+              <h3 className="text-sm font-semibold text-slate-700">My Work Items</h3>
+              <div className="flex items-center gap-1">
+                {(['open', 'overdue', 'done', 'all'] as const).map((f) => (
+                  <button key={f} onClick={() => setFilter(f)}
+                    className="px-3 py-1 rounded text-xs font-medium transition-colors capitalize"
                     style={{
-                      borderColor: done ? '#22c55e' : overdue ? '#ef4444' : '#cbd5e1',
-                      background: done ? '#22c55e' : 'transparent',
+                      background: filter === f ? '#1565C0' : 'transparent',
+                      color: filter === f ? '#fff' : '#94a3b8',
                     }}>
-                    {done && <span className="text-white" style={{ fontSize: 8, fontWeight: 900 }}>✓</span>}
+                    {f === 'open' ? `Open (${openCount})` : f === 'overdue' ? `Overdue (${overdueCount})` : f === 'done' ? 'Done' : 'All'}
                   </button>
+                ))}
+              </div>
+            </div>
 
-                  {/* Title */}
-                  <div className={done ? 'opacity-40' : ''}>
-                    <div className="flex items-center gap-2">
-                      <TaskLink task={t} />
-                      {t.gxpCritical && (
-                        <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">GxP</span>
-                      )}
-                    </div>
-                  </div>
+            {filteredTasks.length > 0 && (
+              <div className="grid px-4 py-2 border-b border-slate-100 bg-slate-50/40"
+                   style={{ gridTemplateColumns: '20px 1fr 100px 80px 72px 72px', gap: '0 10px' }}>
+                <div />
+                {['Summary', 'Project', 'Type', 'Priority', 'Due'].map(h => (
+                  <div key={h} style={{ fontSize: 10, letterSpacing: '0.08em' }} className="text-slate-400 uppercase font-semibold last:text-right">{h}</div>
+                ))}
+              </div>
+            )}
 
-                  {/* Project */}
-                  <div>
-                    <Link href={`/projects/${t.projectId}`}
-                      className="text-xs text-slate-500 hover:text-blue-700 font-mono truncate block transition-colors">
-                      {t.projectCode || t.projectName || '—'}
-                    </Link>
-                  </div>
-
-                  {/* Lifecycle type */}
-                  <div>
-                    {t.lifecycle && t.lifecycle !== 'generic'
-                      ? <LifecycleTag lifecycle={t.lifecycle} />
-                      : <span className="text-xs text-slate-300">—</span>}
-                  </div>
-
-                  {/* Priority */}
-                  <div>
-                    {t.priority && t.priority !== 'low'
-                      ? <PriorityTag priority={t.priority} />
-                      : <span className="text-xs text-slate-300">—</span>}
-                  </div>
-
-                  {/* Due date */}
-                  <div className="text-right">
-                    <div className={`text-xs font-medium ${overdue ? 'text-red-600' : done ? 'text-slate-300' : 'text-slate-500'}`}>
-                      {t.dueDate ? formatDate(t.dueDate) : '—'}
-                    </div>
-                    {d !== null && !done && (
-                      <div style={{ fontSize: 10 }} className={overdue ? 'text-red-400' : 'text-slate-300'}>
-                        {d < 0 ? `${-d}d overdue` : d === 0 ? 'today' : `in ${d}d`}
-                      </div>
-                    )}
-                  </div>
+            {filteredTasks.length === 0 ? (
+              <div className="py-14 text-center">
+                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle2 size={20} className="text-green-400" />
                 </div>
-              );
-            })}
-          </div>
-        )}
+                <div className="text-slate-500 text-sm font-semibold">
+                  {filter === 'open' ? 'All caught up!' : filter === 'overdue' ? 'No overdue tasks' : 'No tasks found'}
+                </div>
+                <div className="text-slate-300 text-xs mt-1">
+                  {filter === 'open' ? 'No open tasks right now.' : 'Try a different filter.'}
+                </div>
+                {filter === 'open' && (
+                  <button onClick={() => setQuickAddOpen(true)}
+                    className="mt-3 text-xs text-blue-600 font-medium hover:underline">
+                    + Add a task
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div>
+                {filteredTasks.map((t, i) => {
+                  const d = daysUntil(t.dueDate);
+                  const overdue = d !== null && d < 0 && t.status !== 'done';
+                  const done = t.status === 'done';
+                  return (
+                    <div key={t.id}
+                      className="grid items-center px-4 py-2.5 hover:bg-blue-50/30 transition-colors"
+                      style={{ gridTemplateColumns: '20px 1fr 100px 80px 72px 72px', gap: '0 10px', borderTop: i > 0 ? '1px solid #f1f5f9' : undefined }}>
+                      <button
+                        onClick={() => !done && markDone(t)}
+                        disabled={done}
+                        className="w-4 h-4 rounded-full border transition-all flex items-center justify-center shrink-0"
+                        style={{
+                          borderColor: done ? '#22c55e' : overdue ? '#ef4444' : '#cbd5e1',
+                          background: done ? '#22c55e' : 'transparent',
+                        }}>
+                        {done && <span className="text-white" style={{ fontSize: 8, fontWeight: 900 }}>✓</span>}
+                      </button>
+                      <div className={done ? 'opacity-40' : ''}>
+                        <div className="flex items-center gap-2">
+                          <TaskLink task={t} />
+                          {t.gxpCritical && (
+                            <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded">GxP</span>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <Link href={`/projects/${t.projectId}`}
+                          className="text-xs text-slate-500 hover:text-blue-700 font-mono truncate block transition-colors">
+                          {t.projectCode || t.projectName || '—'}
+                        </Link>
+                      </div>
+                      <div>
+                        {t.lifecycle && t.lifecycle !== 'generic'
+                          ? <LifecycleTag lifecycle={t.lifecycle} />
+                          : <span className="text-xs text-slate-300">—</span>}
+                      </div>
+                      <div>
+                        {t.priority && t.priority !== 'low'
+                          ? <PriorityTag priority={t.priority} />
+                          : <span className="text-xs text-slate-300">—</span>}
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-xs font-medium ${overdue ? 'text-red-600' : done ? 'text-slate-300' : 'text-slate-500'}`}>
+                          {t.dueDate ? formatDate(t.dueDate) : '—'}
+                        </div>
+                        {d !== null && !done && (
+                          <div style={{ fontSize: 10 }} className={overdue ? 'text-red-400' : 'text-slate-300'}>
+                            {d < 0 ? `${-d}d overdue` : d === 0 ? 'today' : `in ${d}d`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-        {/* Footer row */}
-        <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between">
-          <span className="text-xs text-slate-400">{filteredTasks.length} item{filteredTasks.length !== 1 ? 's' : ''}</span>
-          <Link href="/projects" className="text-xs text-blue-700 font-medium hover:underline">View all projects →</Link>
+            <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between">
+              <span className="text-xs text-slate-400">{filteredTasks.length} item{filteredTasks.length !== 1 ? 's' : ''}</span>
+              <Link href="/projects" className="text-xs text-blue-700 font-medium hover:underline">View all projects →</Link>
+            </div>
+          </div>
+
+          {/* Sub-tasks */}
+          {data.subtasks?.length > 0 && (
+            <div className="card overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
+                <h3 className="text-sm font-semibold text-slate-700">Sub-tasks</h3>
+              </div>
+              {data.subtasks.map((s, i) => (
+                <div key={s.id}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50/30 transition-colors"
+                  style={{ borderTop: i > 0 ? '1px solid #f1f5f9' : undefined }}>
+                  <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${s.status === 'done' ? 'border-green-500 bg-green-500' : 'border-slate-200'}`}>
+                    {s.status === 'done' && <span className="text-white" style={{ fontSize: 7, fontWeight: 900 }}>✓</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-sm truncate ${s.status === 'done' ? 'line-through text-slate-300' : 'text-slate-700'}`}>{s.title}</div>
+                    <div className="text-xs text-slate-400 font-mono">{s.projectCode} · {s.taskTitle}</div>
+                  </div>
+                  <div className="text-xs text-slate-400 shrink-0">{formatDate(s.dueDate)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Completed this week */}
+          {recentWins.length > 0 && (
+            <div className="card overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Target size={14} className="text-green-500" /> Completed this week
+                </h3>
+                <span className="text-xs text-slate-400">{recentWins.length} item{recentWins.length !== 1 ? 's' : ''}</span>
+              </div>
+              {recentWins.map((t, i) => (
+                <div key={t.id}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors"
+                  style={{ borderTop: i > 0 ? '1px solid #f1f5f9' : undefined }}>
+                  <div className="w-4 h-4 rounded-full bg-green-400 border border-green-400 flex items-center justify-center shrink-0">
+                    <span className="text-white" style={{ fontSize: 8, fontWeight: 900 }}>✓</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-slate-600 truncate">{t.title}</div>
+                    <div className="text-xs text-slate-400 font-mono">{t.projectCode || t.projectName}</div>
+                  </div>
+                  <div className="text-xs text-slate-400 shrink-0">{formatDate(t.completedAt)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right sidebar */}
+        <div className="space-y-4">
+          {isPM && org && <ProjectHealthPanel projects={org.projects} />}
+          <UpcomingPanel tasks={data.tasks} />
+          {isPM && org && org.attention.length > 0 && <AttentionPanel items={org.attention} />}
         </div>
       </div>
-
-      {/* ── Sub-tasks ────────────────────────────────────────────────────── */}
-      {data.subtasks?.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/60">
-            <h3 className="text-sm font-semibold text-slate-700">Sub-tasks</h3>
-          </div>
-          <div className="grid px-4 py-2 border-b border-slate-100 bg-slate-50/40"
-               style={{ gridTemplateColumns: '16px 1fr 150px 80px', gap: '0 12px' }}>
-            <div />
-            {['Summary', 'Parent task', 'Due'].map((h) => (
-              <div key={h} style={{ fontSize: 10, letterSpacing: '0.08em' }} className="text-slate-400 uppercase font-semibold">{h}</div>
-            ))}
-          </div>
-          {data.subtasks.map((s, i) => (
-            <div key={s.id}
-              className="grid items-center px-4 py-2.5 hover:bg-blue-50/30 transition-colors"
-              style={{ gridTemplateColumns: '16px 1fr 150px 80px', gap: '0 12px', borderTop: i > 0 ? '1px solid #f1f5f9' : undefined }}>
-              <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${s.status === 'done' ? 'border-green-500 bg-green-500' : 'border-slate-200'}`}>
-                {s.status === 'done' && <span className="text-white" style={{ fontSize: 7, fontWeight: 900 }}>✓</span>}
-              </div>
-              <div className={`text-sm truncate ${s.status === 'done' ? 'line-through text-slate-300' : 'text-slate-700'}`}>{s.title}</div>
-              <div className="text-xs text-slate-400 font-mono truncate">{s.projectCode} · {s.taskTitle}</div>
-              <div className="text-xs text-slate-400 text-right">{formatDate(s.dueDate)}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Recently completed ───────────────────────────────────────────── */}
-      {recentWins.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-700">Completed this week</h3>
-            <span className="text-xs text-slate-400">{recentWins.length} item{recentWins.length !== 1 ? 's' : ''}</span>
-          </div>
-          {recentWins.map((t, i) => (
-            <div key={t.id}
-              className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors"
-              style={{ borderTop: i > 0 ? '1px solid #f1f5f9' : undefined }}>
-              <div className="w-4 h-4 rounded-full border border-green-400 bg-green-400 flex items-center justify-center shrink-0">
-                <span className="text-white" style={{ fontSize: 8, fontWeight: 900 }}>✓</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-slate-600 truncate">{t.title}</div>
-                <div className="text-xs text-slate-400 font-mono">{t.projectCode || t.projectName}</div>
-              </div>
-              <div className="text-xs text-slate-400 shrink-0">{formatDate(t.completedAt)}</div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {me && <QuickAdd projects={projects} currentUserId={me.id} onAdded={reload} open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />}
     </div>
