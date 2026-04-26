@@ -28,11 +28,17 @@ function resolveRole(email: string, isFirstUser: boolean): 'pm' | 'employee' {
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
+    const count = await User.countDocuments();
+    if (count > 0) {
+      return NextResponse.json(
+        { error: 'Self-registration is disabled. Ask your PM to create an account for you.' },
+        { status: 403 }
+      );
+    }
     const body = await readBody(req, Body);
     const exists = await User.findOne({ email: body.email.toLowerCase() });
     if (exists) return NextResponse.json({ error: 'Email already in use' }, { status: 409 });
-    const count = await User.countDocuments();
-    const role = resolveRole(body.email, count === 0);
+    const role = resolveRole(body.email, true);
     const user = await User.create({
       email: body.email.toLowerCase(),
       name: body.name,

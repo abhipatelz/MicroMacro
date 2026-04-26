@@ -263,7 +263,7 @@ export default function SettingsPage() {
                 background: isPM ? 'rgba(21,101,192,0.35)' : 'rgba(43,140,41,0.35)',
                 color: isPM ? '#90CAF9' : '#A5D6A7',
               }}>
-                {isPM ? 'Project Manager' : 'Team Member'}
+                {isPM ? 'PM' : 'Individual Contributor'}
               </span>
               {isLdap && (
                 <span className="text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(34,197,94,0.2)', color: '#86EFAC' }}>

@@ -9,8 +9,12 @@ import { handleError, readBody } from '@/lib/http';
 export const runtime = 'nodejs';
 
 const Body = z.object({
-  role: z.enum(['employee', 'pm']).optional(),
+  role:  z.enum(['employee', 'pm']).optional(),
   title: z.string().optional(),
+  name:  z.string().optional(),
+  department: z.string().optional(),
+  phone:      z.string().optional(),
+  location:   z.string().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {

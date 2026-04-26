@@ -87,7 +87,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
       {/* Role label */}
       <div className="px-5 pb-2">
         <div style={{ fontSize: 9, letterSpacing: '0.18em' }} className="text-white/20 uppercase font-bold">
-          {user.role === 'pm' ? 'Project Manager' : 'Team Member'}
+          {user.role === 'pm' ? 'PM' : 'Individual Contributor'}
         </div>
       </div>
 
@@ -128,7 +128,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
               {user.name}
             </Link>
             <div style={{ fontSize: 10 }} className="text-white/30 truncate">
-              {user.title || (user.role === 'pm' ? 'Project Manager' : 'Team Member')}
+              {user.title || (user.role === 'pm' ? 'PM' : 'Individual Contributor')}
             </div>
           </div>
           <button onClick={logout} title="Sign out" className="text-white/20 hover:text-white/70 transition-colors shrink-0">
