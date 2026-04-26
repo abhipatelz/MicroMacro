@@ -6,6 +6,7 @@ import { Avatar } from './ui';
 import {
   LayoutDashboard, FolderKanban, Users, Calendar,
   PieChart, Lightbulb, LogOut, UserCog, Menu, X,
+  Bell, Lock, User, ChevronUp,
 } from 'lucide-react';
 import { api } from '@/lib/client/api';
 
@@ -21,6 +22,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
   const pathname = usePathname();
   const router   = useRouter();
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Close drawer on navigation
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -117,23 +119,57 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
         })}
       </nav>
 
-      {/* User footer */}
-      <div className="px-3 py-3 border-t border-white/5">
-        <div className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 hover:bg-white/5 transition-colors">
-          <Link href="/settings" title="Account settings" className="shrink-0">
-            <Avatar name={user.name} size={28} />
-          </Link>
-          <div className="flex-1 min-w-0">
-            <Link href="/settings" className="block text-xs font-semibold text-white/80 truncate hover:text-white transition-colors">
-              {user.name}
+      {/* User footer — hover to reveal profile menu */}
+      <div
+        className="px-3 py-3 border-t border-white/5 relative"
+        onMouseEnter={() => setProfileOpen(true)}
+        onMouseLeave={() => setProfileOpen(false)}
+      >
+        {/* Hover popup */}
+        <div className={`absolute bottom-full left-2 right-2 mb-1.5 rounded-xl overflow-hidden z-50 transition-all duration-150 ${
+          profileOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-1 pointer-events-none'
+        }`} style={{
+          background: '#0A1929',
+          border: '1px solid rgba(255,255,255,0.09)',
+          boxShadow: '0 -4px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04)',
+        }}>
+          {/* Mini identity header */}
+          <div className="px-3 py-2.5 flex items-center gap-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <Avatar name={user.name} size={30} />
+            <div className="min-w-0">
+              <div className="text-[12px] font-bold text-white/90 truncate leading-tight">{user.name}</div>
+              <div style={{ fontSize: 10 }} className="text-white/35 truncate">{user.role === 'pm' ? 'PM' : 'Individual Contributor'}</div>
+            </div>
+          </div>
+          {/* Menu items */}
+          <div className="py-1">
+            <Link href="/settings" className="flex items-center gap-2.5 px-3 py-2 text-xs text-white/55 hover:text-white/90 hover:bg-white/5 transition-colors">
+              <User size={12} className="shrink-0" /> Profile &amp; identity
             </Link>
+            <Link href="/settings#notifications" className="flex items-center gap-2.5 px-3 py-2 text-xs text-white/55 hover:text-white/90 hover:bg-white/5 transition-colors">
+              <Bell size={12} className="shrink-0" /> Notifications
+            </Link>
+            <Link href="/settings#security" className="flex items-center gap-2.5 px-3 py-2 text-xs text-white/55 hover:text-white/90 hover:bg-white/5 transition-colors">
+              <Lock size={12} className="shrink-0" /> Security
+            </Link>
+            <div className="mx-3 my-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+            <button onClick={logout}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400/60 hover:text-red-400 hover:bg-white/5 transition-colors">
+              <LogOut size={12} className="shrink-0" /> Sign out
+            </button>
+          </div>
+        </div>
+
+        {/* Trigger row */}
+        <div className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 hover:bg-white/5 transition-colors cursor-default select-none">
+          <Avatar name={user.name} size={28} />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-white/80 truncate">{user.name}</div>
             <div style={{ fontSize: 10 }} className="text-white/30 truncate">
               {user.title || (user.role === 'pm' ? 'PM' : 'Individual Contributor')}
             </div>
           </div>
-          <button onClick={logout} title="Sign out" className="text-white/20 hover:text-white/70 transition-colors shrink-0">
-            <LogOut size={13} />
-          </button>
+          <ChevronUp size={11} className={`text-white/20 shrink-0 transition-transform duration-150 ${profileOpen ? '' : 'rotate-180'}`} />
         </div>
       </div>
     </>

@@ -239,7 +239,7 @@ export default function SettingsPage() {
     <div className="max-w-4xl pb-12 space-y-5">
 
       {/* ── Hero profile card ─────────────────────────────────────────────── */}
-      <div className="rounded-2xl overflow-hidden" style={{
+      <div className="rounded-2xl overflow-hidden relative" style={{
         background: 'linear-gradient(135deg, #071223 0%, #0B1E3A 60%, #0D2347 100%)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.1)',
       }}>
@@ -358,8 +358,8 @@ export default function SettingsPage() {
                     <Field label="Phone">
                       <input className="input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 …" />
                     </Field>
-                    <Field label="Office / site">
-                      <input className="input" value={location} onChange={e => setLocation(e.target.value)} placeholder="Vadodara HQ" />
+                    <Field label="Office / location">
+                      <input className="input" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. New York" />
                     </Field>
                   </div>
                   <div className="flex items-center gap-3 mt-4">
@@ -376,35 +376,32 @@ export default function SettingsPage() {
                   <Field label="Full name" hint="Will be overwritten by LDAP on sync">
                     <input className="input" value={name} onChange={e => setName(e.target.value)} required />
                   </Field>
+                  <ReadonlyField label="Email" value={user.email} />
+                  <Field label="Job title">
+                    <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Product Designer" />
+                  </Field>
                   <Field label="Employee ID" hint="sAMAccountName from Active Directory">
                     <input className="input" value={employeeId} onChange={e => setEmpId(e.target.value)} placeholder="EMP-001" />
                   </Field>
-                  <Field label="Job title">
-                    <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Validation Engineer" />
-                  </Field>
                   <Field label="Department">
-                    <input className="input" value={department} onChange={e => setDept(e.target.value)} placeholder="Quality IT" />
+                    <input className="input" value={department} onChange={e => setDept(e.target.value)} placeholder="e.g. Engineering" />
                   </Field>
                   <Field label="Manager">
                     <input className="input" value={managerName} onChange={e => setManager(e.target.value)} placeholder="Manager's display name" />
                   </Field>
                   <Field label="Phone">
-                    <input className="input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 …" />
+                    <input className="input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 555 …" />
                   </Field>
-                  <Field label="Office / site">
-                    <input className="input" value={location} onChange={e => setLocation(e.target.value)} placeholder="Vadodara HQ" />
+                  <Field label="Office / location">
+                    <input className="input" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. New York" />
                   </Field>
-                  <ReadonlyField label="Email"  value={user.email} />
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-3">
-                    <button type="submit" className="btn-primary" disabled={identitySaving}>
-                      {identitySaving ? 'Saving…' : 'Save changes'}
-                    </button>
-                    {identityMsg && <span className="text-xs text-green-600 font-medium">✓ {identityMsg}</span>}
-                  </div>
-                  <span className="text-[11px] text-slate-400">LDAP not configured · contact IT</span>
+                <div className="flex items-center gap-3 pt-1">
+                  <button type="submit" className="btn-primary" disabled={identitySaving}>
+                    {identitySaving ? 'Saving…' : 'Save changes'}
+                  </button>
+                  {identityMsg && <span className="text-xs text-green-600 font-medium">✓ {identityMsg}</span>}
                 </div>
               </form>
             )}
@@ -415,6 +412,7 @@ export default function SettingsPage() {
         <div className="lg:col-span-2 space-y-5">
 
           {/* Notifications */}
+          <div id="notifications" className="scroll-mt-6">
           <Section icon={Bell} title="Notifications" subtitle="Emails Pragati sends you.">
             <div className={notifSaving ? 'opacity-60 pointer-events-none transition-opacity' : 'transition-opacity'}>
               <Toggle label="Task assigned to me"  description="When a PM assigns you a new task."
@@ -430,8 +428,10 @@ export default function SettingsPage() {
               Sent to <span className="font-semibold text-slate-500">{user.email}</span>
             </p>
           </Section>
+          </div>
 
           {/* Security */}
+          <div id="security" className="scroll-mt-6">
           <Section icon={Lock} title="Security" subtitle="Change your login password.">
             <form onSubmit={savePw} className="space-y-3.5">
               <Field label="Current password">
@@ -458,6 +458,7 @@ export default function SettingsPage() {
               </button>
             </form>
           </Section>
+          </div>
         </div>
       </div>
     </div>
