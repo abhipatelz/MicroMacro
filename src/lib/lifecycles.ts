@@ -1,4 +1,9 @@
 export type LifecycleKey =
+  | 'generic'
+  | 'agile_sprint'
+  | 'software_release'
+  | 'product_launch'
+  | 'research'
   | 'csv'
   | 'sop'
   | 'deviation_capa'
@@ -6,8 +11,9 @@ export type LifecycleKey =
   | 'audit'
   | 'validation'
   | 'data_integrity'
-  | 'pharmacovigilance'
-  | 'generic';
+  | 'pharmacovigilance';
+
+export type LifecycleGroup = 'General' | 'Life Sciences';
 
 export interface LifecycleTaskTemplate {
   title: string;
@@ -33,15 +39,208 @@ export interface LifecycleTemplate {
   label: string;
   description: string;
   regulatoryRefs: string;
+  group: LifecycleGroup;
   phases: LifecyclePhaseTemplate[];
 }
 
 export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
+  generic: {
+    label: 'Generic project',
+    description: 'A flexible, freeform project with no predefined lifecycle.',
+    regulatoryRefs: '',
+    group: 'General',
+    phases: [
+      { name: 'Planning', tasks: [{ title: 'Kick-off', type: 'task' }] },
+      { name: 'Execution', tasks: [{ title: 'Work item', type: 'task' }] },
+      { name: 'Closure', tasks: [{ title: 'Wrap-up & retrospective', type: 'review' }] }
+    ]
+  },
+
+  agile_sprint: {
+    label: 'Agile Sprint',
+    description: 'Time-boxed iteration with planning, execution, review, and retrospective.',
+    regulatoryRefs: '',
+    group: 'General',
+    phases: [
+      {
+        name: 'Sprint Planning',
+        tasks: [
+          { title: 'Backlog refinement & story pointing', type: 'review' },
+          { title: 'Sprint goal definition', type: 'task' },
+          { title: 'Capacity planning', type: 'task' },
+        ]
+      },
+      {
+        name: 'Development',
+        tasks: [
+          { title: 'Daily standups', type: 'task' },
+          { title: 'Feature development', type: 'task' },
+          { title: 'Code review', type: 'review' },
+          { title: 'Unit & integration tests', type: 'test' },
+        ]
+      },
+      {
+        name: 'Review & Release',
+        tasks: [
+          { title: 'Sprint demo / review', type: 'review' },
+          { title: 'QA acceptance testing', type: 'test' },
+          { title: 'Deploy to staging', type: 'task' },
+          { title: 'Stakeholder sign-off', type: 'approval' },
+        ]
+      },
+      {
+        name: 'Retrospective',
+        tasks: [
+          { title: 'Team retrospective', type: 'review' },
+          { title: 'Action items log', type: 'task' },
+        ]
+      }
+    ]
+  },
+
+  software_release: {
+    label: 'Software Release',
+    description: 'End-to-end release cycle from scoping through post-launch monitoring.',
+    regulatoryRefs: '',
+    group: 'General',
+    phases: [
+      {
+        name: 'Scoping & Design',
+        tasks: [
+          { title: 'Requirements documentation', type: 'task' },
+          { title: 'Technical design review', type: 'review' },
+          { title: 'Architecture sign-off', type: 'approval' },
+        ]
+      },
+      {
+        name: 'Build',
+        tasks: [
+          { title: 'Feature development', type: 'task' },
+          { title: 'Code reviews', type: 'review' },
+          { title: 'Security review', type: 'review' },
+        ]
+      },
+      {
+        name: 'Testing',
+        tasks: [
+          { title: 'Unit test coverage review', type: 'test' },
+          { title: 'Integration / E2E tests', type: 'test' },
+          { title: 'Performance & load testing', type: 'test' },
+          { title: 'UAT sign-off', type: 'approval' },
+        ]
+      },
+      {
+        name: 'Release',
+        tasks: [
+          { title: 'Deploy to production', type: 'task' },
+          { title: 'Smoke tests post-deploy', type: 'test' },
+          { title: 'Release notes published', type: 'task' },
+        ]
+      },
+      {
+        name: 'Post-Launch',
+        tasks: [
+          { title: 'Monitor error rates & SLOs', type: 'task' },
+          { title: 'Post-launch retrospective', type: 'review' },
+        ]
+      }
+    ]
+  },
+
+  product_launch: {
+    label: 'Product Launch',
+    description: 'Cross-functional launch lifecycle from strategy through go-live.',
+    regulatoryRefs: '',
+    group: 'General',
+    phases: [
+      {
+        name: 'Strategy',
+        tasks: [
+          { title: 'Market research & positioning', type: 'review' },
+          { title: 'Launch brief approval', type: 'approval' },
+          { title: 'Success metrics defined (OKRs)', type: 'task' },
+        ]
+      },
+      {
+        name: 'Build & Content',
+        tasks: [
+          { title: 'Landing page / product page', type: 'task' },
+          { title: 'Marketing collateral', type: 'task' },
+          { title: 'Demo / onboarding flow', type: 'task' },
+        ]
+      },
+      {
+        name: 'Pre-Launch',
+        tasks: [
+          { title: 'Internal beta test', type: 'test' },
+          { title: 'Sales enablement materials', type: 'task' },
+          { title: 'Press / communications review', type: 'review' },
+          { title: 'Leadership launch approval', type: 'approval' },
+        ]
+      },
+      {
+        name: 'Launch',
+        tasks: [
+          { title: 'Go-live execution', type: 'task' },
+          { title: 'Social / email announcements', type: 'task' },
+        ]
+      },
+      {
+        name: 'Post-Launch',
+        tasks: [
+          { title: 'KPI review — week 1', type: 'data_review' },
+          { title: 'Feedback synthesis', type: 'review' },
+          { title: 'Launch retrospective', type: 'review' },
+        ]
+      }
+    ]
+  },
+
+  research: {
+    label: 'Research Project',
+    description: 'Structured research lifecycle from question through published findings.',
+    regulatoryRefs: '',
+    group: 'General',
+    phases: [
+      {
+        name: 'Scoping',
+        tasks: [
+          { title: 'Research question & hypothesis', type: 'task' },
+          { title: 'Literature review', type: 'review' },
+          { title: 'Methodology design', type: 'task' },
+        ]
+      },
+      {
+        name: 'Data Collection',
+        tasks: [
+          { title: 'Data collection execution', type: 'task' },
+          { title: 'Data quality check', type: 'data_review' },
+        ]
+      },
+      {
+        name: 'Analysis',
+        tasks: [
+          { title: 'Statistical / qualitative analysis', type: 'task' },
+          { title: 'Peer review of analysis', type: 'review' },
+        ]
+      },
+      {
+        name: 'Reporting',
+        tasks: [
+          { title: 'Draft report / paper', type: 'task' },
+          { title: 'Internal review', type: 'review' },
+          { title: 'Stakeholder sign-off', type: 'approval' },
+        ]
+      }
+    ]
+  },
+
   csv: {
     label: 'Computer System Validation (CSV / GAMP 5)',
     description:
       'Validation lifecycle for GxP computerized systems, aligned with GAMP 5 and 21 CFR Part 11 / EU Annex 11.',
     regulatoryRefs: '21 CFR Part 11, EU Annex 11, GAMP 5',
+    group: 'Life Sciences',
     phases: [
       {
         name: 'Planning & Risk Assessment',
@@ -92,6 +291,7 @@ export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
     label: 'Standard Operating Procedure (SOP)',
     description: 'Authoring, review, approval, training and periodic review of SOPs.',
     regulatoryRefs: '21 CFR 211, ICH Q10',
+    group: 'Life Sciences',
     phases: [
       { name: 'Authoring', tasks: [{ title: 'Draft SOP', type: 'task', gxp: true }] },
       { name: 'Review', tasks: [
@@ -111,6 +311,7 @@ export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
     label: 'Deviation / CAPA',
     description: 'Deviation investigation and corrective/preventive action lifecycle.',
     regulatoryRefs: 'ICH Q10, 21 CFR 211.192',
+    group: 'Life Sciences',
     phases: [
       { name: 'Identification & Containment', tasks: [
         { title: 'Log deviation with initial description', type: 'deviation', qa: true, gxp: true },
@@ -138,6 +339,7 @@ export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
     label: 'Change Control',
     description: 'Controlled evaluation, approval and implementation of changes to GxP systems.',
     regulatoryRefs: 'ICH Q10, EU GMP Annex 15',
+    group: 'Life Sciences',
     phases: [
       { name: 'Proposal', tasks: [
         { title: 'Submit change request', type: 'task', gxp: true },
@@ -159,6 +361,7 @@ export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
     label: 'Audit / Inspection readiness',
     description: 'Internal audit or regulatory inspection preparation, execution and follow-up.',
     regulatoryRefs: '21 CFR 211, EU GMP Ch. 9',
+    group: 'Life Sciences',
     phases: [
       { name: 'Preparation', tasks: [
         { title: 'Audit plan & scope', type: 'task', qa: true, gxp: true },
@@ -180,6 +383,7 @@ export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
     label: 'Process / Method Validation',
     description: 'Analytical method or manufacturing process validation lifecycle.',
     regulatoryRefs: 'ICH Q2(R1), ICH Q7',
+    group: 'Life Sciences',
     phases: [
       { name: 'VMP', tasks: [{ title: 'Draft Validation Master Plan', type: 'task', qa: true, gxp: true }] },
       { name: 'Protocol', tasks: [
@@ -202,6 +406,7 @@ export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
     description:
       'Assess ALCOA+ data integrity controls (Attributable, Legible, Contemporaneous, Original, Accurate + Complete, Consistent, Enduring, Available) for a GxP system.',
     regulatoryRefs: 'MHRA DI Guidance 2018, WHO TRS 1033, FDA DI & Compliance Guide',
+    group: 'Life Sciences',
     phases: [
       { name: 'Scope & Inventory', tasks: [
         { title: 'Identify GxP data flows and records', type: 'task', qa: true, gxp: true },
@@ -229,6 +434,7 @@ export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
     description:
       'ICSR (Individual Case Safety Report) intake, triage, narrative writing, coding, QA review and regulatory reporting.',
     regulatoryRefs: 'GVP Module VI, 21 CFR 314.80, ICH E2B(R3)',
+    group: 'Life Sciences',
     phases: [
       { name: 'Intake', tasks: [
         { title: 'Receive & log case', type: 'task', gxp: true },
@@ -252,16 +458,6 @@ export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
     ]
   },
 
-  generic: {
-    label: 'Generic project',
-    description: 'Generic project without a pharma-specific lifecycle.',
-    regulatoryRefs: '',
-    phases: [
-      { name: 'Planning', tasks: [{ title: 'Kick-off', type: 'task' }] },
-      { name: 'Execution', tasks: [{ title: 'Work item', type: 'task' }] },
-      { name: 'Closure', tasks: [{ title: 'Wrap-up', type: 'task' }] }
-    ]
-  }
 };
 
 export function listLifecycles() {
@@ -270,6 +466,7 @@ export function listLifecycles() {
     label: v.label,
     description: v.description,
     regulatoryRefs: v.regulatoryRefs,
+    group: v.group,
     phaseCount: v.phases.length,
     taskCount: v.phases.reduce((a, p) => a + p.tasks.length, 0)
   }));

@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     template: '%s · Pragati'
   },
   description:
-    'A self-hosted project & task management platform for quality-driven teams. Built for pharma QA, open to everyone.',
+    'A modern project & task management platform for quality-driven teams. Built for teams that care about execution.',
   icons: {
     icon: '/icon.png',
     apple: '/apple-icon.png',

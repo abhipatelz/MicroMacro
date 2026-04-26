@@ -71,7 +71,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
           <div>
             <div className="font-black text-white text-sm tracking-tight leading-tight">Pragati</div>
             <div style={{ fontSize: 9, letterSpacing: '0.15em' }} className="text-white/30 uppercase mt-0.5">
-              Alembic Digital
+              Project Intelligence
             </div>
           </div>
         </Link>

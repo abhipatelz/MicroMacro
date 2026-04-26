@@ -4,10 +4,15 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { Card, PriorityTag, StatusTag, formatDate, Avatar } from '@/components/ui';
-import { ChevronRight, FlaskConical, FileText, Building2, GitBranch, MessageSquare } from 'lucide-react';
+import { ChevronRight, Shield, FileText, Building2, GitBranch, MessageSquare } from 'lucide-react';
 
 const STATUSES  = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
-const TASK_TYPES = ['task','review','approval','test','deviation','capa','audit_finding','data_review'] as const;
+const TASK_TYPES = ['task','review','approval','test','issue','corrective_action','finding','data_review'] as const;
+const TASK_TYPE_LABELS: Record<string, string> = {
+  task: 'Task', review: 'Review', approval: 'Approval', test: 'Test',
+  issue: 'Issue', corrective_action: 'Corrective Action', finding: 'Finding', data_review: 'Data Review',
+  deviation: 'Issue', capa: 'Corrective Action', audit_finding: 'Finding',
+};
 
 /* ── Deploy-stage pipeline pill ─────────────────────────────────────────── */
 const STAGES = [
@@ -51,9 +56,9 @@ function StagePipeline({ current, onChange }: { current: string; onChange: (v: s
 
 const SITE_OPTIONS = [
   { value: 'na',      label: 'N/A' },
-  { value: 'val',     label: 'Val site' },
-  { value: 'prd',     label: 'PRD site' },
-  { value: 'val_prd', label: 'Val + PRD' },
+  { value: 'val',     label: 'Staging' },
+  { value: 'prd',     label: 'Production' },
+  { value: 'val_prd', label: 'Staging + Production' },
 ];
 
 export default function TaskDetailPage() {
@@ -95,7 +100,7 @@ export default function TaskDetailPage() {
   async function signoff() { await api(`/tasks/${id}/signoff`, { method: 'POST' }); load(); }
 
   const canSignoff = task.requiresQaSignoff && !task.qaSignoffAt && me?.role === 'pm';
-  const hasPharmaData = task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
+  const hasReferenceData = task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl">
@@ -118,23 +123,23 @@ export default function TaskDetailPage() {
             <PriorityTag priority={task.priority} />
             {task.gxpCritical && (
               <span className="inline-flex items-center gap-1 text-xs font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
-                <FlaskConical size={11} /> GxP Critical
+                <Shield size={11} /> Compliance Critical
               </span>
             )}
             {task.requiresQaSignoff && (
               task.qaSignoffAt ? (
                 <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                  QA ✓ {task.qaSignoffName} · {formatDate(task.qaSignoffAt)}
+                  Approved ✓ {task.qaSignoffName} · {formatDate(task.qaSignoffAt)}
                 </span>
               ) : (
                 <span className="text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded">
-                  QA sign-off required
+                  Sign-off required
                 </span>
               )
             )}
             {task.taskType && task.taskType !== 'task' && (
               <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded capitalize">
-                {task.taskType.replace(/_/g, ' ')}
+                {TASK_TYPE_LABELS[task.taskType] ?? task.taskType.replace(/_/g, ' ')}
               </span>
             )}
           </div>
@@ -151,34 +156,31 @@ export default function TaskDetailPage() {
           />
         </Card>
 
-        {/* ── Pharma / Change-Control details ────────────────────────────── */}
+        {/* ── Reference & Tracking details ─────────────────────────────── */}
         <div className="card overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
             <FileText size={14} className="text-blue-500" />
-            <h3 className="text-sm font-semibold text-slate-700">Change Control & Pharma Details</h3>
-            {hasPharmaData && (
+            <h3 className="text-sm font-semibold text-slate-700">Reference & Tracking</h3>
+            {hasReferenceData && (
               <span className="ml-auto text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Filled</span>
             )}
           </div>
           <div className="p-4 space-y-4">
 
-            {/* CC No. + CC TCD */}
+            {/* Ref No. + Target Date */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label flex items-center gap-1">
-                  CC Number
-                  <span className="text-slate-300 font-normal normal-case">(Change Control)</span>
-                </label>
+                <label className="label">Reference Number</label>
                 <input
                   className="input text-sm font-mono"
-                  placeholder="e.g. CC-2025-042"
+                  placeholder="e.g. REF-2025-042"
                   value={task.ccNo || ''}
                   onChange={(e) => setTask({ ...task, ccNo: e.target.value })}
                   onBlur={(e) => update({ ccNo: e.target.value })}
                 />
               </div>
               <div>
-                <label className="label">CC Target Completion Date</label>
+                <label className="label">Target Completion Date</label>
                 <input
                   type="date"
                   className="input text-sm"
@@ -204,7 +206,7 @@ export default function TaskDetailPage() {
               </div>
               <div>
                 <label className="label flex items-center gap-1">
-                  <Building2 size={11} /> Applicable Site
+                  <Building2 size={11} /> Environment
                 </label>
                 <select
                   className="select text-sm"
@@ -371,30 +373,30 @@ export default function TaskDetailPage() {
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input type="checkbox" checked={!!task.gxpCritical}
                   onChange={(e) => update({ gxpCritical: e.target.checked })} />
-                GxP critical
+                Compliance critical
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input type="checkbox" checked={!!task.requiresQaSignoff}
                   onChange={(e) => update({ requiresQaSignoff: e.target.checked })} />
-                QA sign-off
+                Requires sign-off
               </label>
             </div>
           </div>
         </Card>
 
-        {/* Quick pharma summary */}
+        {/* Reference summary */}
         {(task.ccNo || task.documentNo || task.deployStage !== 'na') && (
           <div className="card p-4 space-y-2">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">CC Summary</h4>
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Reference Summary</h4>
             {task.ccNo && (
               <div className="flex justify-between text-xs">
-                <span className="text-slate-400">CC No.</span>
+                <span className="text-slate-400">Ref No.</span>
                 <span className="font-mono font-semibold text-slate-700">{task.ccNo}</span>
               </div>
             )}
             {task.ccTcd && (
               <div className="flex justify-between text-xs">
-                <span className="text-slate-400">CC TCD</span>
+                <span className="text-slate-400">Target Date</span>
                 <span className="font-medium text-slate-700">{formatDate(task.ccTcd)}</span>
               </div>
             )}
@@ -424,12 +426,12 @@ export default function TaskDetailPage() {
         )}
 
         {canSignoff && (
-          <Card title="QA sign-off">
+          <Card title="Formal Sign-off">
             <p className="text-xs text-slate-500 mb-3">
-              This task requires QA sign-off. Review the evidence and approve below.
+              This task requires a formal sign-off. Review the evidence and approve below.
             </p>
             <button className="btn-primary w-full justify-center text-sm" onClick={signoff}>
-              Sign off as QA
+              Approve & Sign off
             </button>
           </Card>
         )}

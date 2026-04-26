@@ -54,18 +54,30 @@ const PRIORITY_DOT: Record<string, string> = {
 };
 
 export const LIFECYCLE_LABELS: Record<string, string> = {
+  // Generic templates
+  agile_sprint:      'Sprint',
+  software_release:  'Release',
+  product_launch:    'Launch',
+  research:          'Research',
+  // Life Sciences templates (kept for compatibility)
   csv:               'CSV',
   sop:               'SOP',
-  deviation_capa:    'Deviation/CAPA',
+  deviation_capa:    'Issue/CAPA',
   change_control:    'Change Control',
   audit:             'Audit',
   validation:        'Validation',
   data_integrity:    'Data Integrity',
-  pharmacovigilance: 'PV',
+  pharmacovigilance: 'Safety Reporting',
   generic:           'Generic',
 };
 
 export const LIFECYCLE_COLORS: Record<string, string> = {
+  // Generic templates
+  agile_sprint:      'text-violet-700 bg-violet-50',
+  software_release:  'text-sky-700 bg-sky-50',
+  product_launch:    'text-orange-700 bg-orange-50',
+  research:          'text-teal-700 bg-teal-50',
+  // Life Sciences templates
   csv:               'text-indigo-700 bg-indigo-50',
   sop:               'text-emerald-700 bg-emerald-50',
   deviation_capa:    'text-red-600 bg-red-50',

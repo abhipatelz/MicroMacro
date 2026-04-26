@@ -5,7 +5,7 @@
  * celebrate wins, and flag risks. Each principle has:
  *   - A short title + tagline
  *   - The original Amazon text (abridged)
- *   - A QA/pharma lens — what it means for quality informatics work specifically
+ *   - A team lens — what it means for quality-driven project work
  *   - A micro-copy set used across the UI
  */
 
@@ -30,7 +30,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Customer Obsession',
     tagline: 'Start with the patient. Work backwards.',
     text: 'Leaders start with the customer and work backwards. They work vigorously to earn and keep customer trust.',
-    qiLens: 'In pharma QA, the customer is ultimately the patient. Every CAPA, SOP and validation protocol we close makes the product safer. Keep that in mind when a task feels tedious.',
+    qiLens: 'The end user of your work — whether a customer, colleague, or stakeholder — is who you are ultimately building for. Every task you close, every decision you make, connects back to them. Keep that in mind when the work feels tedious.',
     verb: 'Patient-first',
     icon: '🫀',
     emptyHint: 'Start with what serves the patient most.',
@@ -43,7 +43,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Ownership',
     tagline: 'Act on behalf of the whole company, not just your team.',
     text: 'Leaders are owners. They think long term and never sacrifice long-term value for short-term results.',
-    qiLens: 'When you spot a gap outside your project, file it. Own the outcome, not just the task. A missed deviation that someone else notices is still a QI failure.',
+    qiLens: 'When you spot a gap outside your project, file it. Own the outcome, not just the task. A missed issue that someone else notices is still a team failure.',
     verb: 'Owned it',
     icon: '🔑',
     emptyHint: "This bucket is yours. Own it — add what's missing.",
@@ -56,7 +56,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Invent and Simplify',
     tagline: 'Find new ways. Be suspicious of complexity.',
     text: 'Leaders expect and require innovation from their teams and always find ways to simplify.',
-    qiLens: 'If a process needs a 12-step SOP to not break, the process is the problem. Every project phase is a chance to simplify — fewer handoffs, clearer criteria, less ambiguity.',
+    qiLens: 'If a workflow needs a 12-step manual to not break, the workflow is the problem. Every project phase is a chance to simplify — fewer handoffs, clearer criteria, less ambiguity.',
     verb: 'Simplified',
     icon: '⚡',
     emptyHint: 'Simple beats clever. Add the most direct path forward.',
@@ -69,7 +69,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Are Right, A Lot',
     tagline: 'Strong judgement. Seek diverse perspectives.',
     text: 'Leaders have strong judgment and good instincts. They seek diverse perspectives and work to disconfirm their beliefs.',
-    qiLens: 'In validation and audit work, being right matters enormously. Build judgement by reviewing past deviations, not just current ones. Diverse perspectives catch what solo reviewers miss.',
+    qiLens: 'In project work, being right matters enormously — bad decisions compound. Build judgement by reviewing past issues and outcomes, not just current ones. Diverse perspectives catch what solo reviewers miss.',
     verb: 'Right call',
     icon: '🎯',
     emptyHint: "Good judgement starts with information. Add what you know.",
@@ -82,7 +82,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Learn and Be Curious',
     tagline: 'Never stop learning. Explore new possibilities.',
     text: 'Leaders are never done learning and always seek to improve themselves. They are curious about new possibilities and act to explore them.',
-    qiLens: 'Regulations change. Systems evolve. MES, LIMS, TrackWise, Documentum — each release is a chance to learn. Curiosity is a GMP mindset: ask why, not just how.',
+    qiLens: 'The tools, standards, and methods your team uses are evolving constantly. Each new system, framework, or process is a chance to learn. Curiosity is a quality mindset: ask why, not just how.',
     verb: 'Kept learning',
     icon: '📚',
     emptyHint: "Nothing to show yet — curious what's possible?",
@@ -95,7 +95,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Hire and Develop the Best',
     tagline: 'Raise the bar with every hire. Coach relentlessly.',
     text: 'Leaders raise the performance bar with every hire and promotion. They recognise exceptional talent and willingly move them throughout the organisation.',
-    qiLens: 'Your team is your force multiplier. When you mentor a colleague on a validation protocol or share a CAPA template, you are developing the best — in your own team.',
+    qiLens: 'Your team is your force multiplier. When you mentor a colleague, share a template, or take time to explain your thinking, you are developing the best — right in your own team.',
     verb: 'Developed others',
     icon: '🌱',
     emptyHint: 'Great teams build great work. Add a task to help someone grow.',
@@ -108,7 +108,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Insist on the Highest Standards',
     tagline: 'Relentlessly raise the bar. Do not normalise defects.',
     text: 'Leaders have relentlessly high standards — many people may think these standards are unreasonably high. Leaders are continually raising the bar.',
-    qiLens: 'GMP is not a ceiling; it is a floor. When a batch record is "mostly okay", it is not okay. ALCOA+ data integrity means every entry, every time. High standards are non-negotiable.',
+    qiLens: 'Standards are a floor, not a ceiling. When a deliverable is "mostly done", it is not done. Consistency across every task, every review, every handoff is what separates good teams from great ones.',
     verb: 'Held the standard',
     icon: '⭐',
     emptyHint: 'High standards start with a clear list. What needs to be done?',
@@ -121,7 +121,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Think Big',
     tagline: 'Think at a different scale. Inspire results.',
     text: 'Thinking small is a self-fulfilling prophecy. Leaders create and communicate a bold direction that inspires results.',
-    qiLens: 'QI is not just keeping the lights on. Every IDP we automate, every LIMS integration we build, every manual process we replace — that is thinking big for thousands of batches and thousands of patients.',
+    qiLens: 'Your role is not just keeping the lights on. Every process you automate, every tool you build, every manual step you eliminate — that is thinking big for the team and the people they serve.',
     verb: 'Thought big',
     icon: '🚀',
     emptyHint: 'What would you build if it could not fail?',
@@ -134,7 +134,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Bias for Action',
     tagline: 'Speed matters. Many decisions are reversible.',
     text: 'Speed matters in business. Many decisions and actions are reversible and do not need extensive study. We value calculated risk taking.',
-    qiLens: 'In a regulated environment, "waiting for perfect information" is how deviations accumulate. When you are 70% certain, act and course-correct. Paralysis is the enemy of quality.',
+    qiLens: 'In fast-moving project work, "waiting for perfect information" is how blockers accumulate. When you are 70% certain, act and course-correct. Paralysis is the enemy of progress.',
     verb: 'Acted first',
     icon: '⚡',
     emptyHint: 'Done beats perfect. Add and iterate.',
@@ -147,7 +147,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Frugality',
     tagline: 'Accomplish more with less.',
     text: 'Accomplish more with less. Constraints breed resourcefulness, self-sufficiency, and invention.',
-    qiLens: 'QI operates within budget and headcount constraints. This tool is self-hosted, uses no paid AI APIs, and is built on open-source foundations. Constraints are not excuses — they are creative fuel.',
+    qiLens: 'Every team operates within constraints — time, budget, headcount. Constraints are not excuses. They are the pressure that turns coal into diamonds. Build more with less.',
     verb: 'Did more with less',
     icon: '🎁',
     emptyHint: 'Constraints breed creativity. What can you do with what you have?',
@@ -160,7 +160,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Earn Trust',
     tagline: 'Be vocally self-critical. Benchmark against the best.',
     text: 'Leaders listen attentively, speak candidly, and treat others respectfully. They are vocally self-critical, even when it is socially awkward to do so.',
-    qiLens: 'Data integrity is built on earned trust. When a deviation occurs, own it immediately and publicly. The audit trail does not lie, and neither should we.',
+    qiLens: 'Team trust is built on earned transparency. When something goes wrong, own it immediately and publicly. The project history does not lie, and neither should we.',
     verb: 'Earned trust',
     icon: '🤝',
     emptyHint: 'Transparency starts here. What is actually happening?',
@@ -173,7 +173,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Dive Deep',
     tagline: 'Stay connected to details. Audit frequently.',
     text: 'Leaders operate at all levels, stay connected to the details, audit frequently, and are sceptical when metrics and anecdote differ.',
-    qiLens: 'Root cause analysis is Dive Deep in action. Do not accept "human error" as a root cause — it is the starting point. Subtasks exist to capture the deep work. Use them.',
+    qiLens: 'Root cause analysis is Dive Deep in action. Do not accept surface-level explanations — they are the starting point, not the answer. Subtasks exist to capture the deep work. Use them.',
     verb: 'Dove deep',
     icon: '🔍',
     emptyHint: 'The answer is in the details. Break it down.',
@@ -186,7 +186,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Have Backbone; Disagree and Commit',
     tagline: 'Challenge decisions respectfully. Commit fully once decided.',
     text: 'Leaders are obligated to respectfully challenge decisions when they disagree, even when doing so is uncomfortable. Once a decision is determined, commit wholly.',
-    qiLens: 'If a validation protocol is incomplete, say so in review — not after PQ. Once the protocol is approved, execute it faithfully. The backbone is in the review; the commitment is in the execution.',
+    qiLens: 'If a plan is incomplete, say so during review — not after execution has started. Once a direction is set, commit to it fully. The backbone is in the discussion; the commitment is in the delivery.',
     verb: 'Had backbone',
     icon: '🦴',
     emptyHint: 'Say what you think. Then build what was agreed.',
@@ -199,7 +199,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Deliver Results',
     tagline: 'Focus on key inputs. Deliver with the right quality.',
     text: 'Leaders focus on the key inputs for their business and deliver them with the right quality and in a timely fashion.',
-    qiLens: 'CAPA effectiveness checks exist because intentions are not results. Metrics on this dashboard exist because impressions are not results. Ship the task.',
+    qiLens: 'Effectiveness checks exist because intentions are not results. Metrics on this dashboard exist because impressions are not results. Close the task.',
     verb: 'Delivered',
     icon: '📦',
     emptyHint: 'Results speak for themselves. Start building.',
@@ -212,7 +212,7 @@ export const PRINCIPLES: Principle[] = [
     title: "Strive to be Earth's Best Employer",
     tagline: 'Create a safe, productive, diverse environment.',
     text: 'Leaders work every day to create a safer, more productive, higher performing, more diverse, and more just work environment.',
-    qiLens: 'A quality culture is a safe culture — psychologically as well as physically. When someone raises a near-miss or flags a gap without fear, the system works. That safety is built task by task, review by review.',
+    qiLens: 'A high-performing culture is a safe culture — psychologically as well as operationally. When someone flags a gap without fear of blame, the system works. That safety is built task by task, review by review.',
     verb: 'Built culture',
     icon: '🌍',
     emptyHint: 'A great workplace is built in small acts. What can you do today?',
@@ -225,7 +225,7 @@ export const PRINCIPLES: Principle[] = [
     title: 'Success and Scale Bring Broad Responsibility',
     tagline: 'Humble about impact. Vigilant about consequences.',
     text: 'We must be humble and thoughtful about our impact. Our decisions and actions affect the world in ways large and small.',
-    qiLens: 'When QI builds a system used across manufacturing, one wrong assumption propagates to thousands of batch records, hundreds of patients. Scale is responsibility. Build carefully.',
+    qiLens: 'As your team and tools grow, one wrong assumption propagates to every workflow that depends on them. Scale is responsibility. Build carefully, test thoroughly, and think about downstream impact.',
     verb: 'Responsible at scale',
     icon: '⚖️',
     emptyHint: 'With responsibility comes the obligation to act. What matters most?',
@@ -245,12 +245,12 @@ export function getTodaysPrinciple(): Principle {
 /** Returns the principle most appropriate for a task completion context */
 export function getPrincipleForCompletion(opts: {
   daysEarly?: number;
-  isGxP?: boolean;
+  isCompliance?: boolean;
   hasSubtasks?: boolean;
   hadComment?: boolean;
 }): Principle {
   if (opts.daysEarly && opts.daysEarly >= 2) return getPrinciple('bias_for_action');
-  if (opts.isGxP) return getPrinciple('highest_standards');
+  if (opts.isCompliance) return getPrinciple('highest_standards');
   if (opts.hasSubtasks) return getPrinciple('dive_deep');
   if (opts.hadComment) return getPrinciple('earn_trust');
   return getPrinciple('deliver_results');

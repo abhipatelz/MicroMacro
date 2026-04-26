@@ -9,7 +9,7 @@ export default function NewProjectPage() {
   const [form, setForm] = useState({
     name: '',
     description: '',
-    lifecycle: 'csv',
+    lifecycle: 'generic',
     priority: 'medium',
     gxpImpact: 'medium',
     teamId: '',
@@ -153,18 +153,24 @@ export default function NewProjectPage() {
         </div>
 
         <div className="space-y-4">
-          <Card title="Quality Informatics lifecycle">
+          <Card title="Project lifecycle">
             <label className="label">Lifecycle template</label>
             <select
               className="select"
               value={form.lifecycle}
               onChange={(e) => up('lifecycle', e.target.value)}
             >
-              {lifecycles.map((l) => (
-                <option key={l.key} value={l.key}>
-                  {l.label}
-                </option>
-              ))}
+              {(['General', 'Life Sciences'] as const).map(group => {
+                const group_items = lifecycles.filter((l: any) => l.group === group);
+                if (!group_items.length) return null;
+                return (
+                  <optgroup key={group} label={group}>
+                    {group_items.map((l: any) => (
+                      <option key={l.key} value={l.key}>{l.label}</option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </select>
             {preview && (
               <div className="mt-3 text-sm">

@@ -1,9 +1,7 @@
 /**
  * Cultural layer — small details that make Pragati feel personal.
  *
- * Greetings cycle through languages the Alembic QI team speaks.
- * Seasonal awareness acknowledges the Indian calendar.
- * Pharma-pride copy celebrates the domain we work in.
+ * Greetings are multilingual (English, Hindi, Gujarati) with seasonal awareness.
  * Quality quotes rotate through voices who shaped the field.
  */
 
@@ -70,15 +68,15 @@ function getSeasonalGreeting(firstName: string): CultureGreeting | null {
 
   // New Year
   if (m === 1 && d === 1)
-    return { text: `Happy New Year, ${firstName} 🎆`, sub: 'May all your CAPAs close on time 😄' };
+    return { text: `Happy New Year, ${firstName} 🎆`, sub: 'May all your tasks close on time 😄' };
 
   return null;
 }
 
-/** Pharma-pride micro-copy for progress milestones */
+/** Micro-copy for progress milestones */
 export function getProgressPhrase(pct: number): string {
-  if (pct >= 100) return 'Batch closed ✓';
-  if (pct >= 90) return 'In specification ✓';
+  if (pct >= 100) return 'Completed ✓';
+  if (pct >= 90) return 'Almost done ✓';
   if (pct >= 75) return 'On track';
   if (pct >= 50) return 'Halfway there';
   if (pct >= 25) return 'In progress';
@@ -89,17 +87,17 @@ export function getProgressPhrase(pct: number): string {
 /** Celebration augment — extra line shown on the pop card */
 export function getCelebrationAugment(opts: {
   daysEarly: number;
-  isGxP: boolean;
+  isCompliance: boolean;
 }): string {
-  if (opts.isGxP && opts.daysEarly > 0)
-    return 'GxP task closed early — Insist on the Highest Standards. 🌟';
-  if (opts.isGxP)
-    return 'GxP-critical task closed. Quality delivered. 🏅';
+  if (opts.isCompliance && opts.daysEarly > 0)
+    return 'Compliance task closed early — Insist on the Highest Standards. 🌟';
+  if (opts.isCompliance)
+    return 'Compliance-critical task closed. Quality delivered. 🏅';
   if (opts.daysEarly >= 3)
     return `${opts.daysEarly} days early — Bias for Action. ⚡`;
   if (opts.daysEarly === 1 || opts.daysEarly === 2)
     return 'Ahead of schedule — Deliver Results. 📦';
-  return 'Touching Lives · over 100 Years 🫀';
+  return 'Progress over perfection. Keep going. 🚀';
 }
 
 /** Quality thought leaders — 1 per day */
@@ -110,16 +108,16 @@ const QUALITY_QUOTES: Array<{ quote: string; author: string }> = [
   { quote: 'Make it work, make it right, make it fast — in that order.', author: 'Kent Beck' },
   { quote: 'There is nothing so useless as doing efficiently that which should not be done at all.', author: 'Peter Drucker' },
   { quote: 'The cost of poor quality is not just in defects. It is in everything that goes wrong because the system was not designed right.', author: 'Joseph Juran' },
-  { quote: 'Data integrity is not a process. It is a culture.', author: 'MHRA GXP Data Integrity Guidance' },
+  { quote: 'Data integrity is not a process. It is a culture.', author: 'Quality proverb' },
   { quote: 'Quality means doing it right when no one is looking.', author: 'Henry Ford' },
   { quote: 'Errors are not defects. Defects are errors that reach the customer.', author: 'Philip Crosby' },
   { quote: 'In God we trust; all others must bring data.', author: 'W. Edwards Deming' },
-  { quote: 'The best time to fix a defect is before it becomes one.', author: 'QA proverb' },
+  { quote: 'The best time to fix a problem is before it becomes one.', author: 'Quality proverb' },
   { quote: 'If you cannot describe what you are doing as a process, you do not know what you are doing.', author: 'W. Edwards Deming' },
-  { quote: 'Perfect is the enemy of good, but good enough is the enemy of quality.', author: 'Voltaire / QA remix' },
-  { quote: 'Audit findings are gifts — they show you exactly where the system needs to grow.', author: 'Internal QI wisdom' },
-  { quote: 'The patient cannot speak for themselves in the manufacturing floor. We speak for them.', author: 'QA philosophy' },
-  { quote: 'Every SOP you write is a promise you are making to someone who depends on this product.', author: 'Internal QI wisdom' },
+  { quote: 'Perfect is the enemy of good, but good enough is the enemy of quality.', author: 'Voltaire / remix' },
+  { quote: 'Findings are gifts — they show you exactly where the system needs to grow.', author: 'Internal wisdom' },
+  { quote: 'Great teams do not just complete tasks. They close loops.', author: 'Pragati wisdom' },
+  { quote: 'Every process you document is a promise you are making to someone who depends on the outcome.', author: 'Internal wisdom' },
 ];
 
 export function getTodaysQuote(): { quote: string; author: string } {

@@ -321,7 +321,7 @@ export default function SettingsPage() {
           <StatTile icon={CalendarCheck} label="This month"   value={stats.doneThisMonth}                    color="#15803d" bg="#F0FDF4" />
           <StatTile icon={TrendingUp}    label="This year"    value={stats.doneThisYear}                     color="#1565C0" bg="#EFF6FF" />
           <StatTile icon={CheckCircle2}  label="All time"     value={stats.totalDone}                        color="#0f172a" bg="#f1f5f9" />
-          <StatTile icon={ShieldCheck}   label="GxP done"     value={stats.gxpDone}                          color="#7c3aed" bg="#F5F3FF" />
+          <StatTile icon={ShieldCheck}   label="Compliant"    value={stats.gxpDone}                          color="#7c3aed" bg="#F5F3FF" />
           <StatTile icon={Activity}      label="Open tasks"   value={stats.openTasks}                        color="#0f172a" bg="#f1f5f9" />
           <StatTile icon={AlertTriangle} label="Overdue"      value={stats.overdueTasks}
             color={stats.overdueTasks > 0 ? '#dc2626' : '#0f172a'}
@@ -339,8 +339,8 @@ export default function SettingsPage() {
             icon={User}
             title="Identity"
             subtitle={isLdap
-              ? `Managed by Alembic Active Directory · Last synced ${new Date(user.ldapSyncedAt).toLocaleString()}`
-              : 'Edit your details. Fields will auto-populate when IT enables LDAP sync.'}
+              ? `Managed by Active Directory / SSO · Last synced ${new Date(user.ldapSyncedAt).toLocaleString()}`
+              : 'Edit your details. Fields will auto-populate when SSO sync is enabled.'}
           >
             {isLdap ? (
               <div className="space-y-4">
