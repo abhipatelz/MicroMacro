@@ -3,14 +3,22 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { AlembicLogo } from '@/components/AlembicLogo';
+import { CheckCircle2 } from 'lucide-react';
+
+const FEATURES = [
+  'One place for all deviations, CAPAs, and validations',
+  'Real-time project health across every team and site',
+  'GxP-compliant audit trail built in from day one',
+  'Connects MES, LIMS, TrackWise, and Documentum',
+];
 
 function StrengthMeter({ password }: { password: string }) {
   const checks = [
-    { label: '8+ chars',  ok: password.length >= 8 },
-    { label: 'A–Z',       ok: /[A-Z]/.test(password) },
-    { label: 'a–z',       ok: /[a-z]/.test(password) },
-    { label: '0–9',       ok: /[0-9]/.test(password) },
-    { label: '#!@',       ok: /[^A-Za-z0-9]/.test(password) },
+    { label: '8+ chars', ok: password.length >= 8 },
+    { label: 'A–Z',      ok: /[A-Z]/.test(password) },
+    { label: 'a–z',      ok: /[a-z]/.test(password) },
+    { label: '0–9',      ok: /[0-9]/.test(password) },
+    { label: '#!@',      ok: /[^A-Za-z0-9]/.test(password) },
   ];
   const score = checks.filter((c) => c.ok).length;
   const barColor = score <= 2 ? '#EF4444' : score <= 3 ? '#F59E0B' : '#22C55E';
@@ -19,11 +27,8 @@ function StrengthMeter({ password }: { password: string }) {
     <div className="mt-2 space-y-1.5">
       <div className="flex gap-0.5">
         {[1,2,3,4,5].map((i) => (
-          <div
-            key={i}
-            className="h-1 flex-1 rounded-sm transition-all duration-200"
-            style={{ background: i <= score ? barColor : '#E2E8F0' }}
-          />
+          <div key={i} className="h-1 flex-1 rounded-sm transition-all duration-200"
+            style={{ background: i <= score ? barColor : '#E2E8F0' }} />
         ))}
       </div>
       <div className="flex gap-2 flex-wrap">
@@ -67,28 +72,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#0B1628' }}>
+    <div className="min-h-screen flex">
 
       {/* ── Left: brand panel ─────────────────────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[52%] flex-col justify-between p-14 relative overflow-hidden">
-
+      <div
+        className="hidden lg:flex lg:w-[52%] flex-col justify-between p-14 relative overflow-hidden"
+        style={{ background: 'linear-gradient(150deg, #071223 0%, #0B1E3A 55%, #0D2347 100%)' }}
+      >
         {/* Dot-grid texture */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)',
-            backgroundSize: '28px 28px',
-          }}
-        />
+        <div className="absolute inset-0 pointer-events-none" style={{
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
+          backgroundSize: '30px 30px',
+        }} />
+        {/* Glow blob */}
+        <div className="absolute top-0 right-0 w-96 h-96 rounded-full pointer-events-none" style={{
+          background: 'radial-gradient(circle, rgba(23,105,200,0.18) 0%, transparent 70%)',
+          transform: 'translate(30%, -30%)',
+        }} />
 
-        {/* Ghost icon watermark — bottom-right corner */}
-        <div className="absolute -bottom-16 -right-16 pointer-events-none" style={{ opacity: 0.06 }}>
-          <AlembicLogo width={380} />
-        </div>
-
-        {/* Top: SVG icon + wordmark text — no white box */}
+        {/* Top: branding */}
         <div className="relative flex items-center gap-3">
-          <AlembicLogo width={30} />
+          <AlembicLogo width={28} />
           <div>
             <div className="text-white font-bold text-sm tracking-tight leading-tight">Alembic Digital</div>
             <div style={{ fontSize: 9, letterSpacing: '0.16em' }} className="text-white/30 uppercase mt-0.5">
@@ -97,38 +101,34 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Centre: product headline */}
+        {/* Centre: headline + features */}
         <div className="relative">
-          <div style={{ fontSize: 11, letterSpacing: '0.2em' }} className="text-blue-400/60 uppercase font-bold mb-4">
-            Quality Informatics
+          <div style={{ fontSize: 11, letterSpacing: '0.2em' }} className="text-blue-400/70 uppercase font-bold mb-4 tracking-[0.2em]">
+            Quality Informatics Platform
           </div>
           <h1
             className="font-black leading-none text-white"
-            style={{ fontSize: 'clamp(52px, 6vw, 80px)', letterSpacing: '-0.03em' }}
+            style={{ fontSize: 'clamp(52px, 5.5vw, 76px)', letterSpacing: '-0.03em' }}
           >
             Pragati.
           </h1>
           <div className="mt-5 w-10 h-0.5 rounded-full" style={{ background: '#1769C8' }} />
-          <p className="mt-5 text-white/40 leading-relaxed max-w-xs" style={{ fontSize: 15 }}>
-            One tool for every deviation, CAPA, audit finding, and validation across MES, LIMS, TrackWise, and Documentum.
+          <p className="mt-5 text-white/40 leading-relaxed max-w-xs" style={{ fontSize: 14 }}>
+            Built for pharma QA teams who need more than a spreadsheet.
           </p>
 
-          {/* Stats row */}
-          <div className="mt-10 flex gap-8">
-            {[
-              { n: '100+', label: 'Years of quality' },
-              { n: 'GxP',  label: 'Compliant' },
-              { n: '∞',    label: 'Accountability' },
-            ].map((s) => (
-              <div key={s.label}>
-                <div className="text-white font-black" style={{ fontSize: 22, letterSpacing: '-0.02em' }}>{s.n}</div>
-                <div style={{ fontSize: 11 }} className="text-white/30 uppercase tracking-widest mt-0.5">{s.label}</div>
-              </div>
+          {/* Feature bullets */}
+          <ul className="mt-8 space-y-3">
+            {FEATURES.map((f) => (
+              <li key={f} className="flex items-start gap-3">
+                <CheckCircle2 size={15} className="text-blue-400/70 shrink-0 mt-0.5" />
+                <span className="text-white/50 leading-snug" style={{ fontSize: 13 }}>{f}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
-        {/* Bottom: tagline text — no image, no box */}
+        {/* Bottom */}
         <div className="relative">
           <div style={{ fontSize: 11, fontStyle: 'italic' }} className="text-white/20 tracking-wide">
             Empowering Excellence through Technology
@@ -140,34 +140,33 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right: form panel ─────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col justify-center items-center bg-white px-8 py-12">
+      <div className="flex-1 flex flex-col justify-center items-center bg-white px-8 py-12 relative">
 
-        {/* Full wordmark — sits naturally on white, perfectly on-brand */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logo-full.png"
-          alt="Alembic Digital"
-          className="mb-10 lg:mb-12"
-          style={{ width: 200, display: 'block' }}
-        />
+        {/* Subtle top bar accent */}
+        <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: 'linear-gradient(90deg, #1565C0, #43A047)' }} />
 
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-[340px]">
 
-          {/* Mode toggle */}
-          <div className="flex border-b border-slate-200 mb-8">
-            {(['login', 'register'] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setErr(''); }}
-                className="flex-1 pb-3 text-sm font-semibold transition-colors relative"
-                style={{ color: mode === m ? '#0D47A1' : '#94a3b8' }}
-              >
-                {m === 'login' ? 'Sign in' : 'Register'}
-                {mode === m && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: '#1565C0' }} />
-                )}
-              </button>
-            ))}
+          {/* App identity — no PNG, clean SVG + text */}
+          <div className="flex flex-col items-center mb-10">
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl mb-3 shadow-sm" style={{ background: '#0B1628' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-icon.png" alt="" width={28} height={28} style={{ display: 'block', objectFit: 'contain' }} />
+            </div>
+            <div className="text-2xl font-black text-slate-900 tracking-tight">Pragati</div>
+            <div style={{ fontSize: 11, letterSpacing: '0.06em' }} className="text-slate-400 mt-1">
+              by Alembic Digital
+            </div>
+          </div>
+
+          {/* Heading */}
+          <div className="mb-6">
+            <h2 className="text-lg font-bold text-slate-900">
+              {mode === 'login' ? 'Welcome back' : 'Create your account'}
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {mode === 'login' ? 'Sign in to your workspace to continue.' : 'Join your team on Pragati.'}
+            </p>
           </div>
 
           <form onSubmit={submit} className="space-y-4">
@@ -175,37 +174,21 @@ export default function LoginPage() {
               <>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Full name</label>
-                  <input
-                    className="input"
-                    placeholder="Your name"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
+                  <input className="input" placeholder="Your name" required
+                    value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Job title</label>
-                  <input
-                    className="input"
-                    placeholder="e.g. Validation Engineer"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Job title <span className="normal-case font-normal text-slate-400">(optional)</span></label>
+                  <input className="input" placeholder="e.g. Validation Engineer"
+                    value={title} onChange={(e) => setTitle(e.target.value)} />
                 </div>
               </>
             )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Email</label>
-              <input
-                className="input"
-                type="email"
-                placeholder="you@alembic.com"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <input className="input" type="email" placeholder="you@alembic.com" required
+                autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
 
             <div>
@@ -217,16 +200,10 @@ export default function LoginPage() {
                   </a>
                 )}
               </div>
-              <input
-                className="input"
-                type="password"
-                required
-                minLength={mode === 'register' ? 8 : 1}
+              <input className="input" type="password" required minLength={mode === 'register' ? 8 : 1}
                 placeholder={mode === 'register' ? 'Min 8 characters' : '••••••••'}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+                value={password} onChange={(e) => setPassword(e.target.value)} />
               {mode === 'register' && <StrengthMeter password={password} />}
             </div>
 
@@ -237,10 +214,9 @@ export default function LoginPage() {
             )}
 
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 rounded-lg text-sm font-bold text-white transition-opacity disabled:opacity-60 mt-2"
-              style={{ background: '#1565C0' }}
+              type="submit" disabled={loading}
+              className="w-full py-2.5 rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 mt-1"
+              style={{ background: 'linear-gradient(135deg, #1565C0, #1976D2)' }}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -251,25 +227,41 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-slate-400">
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-slate-100" />
+            <span className="text-xs text-slate-300 font-medium">or</span>
+            <div className="flex-1 h-px bg-slate-100" />
+          </div>
+
+          <p className="text-center text-xs text-slate-500">
             {mode === 'login' ? (
-              <>New to Pragati?{' '}
-                <button onClick={() => { setMode('register'); setErr(''); }} className="text-blue-700 font-semibold hover:underline">
-                  Create an account
+              <>
+                Don't have an account?{' '}
+                <button onClick={() => { setMode('register'); setErr(''); }}
+                  className="text-blue-700 font-semibold hover:underline">
+                  Register here
                 </button>
               </>
             ) : (
-              <>Already have an account?{' '}
-                <button onClick={() => { setMode('login'); setErr(''); }} className="text-blue-700 font-semibold hover:underline">
+              <>
+                Already have an account?{' '}
+                <button onClick={() => { setMode('login'); setErr(''); }}
+                  className="text-blue-700 font-semibold hover:underline">
                   Sign in
                 </button>
               </>
             )}
           </p>
 
+          {/* Footer */}
+          <div className="mt-10 text-center">
+            <div style={{ fontSize: 10 }} className="text-slate-300">
+              Pragati · Alembic Digital · Quality Informatics
+            </div>
+          </div>
         </div>
       </div>
-
     </div>
   );
 }
