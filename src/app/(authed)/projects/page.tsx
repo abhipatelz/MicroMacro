@@ -13,13 +13,21 @@ export default function ProjectsPage() {
   const [team, setTeam] = useState('');
   const [lc, setLc] = useState('');
   const [status, setStatus] = useState('');
+  const [tab, setTab] = useState<'active' | 'completed' | 'all'>('active');
 
   function load() {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (team) params.set('teamId', team);
     if (lc) params.set('lifecycle', lc);
-    if (status) params.set('status', status);
+    // tab overrides the status dropdown
+    if (tab === 'active') {
+      ['planning', 'in_progress', 'on_hold'].forEach(s => params.append('status', s));
+    } else if (tab === 'completed') {
+      params.set('status', 'completed');
+    } else if (status) {
+      params.set('status', status);
+    }
     api<any[]>(`/projects?${params.toString()}`).then(setProjects);
   }
 
@@ -32,7 +40,7 @@ export default function ProjectsPage() {
     const id = setTimeout(load, 150);
     return () => clearTimeout(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, team, lc, status]);
+  }, [q, team, lc, status, tab]);
 
   const STATUS_COLORS: Record<string, { dot: string; label: string }> = {
     planning:    { dot: '#94a3b8', label: 'Planning' },
@@ -61,6 +69,23 @@ export default function ProjectsPage() {
         </Link>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-slate-100">
+        {(['active', 'completed', 'all'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => { setTab(t); setStatus(''); }}
+            className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors capitalize ${
+              tab === t
+                ? 'text-blue-700 border-b-2 border-blue-600 bg-blue-50/50'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {t === 'active' ? 'Active' : t === 'completed' ? 'Completed' : 'All'}
+          </button>
+        ))}
+      </div>
+
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -87,14 +112,16 @@ export default function ProjectsPage() {
                 <option key={l.key} value={l.key}>{l.label}</option>
               ))}
             </select>
-            <select className="select text-sm w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">All statuses</option>
-              <option value="planning">Planning</option>
-              <option value="in_progress">In progress</option>
-              <option value="on_hold">On hold</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+            {tab === 'all' && (
+              <select className="select text-sm w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+                <option value="">All statuses</option>
+                <option value="planning">Planning</option>
+                <option value="in_progress">In progress</option>
+                <option value="on_hold">On hold</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            )}
           </div>
         </div>
       </div>

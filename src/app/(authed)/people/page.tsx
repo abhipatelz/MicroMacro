@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/client/api';
 import { Avatar } from '@/components/ui';
-import { UserPlus, Copy, Check, X, Shield, User, AlertTriangle } from 'lucide-react';
+import { UserPlus, Copy, Check, X, Shield, User, AlertTriangle, Pencil } from 'lucide-react';
 
 /* ── role display helpers ─────────────────────────────────────────────── */
 const ROLE_COLOR: Record<string, string> = {
@@ -183,6 +183,84 @@ function RoleConfirmDialog({ user, targetRole, onConfirm, onCancel, saving }: {
   );
 }
 
+/* ── Edit user modal ──────────────────────────────────────────────────── */
+function EditUserModal({ user, onClose, onSaved }: {
+  user: any; onClose: () => void; onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    name:       user.name       || '',
+    title:      user.title      || '',
+    department: user.department || '',
+    phone:      user.phone      || '',
+    location:   user.location   || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState('');
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setErr('');
+    try {
+      await api(`/users/${user.id}`, { method: 'PATCH', body: form });
+      onSaved();
+      onClose();
+    } catch (e: any) {
+      setErr(e.message || 'Failed to save.');
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-[calc(100vw-32px)] sm:w-[420px]">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="text-base font-bold text-slate-900">Edit profile</div>
+            <div className="text-sm text-slate-400 mt-0.5">{user.email}</div>
+          </div>
+          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5"><X size={18} /></button>
+        </div>
+        <form onSubmit={submit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="label">Full name</label>
+              <input className="input" required value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Job title</label>
+              <input className="input" placeholder="e.g. QA Specialist"
+                value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Department</label>
+              <input className="input" placeholder="e.g. Quality"
+                value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Phone</label>
+              <input className="input" placeholder="+91 98765 43210"
+                value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Location</label>
+              <input className="input" placeholder="Mumbai"
+                value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
+            </div>
+          </div>
+          {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">{err}</div>}
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1 justify-center">
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}
+
 /* ── Main page ────────────────────────────────────────────────────────── */
 export default function PeoplePage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -192,6 +270,7 @@ export default function PeoplePage() {
   const [creds, setCreds] = useState<{ name: string; email: string; tempPassword: string } | null>(null);
   const [roleConfirm, setRoleConfirm] = useState<{ user: any; targetRole: 'pm' | 'employee' } | null>(null);
   const [roleErr, setRoleErr] = useState('');
+  const [editUser, setEditUser] = useState<any | null>(null);
 
   function load() { api<any[]>('/users').then(setUsers); }
   useEffect(() => {
@@ -229,6 +308,7 @@ export default function PeoplePage() {
       {/* Modals */}
       {showAdd && <AddMemberModal onClose={() => setShowAdd(false)} onCreated={handleCreated} />}
       {creds && <CredentialsModal {...creds} onClose={() => setCreds(null)} />}
+      {editUser && <EditUserModal user={editUser} onClose={() => setEditUser(null)} onSaved={load} />}
       {roleConfirm && (
         <RoleConfirmDialog
           user={roleConfirm.user}
@@ -290,6 +370,13 @@ export default function PeoplePage() {
                   <div className="text-xs text-slate-400 mt-0.5">{u.title || 'Project Manager'} · {u.email}</div>
                 </div>
                 <span className={`tag border text-xs font-semibold ${ROLE_COLOR.pm}`}>PM</span>
+                {isPM && (
+                  <button
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                    onClick={() => setEditUser(u)} title="Edit profile">
+                    <Pencil size={13} />
+                  </button>
+                )}
                 {isPM && me?.id !== u.id && (
                   <button
                     className="text-xs text-slate-500 hover:text-amber-600 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-amber-50 transition-colors border border-transparent hover:border-amber-200"
@@ -327,6 +414,13 @@ export default function PeoplePage() {
                   <div className="text-xs text-slate-400 mt-0.5">{u.title || 'Individual Contributor'} · {u.email}</div>
                 </div>
                 <span className={`tag border text-xs ${ROLE_COLOR.employee}`}>IC</span>
+                {isPM && (
+                  <button
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                    onClick={() => setEditUser(u)} title="Edit profile">
+                    <Pencil size={13} />
+                  </button>
+                )}
                 {isPM && (
                   <button
                     className="text-xs text-blue-600 hover:text-blue-800 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"

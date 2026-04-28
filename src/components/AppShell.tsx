@@ -27,8 +27,7 @@ function useDarkMode(): [boolean, () => void] {
   const [dark, setDark] = useState(false);
   useEffect(() => {
     const stored = localStorage.getItem('theme');
-    const system = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setDark(stored === 'dark' || (!stored && system));
+    setDark(stored === 'dark'); // default light; only dark if explicitly chosen
   }, []);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -349,16 +348,18 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
       </div>
 
       {/* ── User footer ─────────────────────────────────────────────────── */}
+      {profileOpen && (
+        <div className="fixed inset-0 z-40" onClick={() => { setProfileOpen(false); setConfirmLogout(false); }} />
+      )}
       <div
         data-tour="user-profile"
         className="px-3 py-3 border-t border-white/5 relative"
-        onMouseEnter={() => setProfileOpen(true)}
-        onMouseLeave={() => { setProfileOpen(false); setConfirmLogout(false); }}
+        onClick={() => setProfileOpen(o => !o)}
       >
-        {/* Hover popup */}
+        {/* Profile popup */}
         <div className={`absolute bottom-full left-2 right-2 mb-1.5 rounded-xl overflow-hidden z-50 transition-all duration-200 ${
           profileOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-1.5 pointer-events-none'
-        }`} style={{
+        }`} onClick={e => e.stopPropagation()} style={{
           background: '#0A1929',
           border: '1px solid rgba(255,255,255,0.09)',
           boxShadow: '0 -8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)',

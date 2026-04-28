@@ -45,8 +45,9 @@ export async function GET(req: NextRequest) {
     const q: any = {};
     const teamId = searchParams.get('teamId');
     if (teamId) q.teamId = teamId;
-    const status = searchParams.get('status');
-    if (status) q.status = status;
+    const statuses = searchParams.getAll('status');
+    if (statuses.length === 1) q.status = statuses[0];
+    else if (statuses.length > 1) q.status = { $in: statuses };
     const lifecycle = searchParams.get('lifecycle');
     if (lifecycle) q.lifecycle = lifecycle;
     const term = searchParams.get('q');
