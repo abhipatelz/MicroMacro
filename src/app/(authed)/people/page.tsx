@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/client/api';
 import { Avatar } from '@/components/ui';
-import { UserPlus, Copy, Check, X, Shield, User, AlertTriangle, Pencil } from 'lucide-react';
+import { UserPlus, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 
 /* ── role display helpers ─────────────────────────────────────────────── */
 const ROLE_COLOR: Record<string, string> = {
@@ -261,6 +261,39 @@ function EditUserModal({ user, onClose, onSaved }: {
   );
 }
 
+/* ── Remove member confirm dialog ────────────────────────────────────── */
+function RemoveConfirmDialog({ user, onConfirm, onCancel, saving }: {
+  user: any; onConfirm: () => void; onCancel: () => void; saving: boolean;
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-[calc(100vw-32px)] sm:w-[380px]">
+        <div className="flex flex-col items-center text-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+            <Trash2 size={22} className="text-red-600" />
+          </div>
+          <div>
+            <div className="text-base font-black text-slate-900">Remove {user.name}?</div>
+            <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+              Their account will be deleted and they will lose access immediately.
+              All tasks assigned to them will be unassigned. This cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-2 w-full">
+            <button onClick={onCancel} className="btn-secondary flex-1 justify-center">Cancel</button>
+            <button onClick={onConfirm} disabled={saving}
+              className="flex-1 justify-center btn text-white"
+              style={{ background: 'linear-gradient(135deg,#dc2626,#ef4444)', boxShadow: '0 1px 3px rgba(220,38,38,0.3)' }}>
+              {saving ? 'Removing…' : 'Remove member'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ── Main page ────────────────────────────────────────────────────────── */
 export default function PeoplePage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -271,6 +304,8 @@ export default function PeoplePage() {
   const [roleConfirm, setRoleConfirm] = useState<{ user: any; targetRole: 'pm' | 'employee' } | null>(null);
   const [roleErr, setRoleErr] = useState('');
   const [editUser, setEditUser] = useState<any | null>(null);
+  const [removeConfirm, setRemoveConfirm] = useState<any | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   function load() { api<any[]>('/users').then(setUsers); }
   useEffect(() => {
@@ -293,6 +328,19 @@ export default function PeoplePage() {
     }
   }
 
+  async function confirmRemove() {
+    if (!removeConfirm) return;
+    setRemoving(true);
+    try {
+      await api(`/users/${removeConfirm.id}`, { method: 'DELETE' });
+      setRemoveConfirm(null);
+      load();
+    } catch (e: any) {
+      setRoleErr(e.message || 'Failed to remove user.');
+      setRemoveConfirm(null);
+    } finally { setRemoving(false); }
+  }
+
   function handleCreated(name: string, email: string, tempPassword: string) {
     setShowAdd(false);
     setCreds({ name, email, tempPassword });
@@ -309,6 +357,14 @@ export default function PeoplePage() {
       {showAdd && <AddMemberModal onClose={() => setShowAdd(false)} onCreated={handleCreated} />}
       {creds && <CredentialsModal {...creds} onClose={() => setCreds(null)} />}
       {editUser && <EditUserModal user={editUser} onClose={() => setEditUser(null)} onSaved={load} />}
+      {removeConfirm && (
+        <RemoveConfirmDialog
+          user={removeConfirm}
+          onConfirm={confirmRemove}
+          onCancel={() => setRemoveConfirm(null)}
+          saving={removing}
+        />
+      )}
       {roleConfirm && (
         <RoleConfirmDialog
           user={roleConfirm.user}
@@ -427,6 +483,13 @@ export default function PeoplePage() {
                     onClick={() => setRoleConfirm({ user: u, targetRole: 'pm' })}
                     disabled={saving === u.id}>
                     Promote to PM
+                  </button>
+                )}
+                {isPM && (
+                  <button
+                    className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    onClick={() => setRemoveConfirm(u)} title="Remove member">
+                    <Trash2 size={13} />
                   </button>
                 )}
               </div>

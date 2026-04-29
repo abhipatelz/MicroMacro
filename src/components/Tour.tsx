@@ -201,24 +201,30 @@ export function Tour({ role }: { role: 'employee' | 'pm' }) {
   }, [active, current]);
 
   useEffect(() => {
-    try { if (!localStorage.getItem(storageKey)) setActive(true); } catch {}
+    // Show tour unless user has explicitly completed it (skip keeps showing until done)
+    try { if (localStorage.getItem(storageKey) !== 'done') setActive(true); } catch {}
   }, [storageKey]);
 
   useEffect(() => {
     recalc();
-    const t = setTimeout(recalc, 80); // wait for paint
+    const t = setTimeout(recalc, 80);
     window.addEventListener('resize', recalc);
     return () => { clearTimeout(t); window.removeEventListener('resize', recalc); };
   }, [recalc]);
 
-  function dismiss() {
-    try { localStorage.setItem(storageKey, '1'); } catch {}
+  function complete() {
+    try { localStorage.setItem(storageKey, 'done'); } catch {}
+    setActive(false);
+  }
+
+  function skip() {
+    // Hide for this session but show again next login until completed
     setActive(false);
   }
 
   function next() {
     if (step < steps.length - 1) setStep(s => s + 1);
-    else dismiss();
+    else complete();
   }
 
   function prev() { if (step > 0) setStep(s => s - 1); }
@@ -282,7 +288,7 @@ export function Tour({ role }: { role: 'employee' | 'pm' }) {
       {isCentered && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 9991, background: 'rgba(0,0,0,0.55)', animation: 'tour-overlay-in 0.3s ease' }}
-          onClick={dismiss}
+          onClick={skip}
         />
       )}
 
@@ -316,7 +322,7 @@ export function Tour({ role }: { role: 'employee' | 'pm' }) {
                 </div>
                 <h3 className="text-base font-black text-slate-900 tracking-tight leading-tight">{current.title}</h3>
               </div>
-              <button onClick={dismiss} className="p-1 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors shrink-0 -mt-1 -mr-1">
+              <button onClick={skip} className="p-1 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors shrink-0 -mt-1 -mr-1">
                 <X size={14} />
               </button>
             </div>
@@ -337,7 +343,7 @@ export function Tour({ role }: { role: 'employee' | 'pm' }) {
 
             {/* Actions */}
             <div className="flex items-center justify-between">
-              <button onClick={dismiss} className="text-xs text-slate-400 hover:text-slate-600 transition-colors">
+              <button onClick={skip} className="text-xs text-slate-400 hover:text-slate-600 transition-colors">
                 Skip tour
               </button>
               <div className="flex items-center gap-2">
@@ -363,4 +369,8 @@ export function Tour({ role }: { role: 'employee' | 'pm' }) {
 
 export function resetTour(role: 'employee' | 'pm') {
   try { localStorage.removeItem(role === 'pm' ? KEY_PM : KEY_EMP); } catch {}
+}
+
+export function completeTour(role: 'employee' | 'pm') {
+  try { localStorage.setItem(role === 'pm' ? KEY_PM : KEY_EMP, 'done'); } catch {}
 }

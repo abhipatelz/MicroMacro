@@ -24,12 +24,18 @@ interface StuckTask {
   daysSince: number; gxpCritical: boolean;
 }
 
+interface ArchiveProject {
+  id: string; name: string; code: string; lifecycle: string;
+  taskCount: number; tasksDone: number; completedAt: string | null;
+}
+
 interface InsightsData {
   brief: string[];
   projects: ProjectInsight[];
   people: PersonInsight[];
   stuckTasks: StuckTask[];
   velocity: { label: string; completed: number }[];
+  archive: ArchiveProject[];
 }
 
 const HEALTH_CONFIG = {
@@ -250,6 +256,40 @@ export default function InsightsPage() {
           </div>
         )}
       </Card>
+
+      {/* Completed project archive */}
+      {data.archive?.length > 0 && (
+        <Card title={`Project archive · last ${data.archive.length} completed`}>
+          <div className="divide-y divide-slate-50">
+            {data.archive.map(p => {
+              const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 100;
+              return (
+                <div key={p.id} className="py-3 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-green-50 border border-green-200 flex items-center justify-center shrink-0 text-sm">✅</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono text-slate-400">{p.code}</span>
+                      <Link href={`/projects/${p.id}`} className="text-sm font-medium text-slate-800 hover:text-brand-700 hover:underline truncate">
+                        {p.name}
+                      </Link>
+                      <LifecycleTag lifecycle={p.lifecycle} />
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5">
+                      {p.tasksDone}/{p.taskCount} tasks · {pct}% complete
+                      {p.completedAt && ` · ${new Date(p.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                    </div>
+                  </div>
+                  <div className="shrink-0 w-20">
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Stuck tasks */}
       {data.stuckTasks.length > 0 && (

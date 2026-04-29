@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
 
     // ── Projects ──────────────────────────────────────────────────────────────
     const projects = await Project.find({ status: { $in: ['planning', 'in_progress', 'on_hold'] } }).lean();
+    const completedProjects = await Project.find({ status: 'completed' }).sort({ updatedAt: -1 }).limit(10).lean();
 
     const projectInsights = await Promise.all(
       projects.map(async (p) => {
@@ -179,12 +180,28 @@ export async function GET(req: NextRequest) {
     if (briefLines.length === 0)
       briefLines.push('✅ All projects are healthy. Team is delivering. Keep the momentum.');
 
+    // ── Completed project archive ─────────────────────────────────────────
+    const archive = await Promise.all(
+      completedProjects.map(async (p) => {
+        const [total, done] = await Promise.all([
+          Task.countDocuments({ projectId: p._id }),
+          Task.countDocuments({ projectId: p._id, status: 'done' }),
+        ]);
+        return {
+          id: String(p._id), name: p.name, code: p.code, lifecycle: p.lifecycle,
+          taskCount: total, tasksDone: done,
+          completedAt: (p as any).updatedAt ? new Date((p as any).updatedAt).toISOString() : null,
+        };
+      })
+    );
+
     return NextResponse.json({
       brief: briefLines,
       projects: projectInsights.sort((a, b) => a.score - b.score),
       people: peopleInsights.sort((a, b) => b.loadScore - a.loadScore),
       stuckTasks,
       velocity,
+      archive,
     });
   } catch (e) {
     return handleError(e);

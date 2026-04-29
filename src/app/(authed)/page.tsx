@@ -588,7 +588,7 @@ export default function DashboardPage() {
               </div>
               <div className="p-2 grid grid-cols-2 gap-1.5">
                 {[
-                  { href: '/org',      label: 'Command Centre', color: '#dc2626' },
+                  { href: '/org',      label: 'Operations Hub', color: '#dc2626' },
                   { href: '/insights', label: 'AI Insights',    color: '#d97706' },
                   { href: '/people',   label: 'People',         color: '#7c3aed' },
                   { href: '/teams',    label: 'Teams',          color: '#0369a1' },

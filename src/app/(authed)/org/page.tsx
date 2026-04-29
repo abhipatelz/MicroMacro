@@ -46,7 +46,7 @@ export default function CommandCentrePage() {
   }, [load]);
 
   if (!data) return (
-    <div className="flex items-center justify-center h-64 text-slate-400 text-sm">Loading Command Centre…</div>
+    <div className="flex items-center justify-center h-64 text-slate-400 text-sm">Loading Operations Hub…</div>
   );
 
   const t = data.totals;
@@ -64,7 +64,7 @@ export default function CommandCentrePage() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between pt-1">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Command Centre</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Operations Hub</h1>
           <p className="text-xs text-slate-400 mt-0.5">
             Bird's eye view of all quality projects, teams & people ·{' '}
             Auto-refreshes every 60s · Last updated {lastRefresh.toLocaleTimeString()}

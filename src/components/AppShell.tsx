@@ -10,7 +10,7 @@ import {
   LayoutDashboard, FolderKanban, Users, Calendar,
   PieChart, Lightbulb, LogOut, UserCog, Menu, X,
   Bell, Lock, User, ChevronUp, Moon, Sun, AlertTriangle,
-  Search, CheckSquare, FlaskConical,
+  Search, CheckSquare, FlaskConical, Activity,
 } from 'lucide-react';
 
 export interface CurrentUser {
@@ -188,8 +188,9 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
   const pmNav = [
     { href: '/',         label: 'Dashboard',      icon: LayoutDashboard, tour: 'nav-home' },
     { href: '/projects', label: 'Projects',       icon: FolderKanban,   tour: 'nav-projects' },
-    { href: '/teams',    label: 'Teams',           icon: Users,          tour: 'nav-teams' },
-    { href: '/org',      label: 'Command Centre',  icon: PieChart,       tour: 'nav-org' },
+    { href: '/teams',    label: 'Teams',            icon: Users,          tour: 'nav-teams' },
+    { href: '/org',      label: 'Operations Hub',  icon: PieChart,       tour: 'nav-org' },
+    { href: '/risk',     label: 'Risk Radar',       icon: Activity,       badge: 'AI' },
     { href: '/yearly',   label: 'Yearly view',     icon: Calendar },
     { href: '/insights', label: 'Insights',        icon: Lightbulb,      badge: 'Live', tour: 'nav-insights' },
     { href: '/triage',   label: 'QA Triage',       icon: FlaskConical,   badge: 'AI' },
