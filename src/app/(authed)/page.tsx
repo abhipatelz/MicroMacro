@@ -398,19 +398,25 @@ export default function DashboardPage() {
   const [qaOpen, setQaOpen]     = useState(false);
   const [filter, setFilter]     = useState<'open' | 'overdue' | 'done' | 'all'>('open');
 
-  const reload = useCallback(() => {
-    api<Summary>('/me/summary').then(setSummary);
-    api<{ tasks: any[]; subtasks: any[] }>('/me/tasks').then(setData);
+  const reload = useCallback(async () => {
+    const dash = await api<any>('/dashboard');
+    setSummary(dash.summary);
+    setData({ tasks: dash.tasks, subtasks: dash.subtasks ?? [] });
+    setMe(dash.user);
+    setProjects(dash.projects ?? []);
+    if (dash.user?.role === 'pm') {
+      // Patch org totals from dashboard, then lazy-load full org data
+      if (dash.orgTotals) {
+        setOrg(prev => prev
+          ? { ...prev, totals: { ...prev.totals, ...dash.orgTotals } }
+          : { totals: dash.orgTotals, projects: [], people: [], attention: [] } as any
+        );
+      }
+      api<OrgOverview>('/analytics/org/overview').then(setOrg).catch(() => {});
+    }
   }, []);
 
-  useEffect(() => {
-    reload();
-    api('/auth/me').then((d: any) => {
-      setMe(d.user);
-      if (d.user?.role === 'pm') api<OrgOverview>('/analytics/org/overview').then(setOrg).catch(() => {});
-    });
-    api('/projects').then(setProjects);
-  }, [reload]);
+  useEffect(() => { reload(); }, [reload]);
 
   async function markDone(task: any) {
     if (task.status === 'done') return;

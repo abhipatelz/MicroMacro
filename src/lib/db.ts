@@ -12,9 +12,7 @@ async function resolveUri(): Promise<string> {
     const { MongoMemoryServer } = await import('mongodb-memory-server');
     const g = global as any;
     if (!g.__mongoMemoryServer) {
-      g.__mongoMemoryServer = await MongoMemoryServer.create({
-        instance: { dbName: 'pragati' }
-      });
+      g.__mongoMemoryServer = await MongoMemoryServer.create({ instance: { dbName: 'pragati' } });
       console.log(`[db] in-memory Mongo @ ${g.__mongoMemoryServer.getUri()}`);
     }
     return g.__mongoMemoryServer.getUri();
@@ -27,7 +25,14 @@ export async function connectDB(): Promise<typeof mongoose> {
   if (cached.conn) return cached.conn;
   if (!cached.promise) {
     cached.promise = resolveUri().then((uri) =>
-      mongoose.connect(uri, { serverSelectionTimeoutMS: 15000 })
+      mongoose.connect(uri, {
+        maxPoolSize: 10,
+        minPoolSize: 1,
+        serverSelectionTimeoutMS: 5000,  // fail fast, not 15s
+        connectTimeoutMS: 8000,
+        socketTimeoutMS: 30000,
+        heartbeatFrequencyMS: 10000,
+      })
     );
   }
   cached.conn = await cached.promise;
