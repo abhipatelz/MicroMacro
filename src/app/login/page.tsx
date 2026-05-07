@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
-import { CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
 
 const FEATURES = [
   { text: 'Unified task management across every team and project',  accent: false },
@@ -20,19 +20,25 @@ function StrengthMeter({ password }: { password: string }) {
     { label: '#!@',      ok: /[^A-Za-z0-9]/.test(password) },
   ];
   const score = checks.filter((c) => c.ok).length;
-  const barColor = score <= 2 ? '#EF4444' : score <= 3 ? '#F59E0B' : '#22C55E';
+  const barColor = score <= 2 ? '#EF4444' : score <= 3 ? '#F59E0B' : '#43A047';
+  const labels = ['', 'Very weak', 'Weak', 'Okay', 'Strong', 'Excellent'];
   if (!password) return null;
   return (
-    <div className="mt-2 space-y-1.5">
-      <div className="flex gap-0.5">
-        {[1,2,3,4,5].map((i) => (
-          <div key={i} className="h-1 flex-1 rounded-sm transition-all duration-300"
-            style={{ background: i <= score ? barColor : '#E2E8F0' }} />
-        ))}
+    <div className="mt-2 space-y-1.5 fade-in-soft">
+      <div className="flex items-center gap-2">
+        <div className="flex gap-0.5 flex-1">
+          {[1,2,3,4,5].map((i) => (
+            <div key={i} className="h-1 flex-1 rounded-sm transition-all duration-300"
+              style={{ background: i <= score ? barColor : '#E2E8F0' }} />
+          ))}
+        </div>
+        <span style={{ fontSize: 10, color: barColor }} className="font-semibold tabular-nums w-[64px] text-right">
+          {labels[score]}
+        </span>
       </div>
       <div className="flex gap-3 flex-wrap">
         {checks.map((c) => (
-          <span key={c.label} style={{ fontSize: 10 }} className={`transition-colors ${c.ok ? 'text-green-600 font-medium' : 'text-slate-300'}`}>
+          <span key={c.label} style={{ fontSize: 10 }} className={`transition-colors ${c.ok ? 'text-forest-600 font-medium' : 'text-slate-300'}`}>
             {c.ok ? '✓' : '·'} {c.label}
           </span>
         ))}
@@ -94,11 +100,36 @@ export default function LoginPage() {
           from { opacity: 0; transform: translateY(16px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .logo-float { animation: logo-float 5s ease-in-out infinite; }
-        .fade-up    { animation: fade-up 0.6s ease-out forwards; }
-        .fade-up-1  { animation: fade-up 0.6s 0.1s ease-out both; }
-        .fade-up-2  { animation: fade-up 0.6s 0.2s ease-out both; }
-        .fade-up-3  { animation: fade-up 0.6s 0.3s ease-out both; }
+        @keyframes fade-in-soft {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer-line {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        @keyframes orbit {
+          from { transform: rotate(0deg) translateX(180px) rotate(0deg); }
+          to   { transform: rotate(360deg) translateX(180px) rotate(-360deg); }
+        }
+        .logo-float    { animation: logo-float 5s ease-in-out infinite; }
+        .fade-up       { animation: fade-up 0.6s ease-out forwards; }
+        .fade-up-1     { animation: fade-up 0.6s 0.1s ease-out both; }
+        .fade-up-2     { animation: fade-up 0.6s 0.2s ease-out both; }
+        .fade-up-3     { animation: fade-up 0.6s 0.3s ease-out both; }
+        .fade-in-soft  { animation: fade-in-soft 0.35s ease-out both; }
+        .form-swap     { animation: fade-in-soft 0.35s ease-out both; }
+        .shimmer-line::after {
+          content: '';
+          position: absolute; inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+          animation: shimmer-line 2.6s ease-in-out infinite;
+        }
+        .orbit-dot { animation: orbit 18s linear infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .logo-float, .orbit-dot, .shimmer-line::after { animation: none !important; }
+          .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-in-soft, .form-swap { animation-duration: 0.01ms !important; }
+        }
       `}</style>
 
       <div className="min-h-screen flex">
@@ -120,8 +151,23 @@ export default function LoginPage() {
           }} />
           <div className="absolute pointer-events-none" style={{
             bottom: '-10%', right: '-10%', width: 360, height: 360, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(43,140,41,0.12) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(43,160,71,0.14) 0%, transparent 70%)',
           }} />
+
+          {/* Subtle orbiting accent dots — visual delight */}
+          <div className="absolute pointer-events-none" style={{ top: '24%', left: '50%' }}>
+            <div className="orbit-dot" style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: '#1E88E5', boxShadow: '0 0 12px rgba(30,136,229,0.7)',
+            }} />
+          </div>
+          <div className="absolute pointer-events-none" style={{ top: '28%', left: '50%', animationDelay: '-9s' }}>
+            <div className="orbit-dot" style={{
+              width: 4, height: 4, borderRadius: '50%',
+              background: '#43A047', boxShadow: '0 0 10px rgba(67,160,71,0.7)',
+              animationDelay: '-9s',
+            }} />
+          </div>
 
           <div className="relative flex flex-col flex-1 px-14 py-12">
             <div className="flex-1 flex flex-col justify-center">
@@ -146,7 +192,8 @@ export default function LoginPage() {
               </h1>
 
               <div className="fade-up-2 flex justify-center mt-5">
-                <div className="h-0.5 w-12 rounded-full" style={{ background: 'linear-gradient(90deg, #1769C8, #43A047)' }} />
+                <div className="relative h-0.5 w-16 rounded-full overflow-hidden shimmer-line"
+                  style={{ background: 'linear-gradient(90deg, #1769C8, #43A047)' }} />
               </div>
 
               <p className="fade-up-3 text-center text-white/40 mt-4 leading-relaxed mx-auto max-w-xs" style={{ fontSize: 14 }}>
@@ -192,13 +239,13 @@ export default function LoginPage() {
               <div className="text-xl font-black text-slate-900 mt-2 tracking-tight">Pragati</div>
             </div>
 
-            {/* First-run banner */}
+            {/* First-run banner — forest accent signals fresh workspace */}
             {isFirstRun && mode === 'login' && (
-              <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 flex items-start gap-3">
-                <Sparkles size={16} className="text-blue-600 shrink-0 mt-0.5" />
+              <div className="mb-6 rounded-xl border border-forest-200 bg-forest-50 px-4 py-3 flex items-start gap-3 fade-in-soft">
+                <Sparkles size={16} className="text-forest-600 shrink-0 mt-0.5" />
                 <div>
-                  <div className="text-sm font-semibold text-blue-800">Welcome to Pragati!</div>
-                  <div className="text-xs text-blue-600 mt-0.5 leading-snug">
+                  <div className="text-sm font-semibold text-forest-800">Welcome to Pragati!</div>
+                  <div className="text-xs text-forest-700 mt-0.5 leading-snug">
                     No accounts yet.{' '}
                     <button onClick={() => { setMode('setup'); setErr(''); }}
                       className="font-bold underline hover:no-underline">
@@ -211,7 +258,7 @@ export default function LoginPage() {
             )}
 
             {/* Heading */}
-            <div className="mb-7">
+            <div className="mb-7 form-swap" key={mode + '-h'}>
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">
                 {mode === 'login' ? 'Welcome back' : 'Set up workspace'}
               </h2>
@@ -222,7 +269,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form onSubmit={submit} className="space-y-4">
+            <form onSubmit={submit} className="space-y-4 form-swap" key={mode + '-f'}>
               {mode === 'setup' && (
                 <>
                   <div>
@@ -269,13 +316,17 @@ export default function LoginPage() {
               )}
 
               <button type="submit" disabled={loading}
-                className="w-full py-3 rounded-lg text-sm font-bold text-white transition-all disabled:opacity-60 flex items-center justify-center gap-2 group mt-1"
-                style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)', boxShadow: '0 4px 14px rgba(21,101,192,0.35)' }}
+                aria-busy={loading}
+                className="btn-primary w-full justify-center py-3 text-sm font-bold group mt-1"
+                style={{ boxShadow: '0 4px 14px rgba(21,101,192,0.35)' }}
               >
                 {loading ? (
-                  <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Please wait…</>
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
+                    <span>{mode === 'login' ? 'Signing you in…' : 'Creating workspace…'}</span>
+                  </>
                 ) : (
-                  <>{mode === 'login' ? 'Sign in' : 'Create workspace'}<ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" /></>
+                  <>{mode === 'login' ? 'Sign in' : 'Create workspace'}<ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></>
                 )}
               </button>
             </form>
@@ -295,8 +346,12 @@ export default function LoginPage() {
               )}
             </p>
 
-            <div className="mt-12 pt-6 border-t border-slate-100 text-center">
-              <div style={{ fontSize: 11 }} className="text-slate-300">
+            <div className="mt-10 pt-6 border-t border-slate-100">
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+                <ShieldCheck size={12} className="text-forest-600" aria-hidden="true" />
+                <span>Encrypted in transit · GxP-aware audit trail</span>
+              </div>
+              <div style={{ fontSize: 10 }} className="text-slate-300 text-center mt-2 tracking-wider uppercase">
                 Pragati · Project Intelligence Platform
               </div>
             </div>

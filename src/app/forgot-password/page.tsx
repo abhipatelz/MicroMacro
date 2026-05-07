@@ -25,55 +25,58 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4 relative">
+      <div className="absolute top-0 left-0 right-0 h-[3px]"
+        style={{ background: 'linear-gradient(90deg, #1565C0 0%, #1769C8 50%, #2B8C29 100%)' }} />
+
       <div className="w-full max-w-sm">
 
         {/* Logo */}
         <div className="flex justify-center mb-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-full.png" alt="Alembic Digital" style={{ width: 180 }} />
+          <img src="/logo-full.png" alt="Pragati" style={{ width: 180 }} />
         </div>
 
         {sent ? (
-          <div className="text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto">
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
-                <path d="M5 13l4 4L19 7" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <div className="text-center space-y-4 page-enter">
+            <div className="w-14 h-14 rounded-full bg-forest-50 border border-forest-100 flex items-center justify-center mx-auto"
+              style={{ boxShadow: '0 6px 18px rgba(67,160,71,0.18)' }}>
+              <svg width="26" height="26" fill="none" viewBox="0 0 24 24">
+                <path d="M5 13l4 4L19 7" stroke="#43A047" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
             <h2 className="text-xl font-bold text-slate-900">Check your email</h2>
             <p className="text-sm text-slate-500 leading-relaxed">
-              If <strong>{email}</strong> is registered, you'll receive a reset link shortly. Check your spam folder too.
+              If <strong>{email}</strong> is registered, you&rsquo;ll receive a reset link shortly. Check your spam folder too.
             </p>
-            <Link href="/login" className="block text-sm text-blue-700 font-semibold hover:underline mt-4">
-              Back to sign in
+            <Link href="/login" className="inline-block text-sm text-brand-700 font-semibold hover:underline mt-2">
+              ← Back to sign in
             </Link>
           </div>
         ) : (
-          <>
+          <div className="page-enter">
             <h2 className="text-2xl font-black text-slate-900 mb-1">Forgot password?</h2>
             <p className="text-sm text-slate-500 mb-8">
-              Enter your email and we'll send you a reset link.
+              Enter your email and we&rsquo;ll send you a reset link.
             </p>
 
             <form onSubmit={submit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Email
-                </label>
+                <label className="label">Email</label>
                 <input
                   className="input"
                   type="email"
-                  placeholder="you@alembic.com"
+                  placeholder="you@company.com"
                   required
                   autoFocus
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
 
               {err && (
-                <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug">
                   {err}
                 </div>
               )}
@@ -81,25 +84,25 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-60 transition-opacity"
-                style={{ background: '#1565C0' }}
+                aria-busy={loading}
+                className="btn-primary w-full justify-center py-3 text-sm font-bold"
               >
                 {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
                     Sending…
-                  </span>
+                  </>
                 ) : 'Send reset link'}
               </button>
             </form>
 
             <p className="mt-6 text-center text-xs text-slate-400">
               Remembered it?{' '}
-              <Link href="/login" className="text-blue-700 font-semibold hover:underline">
+              <Link href="/login" className="text-brand-700 font-semibold hover:underline">
                 Sign in
               </Link>
             </p>
-          </>
+          </div>
         )}
       </div>
     </div>

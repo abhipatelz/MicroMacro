@@ -12,7 +12,7 @@ import {
   TaskLink,
   formatDate
 } from '@/components/ui';
-import { Download, GripVertical } from 'lucide-react';
+import { Download, GripVertical, CheckCircle2, Plus } from 'lucide-react';
 
 const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
 
@@ -218,14 +218,18 @@ function KanbanBoard({ tasks, onMove }: {
               {/* Empty drop target */}
               {colTasks.length === 0 && (
                 <div
-                  className="rounded-lg border-2 border-dashed flex items-center justify-center h-16 transition-all duration-150"
+                  className="rounded-lg border-2 border-dashed flex items-center justify-center h-16 transition-all duration-150 text-center px-2"
                   style={{
                     borderColor: isOver ? meta.color : '#e2e8f0',
                     background: isOver ? meta.bg : 'transparent',
                   }}
                 >
-                  <span className="text-xs" style={{ color: isOver ? meta.color : '#94a3b8' }}>
-                    {isOver ? 'Drop here' : 'Empty'}
+                  <span className="text-xs leading-tight" style={{ color: isOver ? meta.color : '#94a3b8' }}>
+                    {isOver
+                      ? 'Drop here'
+                      : isDragging
+                        ? 'Move card here'
+                        : 'No tasks — drag one in'}
                   </span>
                 </div>
               )}
@@ -331,9 +335,12 @@ export default function ProjectDetailPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [view, setView] = useState<'phases' | 'board'>('phases');
   const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
 
   async function exportProject() {
     setExporting(true);
+    setExportMsg(null);
     try {
       const res = await fetch(`/api/projects/${id}/export`, { credentials: 'include' });
       if (!res.ok) throw new Error('Export failed');
@@ -347,21 +354,76 @@ export default function ProjectDetailPage() {
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
+      setExportMsg({ kind: 'ok', text: `Downloaded ${filename}` });
+    } catch (e: any) {
+      setExportMsg({ kind: 'err', text: e?.message || 'Export failed. Please try again.' });
     } finally {
       setExporting(false);
+      setTimeout(() => setExportMsg(null), 4000);
     }
   }
 
   async function load() {
-    const p = await api<any>(`/projects/${id}`);
-    setProject(p);
+    try {
+      const [p, u] = await Promise.all([
+        api<any>(`/projects/${id}`),
+        api<any[]>('/users'),
+      ]);
+      setProject(p);
+      setUsers(u);
+      setLoadErr(null);
+    } catch (e: any) {
+      setLoadErr(e?.message || 'Could not load this project.');
+    }
   }
-  useEffect(() => {
-    load();
-    api<any[]>('/users').then(setUsers);
-  }, [id]);
+  useEffect(() => { load(); }, [id]);
 
-  if (!project) return <div className="text-slate-500">Loading…</div>;
+  if (loadErr) {
+    return (
+      <div className="max-w-md mx-auto mt-12 card p-6 text-center page-enter">
+        <div className="w-10 h-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-3">
+          <span className="text-red-600 text-lg">!</span>
+        </div>
+        <div className="text-sm font-bold text-slate-800 mb-1">We couldn&rsquo;t load this project</div>
+        <div className="text-xs text-slate-500 mb-4">{loadErr}</div>
+        <button onClick={() => { setLoadErr(null); load(); }} className="btn-primary text-xs justify-center">Retry</button>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="space-y-6 page-enter" aria-busy="true" aria-live="polite">
+        <div className="space-y-2">
+          <div className="skeleton h-3 w-24" />
+          <div className="skeleton h-7 w-80 max-w-full" />
+          <div className="flex gap-2 mt-2">
+            <div className="skeleton h-5 w-20 rounded-full" />
+            <div className="skeleton h-5 w-16 rounded-full" />
+            <div className="skeleton h-5 w-24 rounded-full" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="card p-4 space-y-2">
+              <div className="skeleton h-3 w-20" />
+              <div className="skeleton h-7 w-12" />
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="shrink-0 rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2" style={{ width: 240 }}>
+              <div className="skeleton h-3 w-20" />
+              <div className="skeleton h-16 w-full rounded-lg" />
+              <div className="skeleton h-16 w-full rounded-lg" />
+            </div>
+          ))}
+        </div>
+        <span className="sr-only">Loading project…</span>
+      </div>
+    );
+  }
 
   const pct = project.tasks.length
     ? Math.round(
@@ -385,7 +447,21 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-enter">
+      {exportMsg && (
+        <div
+          role="status"
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg border text-sm font-semibold flex items-center gap-2 fade-in ${
+            exportMsg.kind === 'ok'
+              ? 'bg-forest-50 border-forest-200 text-forest-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+          style={{ animation: 'fadeIn 0.2s ease-out' }}
+        >
+          {exportMsg.kind === 'ok' ? <CheckCircle2 size={16} className="text-forest-600" /> : <span aria-hidden>!</span>}
+          {exportMsg.text}
+        </div>
+      )}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <div className="text-xs text-slate-500 font-mono">{project.code}</div>
