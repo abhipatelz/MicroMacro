@@ -22,8 +22,8 @@ interface OrgOverview {
   attention: Array<{ severity: 'critical' | 'warn'; label: string; detail: string; href: string }>;
 }
 
-/* ── Confetti ─────────────────────────────────────────────────────────────── */
-const CONFETTI = ['#1565C0','#1E88E5','#43A047','#FFA726','#EF5350','#AB47BC','#26C6DA'];
+/* ── Confetti — Alembic brand palette ─────────────────────────────────────── */
+const CONFETTI = ['#1565C0','#1E88E5','#90CAF9','#43A047','#A5D6A7','#0D47A1'];
 function Celebration({ taskTitle, onDone }: { taskTitle: string; onDone: () => void }) {
   useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, [onDone]);
   return (
@@ -455,8 +455,59 @@ export default function DashboardPage() {
     { key: 'all',     label: 'All',     count: data.tasks.length },
   ] as const;
 
+  if (!me) {
+    return (
+      <div className="pb-20 max-w-5xl page-enter" aria-busy="true" aria-live="polite">
+        <div className="flex items-start justify-between pt-1 mb-6 gap-4">
+          <div className="space-y-2">
+            <div className="skeleton h-7 w-64" />
+            <div className="skeleton h-3 w-44" />
+          </div>
+          <div className="skeleton h-9 w-28 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="card p-4 space-y-2">
+              <div className="skeleton h-3 w-20" />
+              <div className="skeleton h-7 w-16" />
+              <div className="skeleton h-3 w-24" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5">
+          <div className="card overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+              <div className="skeleton h-4 w-24" />
+              <div className="skeleton h-5 w-40" />
+            </div>
+            <div className="divide-y divide-slate-50/80">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-5 py-4">
+                  <div className="skeleton h-4 w-4 rounded-full" />
+                  <div className="skeleton h-4 flex-1 max-w-md" />
+                  <div className="skeleton h-4 w-14" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="card p-4 space-y-2">
+              <div className="skeleton h-3 w-24" />
+              <div className="skeleton h-12 w-full" />
+            </div>
+            <div className="card p-4 space-y-2">
+              <div className="skeleton h-3 w-24" />
+              <div className="skeleton h-12 w-full" />
+            </div>
+          </div>
+        </div>
+        <span className="sr-only">Loading your workspace…</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="pb-20 max-w-5xl">
+    <div className="pb-20 max-w-5xl page-enter">
       {celebrating && <Celebration taskTitle={celebrating.title} onDone={() => setCelebrating(null)} />}
 
       {/* ── Page header ───────────────────────────────────────────────────── */}
@@ -532,25 +583,31 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
               <h2 className="text-sm font-bold text-slate-800">My Work</h2>
               <div className="flex items-center gap-0.5">
-                {FILTERS.map(f => (
-                  <button key={f.key} onClick={() => setFilter(f.key)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all"
-                    style={{
-                      background: filter === f.key ? '#1565C0' : 'transparent',
-                      color:      filter === f.key ? '#fff' : '#94a3b8',
-                    }}>
-                    {f.label}
-                    {f.count !== null && f.count > 0 && (
-                      <span className="rounded-full px-1 min-w-[16px] text-center text-[10px] font-bold"
-                        style={{
-                          background: filter === f.key ? 'rgba(255,255,255,0.25)' : (f.key === 'overdue' && f.count > 0 ? '#fee2e2' : '#f1f5f9'),
-                          color:      filter === f.key ? '#fff' : (f.key === 'overdue' && f.count > 0 ? '#dc2626' : '#64748b'),
-                        }}>
-                        {f.count}
-                      </span>
-                    )}
-                  </button>
-                ))}
+                {FILTERS.map(f => {
+                  const active = filter === f.key;
+                  return (
+                    <button key={f.key} onClick={() => setFilter(f.key)}
+                      aria-pressed={active}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                        active
+                          ? 'bg-brand-600 text-white shadow-brand'
+                          : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                      }`}>
+                      {f.label}
+                      {f.count !== null && f.count > 0 && (
+                        <span className={`rounded-full px-1 min-w-[16px] text-center text-[10px] font-bold ${
+                          active
+                            ? 'bg-white/25 text-white'
+                            : f.key === 'overdue'
+                              ? 'bg-red-50 text-red-600'
+                              : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {f.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

@@ -12,13 +12,18 @@ async function resolveUri(): Promise<string> {
     const { MongoMemoryServer } = await import('mongodb-memory-server');
     const g = global as any;
     if (!g.__mongoMemoryServer) {
-      g.__mongoMemoryServer = await MongoMemoryServer.create({ instance: { dbName: 'pragati' } });
+      g.__mongoMemoryServer = await MongoMemoryServer.create({
+        instance: { dbName: 'pragati' },
+        binary: { version: process.env.MONGOMS_VERSION || '7.0.14' },
+      });
       console.log(`[db] in-memory Mongo @ ${g.__mongoMemoryServer.getUri()}`);
     }
     return g.__mongoMemoryServer.getUri();
   }
 
-  throw new Error('MONGODB_URI not set and USE_IN_MEMORY_MONGO is not true');
+  throw new Error(
+    'Database not configured: set MONGODB_URI in your environment, or set USE_IN_MEMORY_MONGO=true for local dev.'
+  );
 }
 
 export async function connectDB(): Promise<typeof mongoose> {

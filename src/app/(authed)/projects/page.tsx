@@ -14,6 +14,7 @@ export default function ProjectsPage() {
   const [lc, setLc] = useState('');
   const [status, setStatus] = useState('');
   const [tab, setTab] = useState<'active' | 'completed' | 'all'>('active');
+  const [loaded, setLoaded] = useState(false);
 
   function load() {
     const params = new URLSearchParams();
@@ -28,12 +29,19 @@ export default function ProjectsPage() {
     } else if (status) {
       params.set('status', status);
     }
-    api<any[]>(`/projects?${params.toString()}`).then(setProjects);
+    api<any[]>(`/projects?${params.toString()}`)
+      .then(p => { setProjects(p); setLoaded(true); })
+      .catch(() => setLoaded(true));
   }
 
   useEffect(() => {
-    api<any[]>('/teams').then(setTeams);
-    api<any[]>('/lifecycles').then(setLifecycles);
+    Promise.all([
+      api<any[]>('/teams'),
+      api<any[]>('/lifecycles'),
+    ]).then(([t, l]) => {
+      setTeams(t);
+      setLifecycles(l);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -126,7 +134,31 @@ export default function ProjectsPage() {
         </div>
       </div>
 
+      {/* Loading skeleton */}
+      {!loaded && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3" aria-busy="true" aria-live="polite">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="card p-5 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1.5 flex-1">
+                  <div className="skeleton h-3 w-24" />
+                  <div className="skeleton h-5 w-3/4" />
+                </div>
+                <div className="skeleton h-5 w-20 rounded-full" />
+              </div>
+              <div className="skeleton h-1.5 w-full" />
+              <div className="flex justify-between">
+                <div className="skeleton h-3 w-20" />
+                <div className="skeleton h-3 w-12" />
+              </div>
+            </div>
+          ))}
+          <span className="sr-only">Loading projects…</span>
+        </div>
+      )}
+
       {/* Grid */}
+      {loaded && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {projects.map((p) => {
           const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
@@ -194,8 +226,9 @@ export default function ProjectsPage() {
           );
         })}
       </div>
+      )}
 
-      {projects.length === 0 && (
+      {loaded && projects.length === 0 && (
         <div className="card p-12 text-center">
           <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
             <Plus size={22} className="text-blue-400" />

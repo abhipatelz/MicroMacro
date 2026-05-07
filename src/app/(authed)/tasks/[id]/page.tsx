@@ -68,16 +68,81 @@ export default function TaskDetailPage() {
   const [me, setMe] = useState<any>(null);
   const [comment, setComment] = useState('');
   const [newSub, setNewSub] = useState('');
+  const [loadErr, setLoadErr] = useState<string | null>(null);
 
-  async function load() { setTask(await api<any>(`/tasks/${id}`)); }
+  async function load() {
+    try {
+      setTask(await api<any>(`/tasks/${id}`));
+      setLoadErr(null);
+    } catch (e: any) {
+      setLoadErr(e?.message || 'Could not load this task.');
+    }
+  }
 
   useEffect(() => {
     load();
-    api<any[]>('/users').then(setUsers);
-    api<any>('/auth/me').then((d) => setMe(d.user));
+    Promise.all([
+      api<any[]>('/users'),
+      api<any>('/auth/me'),
+    ]).then(([u, m]) => {
+      setUsers(u);
+      setMe(m.user);
+    }).catch(() => {});
   }, [id]);
 
-  if (!task) return <div className="text-slate-400 text-sm p-8">Loading…</div>;
+  if (loadErr) {
+    return (
+      <div className="max-w-md mx-auto mt-12 card p-6 text-center page-enter">
+        <div className="w-10 h-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-3">
+          <span className="text-red-600 text-lg">!</span>
+        </div>
+        <div className="text-sm font-bold text-slate-800 mb-1">We couldn&rsquo;t load this task</div>
+        <div className="text-xs text-slate-500 mb-4">{loadErr}</div>
+        <button onClick={() => { setLoadErr(null); load(); }} className="btn-primary text-xs justify-center">Retry</button>
+      </div>
+    );
+  }
+
+  if (!task) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter" aria-busy="true" aria-live="polite">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="space-y-2">
+            <div className="skeleton h-3 w-40" />
+            <div className="skeleton h-6 w-3/4" />
+            <div className="flex gap-2 mt-1">
+              <div className="skeleton h-5 w-20 rounded-full" />
+              <div className="skeleton h-5 w-16 rounded-full" />
+            </div>
+          </div>
+          <div className="card p-5 space-y-3">
+            <div className="skeleton h-4 w-32" />
+            <div className="skeleton h-3 w-full" />
+            <div className="skeleton h-3 w-5/6" />
+            <div className="skeleton h-3 w-4/6" />
+          </div>
+          <div className="card p-5 space-y-3">
+            <div className="skeleton h-4 w-28" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex gap-3">
+                <div className="skeleton h-4 w-4 rounded" />
+                <div className="skeleton h-4 flex-1" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="card p-5 space-y-2">
+              <div className="skeleton h-3 w-24" />
+              <div className="skeleton h-8 w-full" />
+            </div>
+          ))}
+        </div>
+        <span className="sr-only">Loading task…</span>
+      </div>
+    );
+  }
 
   async function update(patch: any) {
     await api(`/tasks/${id}`, { method: 'PATCH', body: patch });
@@ -103,7 +168,7 @@ export default function TaskDetailPage() {
   const hasReferenceData = task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
 
       {/* ── Left: main content ─────────────────────────────────────────── */}
       <div className="lg:col-span-2 space-y-4">
