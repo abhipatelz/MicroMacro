@@ -222,6 +222,60 @@ body {
 }
 .page-enter { animation: page-enter 0.3s cubic-bezier(0.22,1,0.36,1) both; }
 
+/* ── Stat-card stagger ───────────────────────────────────────────────────── */
+@keyframes fade-up-stagger {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.fade-up-stagger { animation: fade-up-stagger 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* ── Late-arriving footer fade (daily quote) ─────────────────────────────── */
+@keyframes fade-in-late {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-late { animation: fade-in-late 0.5s 0.7s ease-out both; }
+
+/* ── Hero greeting — gradient sweep, alive feel ──────────────────────────── */
+@keyframes hero-shine {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.hero-greeting {
+  background: linear-gradient(110deg, #0f172a 0%, #0f172a 35%, #1565C0 50%, #0f172a 65%, #0f172a 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: hero-shine 7s ease-in-out infinite;
+}
+.dark .hero-greeting {
+  background: linear-gradient(110deg, #e8eef5 0%, #e8eef5 35%, #42A5F5 50%, #e8eef5 65%, #e8eef5 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* ── Soft pulse used behind the "All clear!" hero ────────────────────────── */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50%      { opacity: 0.75; transform: scale(1.08); }
+}
+.animate-pulse-slow { animation: pulse-slow 2.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up-stagger,
+  .fade-in-late,
+  .animate-pulse-slow,
+  .hero-greeting { animation: none !important; }
+  .hero-greeting {
+    background: none;
+    -webkit-text-fill-color: #0f172a;
+    color: #0f172a;
+  }
+}
+
 /* ── Command palette / modal ─────────────────────────────────────────────── */
 @keyframes paletteIn {
   from { opacity: 0; transform: scale(0.94) translateY(-10px); }

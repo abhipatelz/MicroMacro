@@ -1,15 +1,48 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { LifecycleTag, PriorityTag, TaskLink, formatDate, daysUntil } from '@/components/ui';
-import { getGreeting } from '@/lib/culture';
+import { getGreeting, getTodaysQuote } from '@/lib/culture';
 import { parseNaturalInput } from '@/lib/naturalDate';
 import {
   CheckCircle2, Clock, AlertTriangle, TrendingUp, FolderKanban,
   ChevronRight, Flame, Target, Plus, ArrowUpRight, Activity,
-  Zap, BarChart2, CircleCheck,
+  Zap, BarChart2, CircleCheck, Sparkles, Quote,
 } from 'lucide-react';
+
+/* ── Animated count-up — gives numbers a subtle "alive" feel ──────────────── */
+function useCountUp(target: number, durationMs = 700) {
+  const [val, setVal] = useState(0);
+  const startRef = useRef<number | null>(null);
+  const fromRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') { setVal(target); return; }
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduced || target === 0) { setVal(target); return; }
+    fromRef.current = val;
+    startRef.current = null;
+    const step = (ts: number) => {
+      if (startRef.current === null) startRef.current = ts;
+      const t = Math.min(1, (ts - startRef.current) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      setVal(Math.round(fromRef.current + (target - fromRef.current) * eased));
+      if (t < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, durationMs]);
+
+  return val;
+}
+
+function CountUp({ value, suffix = '' }: { value: number; suffix?: string }) {
+  const v = useCountUp(value);
+  return <>{v}{suffix}</>;
+}
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 interface Summary {
@@ -176,37 +209,45 @@ function TaskRow({ task, onDone }: { task: any; onDone: (t: any) => void }) {
 }
 
 /* ── Stat card ────────────────────────────────────────────────────────────── */
-function StatCard({ label, value, sub, icon: Icon, accent, urgent, filled }: {
+function StatCard({ label, value, sub, icon: Icon, accent, urgent, filled, delay = 0 }: {
   label: string; value: string | number; sub?: string;
-  icon: any; accent: string; urgent?: boolean; filled?: boolean;
+  icon: any; accent: string; urgent?: boolean; filled?: boolean; delay?: number;
 }) {
+  const isNum = typeof value === 'number';
+  const display: any = isNum ? <CountUp value={value as number} /> : value;
+
   if (filled) {
     return (
-      <div className="relative overflow-hidden rounded-2xl flex flex-col gap-1 p-5 transition-all hover:scale-[1.02] cursor-default"
+      <div className="relative overflow-hidden rounded-2xl flex flex-col gap-1 p-5 transition-all hover:scale-[1.02] cursor-default fade-up-stagger"
         style={{
           background: `linear-gradient(135deg, ${accent} 0%, ${accent}dd 100%)`,
           boxShadow: `0 4px 20px ${accent}40, 0 1px 3px ${accent}30`,
+          animationDelay: `${delay}ms`,
         }}>
         <div className="absolute -right-3 -top-3 w-16 h-16 rounded-full opacity-10"
           style={{ background: '#fff' }} />
-        <div className="flex items-center justify-between">
+        <div className="absolute inset-0 opacity-25 pointer-events-none" style={{
+          background: 'radial-gradient(circle at 100% 0%, rgba(255,255,255,0.35) 0%, transparent 55%)',
+        }} />
+        <div className="flex items-center justify-between relative">
           <div className="text-[10px] font-bold uppercase tracking-widest text-white/70">{label}</div>
           <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
             <Icon size={15} className="text-white" />
           </div>
         </div>
-        <div className="text-3xl font-black tracking-tight leading-none text-white">{value}</div>
-        {sub && <div className="text-[11px] font-medium text-white/60">{sub}</div>}
+        <div className="text-3xl font-black tracking-tight leading-none text-white relative tabular-nums">{display}</div>
+        {sub && <div className="text-[11px] font-medium text-white/60 relative">{sub}</div>}
       </div>
     );
   }
   return (
-    <div className="relative overflow-hidden bg-white rounded-2xl border flex flex-col gap-1 p-5 transition-all hover:shadow-md hover:scale-[1.01] cursor-default"
+    <div className="relative overflow-hidden bg-white rounded-2xl border flex flex-col gap-1 p-5 transition-all hover:shadow-md hover:scale-[1.01] cursor-default fade-up-stagger"
       style={{
         borderColor: urgent ? `${accent}40` : 'rgba(210,218,228,0.8)',
         boxShadow: urgent
           ? `0 0 0 1px ${accent}18, 0 4px 16px ${accent}10`
           : '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.025)',
+        animationDelay: `${delay}ms`,
       }}>
       {urgent && (
         <div className="absolute inset-x-0 top-0 h-[3px] rounded-t-2xl" style={{ background: accent }} />
@@ -220,8 +261,8 @@ function StatCard({ label, value, sub, icon: Icon, accent, urgent, filled }: {
           <Icon size={15} style={{ color: accent }} />
         </div>
       </div>
-      <div className="text-3xl font-black tracking-tight leading-none" style={{ color: urgent ? accent : '#0f172a' }}>
-        {value}
+      <div className="text-3xl font-black tracking-tight leading-none tabular-nums" style={{ color: urgent ? accent : '#0f172a' }}>
+        {display}
       </div>
       {sub && <div className="text-[11px] font-medium" style={{ color: urgent ? `${accent}99` : '#94a3b8' }}>{sub}</div>}
     </div>
@@ -268,8 +309,11 @@ function UpcomingPanel({ tasks }: { tasks: any[] }) {
       </div>
       {upcoming.length === 0 ? (
         <div className="px-4 py-8 text-center">
-          <CircleCheck size={20} className="text-slate-200 mx-auto mb-2" />
-          <div className="text-xs text-slate-300 font-medium">No upcoming deadlines</div>
+          <div className="w-9 h-9 rounded-xl bg-forest-50 border border-forest-100 flex items-center justify-center mx-auto mb-2">
+            <CircleCheck size={18} className="text-forest-500" />
+          </div>
+          <div className="text-xs font-bold text-slate-600">Calendar&rsquo;s clear</div>
+          <div style={{ fontSize: 10 }} className="text-slate-400 mt-1 leading-relaxed">No deadlines on the horizon.</div>
         </div>
       ) : (
         <div className="divide-y divide-slate-50">
@@ -369,16 +413,16 @@ function OrgPulse({ totals, projects }: { totals: OrgOverview['totals']; project
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
       <StatCard label="Active projects" value={totals.activeProjects} icon={FolderKanban}
-        accent="#1565C0" filled
+        accent="#1565C0" filled delay={0}
         sub={critical > 0 ? `${critical} critical` : atRisk > 0 ? `${atRisk} at risk` : 'All healthy'} />
-      <StatCard label="Open tasks" value={totals.tasksOpen} icon={Target} accent="#475569"
+      <StatCard label="Open tasks" value={totals.tasksOpen} icon={Target} accent="#475569" delay={70}
         sub="across all projects" />
-      <StatCard label="Overdue" value={totals.tasksOverdue} icon={AlertTriangle}
+      <StatCard label="Overdue" value={totals.tasksOverdue} icon={AlertTriangle} delay={140}
         accent={totals.tasksOverdue > 0 ? '#dc2626' : '#94a3b8'}
         filled={totals.tasksOverdue > 0}
         urgent={totals.tasksOverdue > 0}
         sub={totals.tasksOverdue > 0 ? 'Needs resolution' : 'None — great work'} />
-      <StatCard label="Done this month" value={totals.doneThisMonth} icon={TrendingUp}
+      <StatCard label="Done this month" value={totals.doneThisMonth} icon={TrendingUp} delay={210}
         accent="#16a34a" filled={allHealthy && totals.doneThisMonth > 0}
         sub="tasks shipped" />
     </div>
@@ -507,24 +551,33 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="pb-20 max-w-5xl page-enter">
+    <div className="pb-20 max-w-5xl page-enter relative">
       {celebrating && <Celebration taskTitle={celebrating.title} onDone={() => setCelebrating(null)} />}
 
+      {/* ── Hero backdrop — soft brand wash behind the greeting ───────────── */}
+      <div aria-hidden className="pointer-events-none absolute -top-6 -left-10 -right-10 h-[340px] -z-0 overflow-hidden">
+        <div className="absolute inset-0" style={{
+          background: 'radial-gradient(ellipse at 25% 0%, rgba(21,101,192,0.10) 0%, transparent 55%), radial-gradient(ellipse at 80% 10%, rgba(67,160,71,0.07) 0%, transparent 60%)',
+        }} />
+      </div>
+
       {/* ── Page header ───────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between pt-1 mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">{greet}</h1>
-          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+      <div className="relative flex items-start justify-between pt-1 mb-6 gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-[28px] font-black tracking-tight leading-tight">
+            <span className="hero-greeting">{greet}</span>
+          </h1>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <p className="text-xs text-slate-400">{todayLabel}</p>
             {isPM && org && (
-              <div className="flex items-center gap-2">
+              <>
                 <span className="text-slate-200">·</span>
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   org.projects.some(p => p.health === 'critical')
                     ? 'bg-red-50 text-red-600'
                     : org.projects.some(p => p.health === 'at_risk')
                     ? 'bg-amber-50 text-amber-600'
-                    : 'bg-green-50 text-green-700'
+                    : 'bg-forest-50 text-forest-700'
                 }`}>
                   {org.projects.some(p => p.health === 'critical')
                     ? `${org.projects.filter(p => p.health === 'critical').length} critical project${org.projects.filter(p => p.health === 'critical').length > 1 ? 's' : ''}`
@@ -532,7 +585,7 @@ export default function DashboardPage() {
                     ? `${org.projects.filter(p => p.health === 'at_risk').length} at risk`
                     : '✓ All projects healthy'}
                 </span>
-              </div>
+              </>
             )}
             {!isPM && overdueCount > 0 && (
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600">
@@ -541,8 +594,8 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-        <button onClick={() => setQaOpen(true)} className="btn-primary shrink-0 text-sm gap-2">
-          <Plus size={15} /> New task
+        <button onClick={() => setQaOpen(true)} className="btn-primary shrink-0 text-sm gap-2 group">
+          <Plus size={15} className="transition-transform group-hover:rotate-90" /> New task
         </button>
       </div>
 
@@ -552,20 +605,20 @@ export default function DashboardPage() {
       {/* ── IC: Personal metrics ──────────────────────────────────────────── */}
       {!isPM && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <StatCard icon={CheckCircle2} label="Open tasks" value={openCount}
+          <StatCard icon={CheckCircle2} label="Open tasks" value={openCount} delay={0}
             accent={openCount === 0 ? '#16a34a' : '#1565C0'}
             filled={openCount === 0}
             sub={openCount === 0 ? 'All clear!' : `${overdueCount > 0 ? overdueCount + ' overdue' : 'on track'}`} />
-          <StatCard icon={AlertTriangle} label="Overdue" value={overdueCount}
+          <StatCard icon={AlertTriangle} label="Overdue" value={overdueCount} delay={70}
             accent={overdueCount > 0 ? '#dc2626' : '#94a3b8'}
             filled={overdueCount > 0}
             urgent={overdueCount > 0}
             sub={overdueCount > 0 ? 'Act now' : 'None'} />
-          <StatCard icon={BarChart2} label="Completion" value={`${rate}%`}
+          <StatCard icon={BarChart2} label="Completion" value={`${rate}%`} delay={140}
             accent={rate >= 80 ? '#16a34a' : rate >= 50 ? '#1565C0' : '#d97706'}
             filled={rate >= 80}
             sub={rate >= 80 ? 'Excellent' : rate >= 50 ? 'Good pace' : 'Needs focus'} />
-          <StatCard icon={FolderKanban} label="Projects" value={projects.length}
+          <StatCard icon={FolderKanban} label="Projects" value={projects.length} delay={210}
             accent="#0369a1" sub="active" />
         </div>
       )}
@@ -613,19 +666,42 @@ export default function DashboardPage() {
 
             {filteredTasks.length === 0 ? (
               <div className="py-16 flex flex-col items-center text-center px-6">
-                <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center mb-4">
-                  <CheckCircle2 size={22} className="text-green-400" />
-                </div>
-                <div className="text-sm font-bold text-slate-700">
-                  {filter === 'open' ? 'All clear!' : filter === 'overdue' ? 'No overdue tasks' : 'Nothing here'}
-                </div>
-                <div className="text-xs text-slate-400 mt-1 max-w-[200px] leading-relaxed">
-                  {filter === 'open' ? 'No open tasks right now.' : 'Try a different filter.'}
-                </div>
-                {filter === 'open' && (
-                  <button onClick={() => setQaOpen(true)} className="mt-4 btn-primary text-xs gap-1.5">
-                    <Plus size={12} /> Add a task
-                  </button>
+                {filter === 'open' ? (
+                  <>
+                    <div className="relative mb-4">
+                      <div className="absolute inset-0 rounded-2xl bg-forest-100 blur-xl opacity-60 animate-pulse-slow" />
+                      <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-forest-50 to-forest-100 border border-forest-200 flex items-center justify-center">
+                        <CheckCircle2 size={26} className="text-forest-600" />
+                      </div>
+                    </div>
+                    <div className="text-base font-black text-slate-800">All clear!</div>
+                    <div className="text-xs text-slate-500 mt-1.5 max-w-[260px] leading-relaxed">
+                      No open tasks right now. Pour a chai, breathe, or get ahead by adding the next one.
+                    </div>
+                    <button onClick={() => setQaOpen(true)} className="mt-5 btn-primary text-xs gap-1.5">
+                      <Plus size={12} /> Add a task
+                    </button>
+                  </>
+                ) : filter === 'overdue' ? (
+                  <>
+                    <div className="w-12 h-12 rounded-2xl bg-forest-50 border border-forest-100 flex items-center justify-center mb-3">
+                      <CircleCheck size={22} className="text-forest-500" />
+                    </div>
+                    <div className="text-sm font-bold text-slate-700">Nothing overdue</div>
+                    <div className="text-xs text-slate-400 mt-1 max-w-[220px] leading-relaxed">
+                      You&rsquo;re on top of every deadline. Beautiful work.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3">
+                      <Target size={20} className="text-slate-300" />
+                    </div>
+                    <div className="text-sm font-bold text-slate-700">Nothing here</div>
+                    <div className="text-xs text-slate-400 mt-1 max-w-[200px] leading-relaxed">
+                      Try a different filter.
+                    </div>
+                  </>
                 )}
               </div>
             ) : (
@@ -738,7 +814,31 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Daily quality thought — small touch of personality ─────────────── */}
+      <DailyQuote />
+
       {me && <QuickAdd projects={projects} userId={me.id} onAdded={reload} open={qaOpen} onClose={() => setQaOpen(false)} />}
+    </div>
+  );
+}
+
+/* ── Daily quality thought — bottom-of-page warmth ─────────────────────────── */
+function DailyQuote() {
+  const q = useMemo(() => getTodaysQuote(), []);
+  return (
+    <div className="mt-10 mx-auto max-w-2xl text-center px-6 fade-in-late">
+      <div className="flex items-center justify-center gap-2 mb-3">
+        <span className="h-px w-8 bg-slate-200" />
+        <Sparkles size={11} className="text-brand-500/70" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">Quality thought · today</span>
+        <Sparkles size={11} className="text-brand-500/70" />
+        <span className="h-px w-8 bg-slate-200" />
+      </div>
+      <p className="text-sm italic text-slate-500 leading-relaxed">
+        <Quote size={11} className="inline -mt-2 mr-1 text-slate-300" />
+        {q.quote}
+      </p>
+      <p className="text-[11px] mt-2 font-semibold text-slate-400">— {q.author}</p>
     </div>
   );
 }
