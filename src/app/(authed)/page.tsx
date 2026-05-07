@@ -114,15 +114,12 @@ function QuickAdd({ projects, userId, onAdded, open, onClose }: {
   const [errMsg, setErrMsg] = useState('');
   const [dueOverride, setDueOverride] = useState<string>('');
   const [priorityOverride, setPriorityOverride] = useState<Priority | ''>('');
-  const [mounted, setMounted] = useState(false);
   const parsed = useMemo(() => parseNaturalInput(raw), [raw]);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Effective values: explicit override beats natural-language parsing
   const effDue = dueOverride || parsed.dueDate || '';
   const effPriority = (priorityOverride || parsed.priority || '') as Priority | '';
-
-  useEffect(() => { setMounted(true); }, []);
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -190,7 +187,8 @@ function QuickAdd({ projects, userId, onAdded, open, onClose }: {
     }
   }
 
-  if (!open || !mounted) return null;
+  // Render only on the client (where document.body exists) and only when open.
+  if (!open || typeof document === 'undefined') return null;
 
   const canSubmit = parsed.title.trim().length > 0 && !!projectId && !saving;
   const dueLabel = effDue

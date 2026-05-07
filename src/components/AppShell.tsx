@@ -178,25 +178,60 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
-  /* Nav */
-  const employeeNav = [
-    { href: '/',         label: 'My Tasks',      icon: LayoutDashboard, tour: 'nav-tasks' },
-    { href: '/projects', label: 'Projects',       icon: FolderKanban,   tour: 'nav-projects' },
-    { href: '/yearly',   label: 'My Year',        icon: Calendar,       tour: 'nav-yearly' },
-    { href: '/copilot',  label: 'QA Copilot',     icon: Bot,            badge: 'AI', tour: 'nav-copilot' },
+  /* Nav — grouped by purpose so the sidebar reads as a hierarchy, not a list. */
+  type NavItem = { href: string; label: string; icon: any; tour?: string; badge?: string };
+  type NavSection = { title: string; items: NavItem[] };
+
+  const employeeSections: NavSection[] = [
+    {
+      title: 'Work',
+      items: [
+        { href: '/',         label: 'My Tasks', icon: LayoutDashboard, tour: 'nav-tasks' },
+        { href: '/projects', label: 'Projects', icon: FolderKanban,   tour: 'nav-projects' },
+        { href: '/yearly',   label: 'My Year',  icon: Calendar,       tour: 'nav-yearly' },
+      ],
+    },
+    {
+      title: 'Assist',
+      items: [
+        { href: '/copilot',  label: 'QA Copilot', icon: Bot, tour: 'nav-copilot' },
+      ],
+    },
   ];
-  const pmNav = [
-    { href: '/',         label: 'Dashboard',      icon: LayoutDashboard, tour: 'nav-home' },
-    { href: '/projects', label: 'Projects',       icon: FolderKanban,   tour: 'nav-projects' },
-    { href: '/teams',    label: 'Teams',            icon: Users,          tour: 'nav-teams' },
-    { href: '/org',      label: 'Operations Hub',  icon: PieChart,       tour: 'nav-org' },
-    { href: '/risk',     label: 'Risk Radar',       icon: Activity,       badge: 'AI', tour: 'nav-risk' },
-    { href: '/yearly',   label: 'Yearly view',     icon: Calendar },
-    { href: '/insights', label: 'Insights',        icon: Lightbulb,      badge: 'Live', tour: 'nav-insights' },
-    { href: '/copilot',  label: 'QA Copilot',      icon: Bot,            badge: 'AI' },
-    { href: '/people',   label: 'People',          icon: UserCog,        tour: 'nav-people' },
+
+  const pmSections: NavSection[] = [
+    {
+      title: 'Plan',
+      items: [
+        { href: '/',         label: 'Dashboard', icon: LayoutDashboard, tour: 'nav-home' },
+        { href: '/projects', label: 'Projects',  icon: FolderKanban,   tour: 'nav-projects' },
+        { href: '/yearly',   label: 'Yearly view', icon: Calendar },
+      ],
+    },
+    {
+      title: 'Steer',
+      items: [
+        { href: '/org',      label: 'Operations Hub', icon: PieChart,  tour: 'nav-org' },
+        { href: '/risk',     label: 'Risk Radar',     icon: Activity,  tour: 'nav-risk' },
+        { href: '/insights', label: 'Insights',       icon: Lightbulb, badge: 'Live', tour: 'nav-insights' },
+      ],
+    },
+    {
+      title: 'People',
+      items: [
+        { href: '/teams',    label: 'Teams',  icon: Users,   tour: 'nav-teams' },
+        { href: '/people',   label: 'People', icon: UserCog, tour: 'nav-people' },
+      ],
+    },
+    {
+      title: 'Assist',
+      items: [
+        { href: '/copilot',  label: 'QA Copilot', icon: Bot },
+      ],
+    },
   ];
-  const nav = user.role === 'pm' ? pmNav : employeeNav;
+
+  const sections = user.role === 'pm' ? pmSections : employeeSections;
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname?.startsWith(href);
 
   async function logout() {
@@ -255,30 +290,44 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 space-y-0.5 overflow-auto pb-2">
-        {nav.map((n) => {
-          const Icon = n.icon;
-          const active = isActive(n.href);
-          return (
-            <Link
-              key={n.href}
-              href={n.href}
-              data-tour={(n as any).tour}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group ${
-                active ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80 hover:bg-white/5'
-              }`}
+      <nav className="flex-1 px-3 overflow-auto pb-2">
+        {sections.map((section, si) => (
+          <div key={section.title} className={si > 0 ? 'mt-3' : ''}>
+            <div
+              style={{ fontSize: 9, letterSpacing: '0.18em' }}
+              className="text-white/25 uppercase font-bold px-3 mb-1"
             >
-              <Icon size={15} className={`shrink-0 ${active ? 'text-blue-300' : 'text-white/30 group-hover:text-white/60'}`} />
-              <span className="flex-1 truncate">{n.label}</span>
-              {(n as any).badge && (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(21,101,192,0.6)', color: '#90CAF9' }}>
-                  {(n as any).badge}
-                </span>
-              )}
-              {active && <span className="w-1 h-1 rounded-full bg-blue-400 shrink-0" />}
-            </Link>
-          );
-        })}
+              {section.title}
+            </div>
+            <div className="space-y-0.5">
+              {section.items.map((n) => {
+                const Icon = n.icon;
+                const active = isActive(n.href);
+                return (
+                  <Link
+                    key={n.href}
+                    href={n.href}
+                    prefetch
+                    data-tour={n.tour}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 group ${
+                      active ? 'bg-white/10 text-white' : 'text-white/45 hover:text-white/85 hover:bg-white/5'
+                    }`}
+                  >
+                    <Icon size={14} className={`shrink-0 ${active ? 'text-blue-300' : 'text-white/30 group-hover:text-white/60'}`} />
+                    <span className="flex-1 truncate">{n.label}</span>
+                    {n.badge && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(67,160,71,0.22)', color: '#86efac' }}>
+                        {n.badge}
+                      </span>
+                    )}
+                    {active && <span className="w-1 h-1 rounded-full bg-blue-400 shrink-0" />}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* ── Notifications bell ──────────────────────────────────────────── */}

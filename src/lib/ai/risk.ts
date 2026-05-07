@@ -233,18 +233,43 @@ export function score(model: RiskModel, task: TaskDoc, ctx: TaskContext): RiskAs
   const label: 'low' | 'medium' | 'high' =
     probability >= 0.7 ? 'high' : probability >= 0.4 ? 'medium' : 'low';
 
+  // Recommendation engine — picks the dominant cause and tailors copy to it.
+  // Order matters: we look at the *most actionable* signal first.
   let recommendation = 'No action needed — continue monitoring.';
+  const daysLate = -ctx.daysUntilDue;
+  const subPct   = Math.round(ctx.subtaskProgress * 100);
+
   if (label === 'high') {
-    if (ctx.daysUntilDue < 0) recommendation = 'Already overdue — escalate to team lead and re-baseline the due date.';
-    else if (ctx.subtaskProgress < 0.3 && ctx.daysUntilDue < 5)
-      recommendation = 'Little progress and deadline in <5 days — add resources or split into subtasks.';
-    else if (ctx.assigneeMissRate > 0.4)
-      recommendation = 'Assignee historically misses deadlines — consider re-assigning or pairing.';
-    else if (ctx.assigneeLoad > 8)
-      recommendation = 'Assignee is overloaded — redistribute tasks to rebalance load.';
-    else recommendation = 'High risk — escalate in the next stand-up and lock dependencies.';
+    if (ctx.daysUntilDue < 0) {
+      // Overdue — pick the *reason* it's overdue, not just "it's overdue"
+      if (ctx.assigneeMissRate > 0.4)
+        recommendation = `${daysLate}d overdue and assignee misses ~${Math.round(ctx.assigneeMissRate * 100)}% of deadlines — pair them with a senior, or re-assign.`;
+      else if (ctx.assigneeLoad > 8)
+        recommendation = `${daysLate}d overdue — assignee is juggling ${ctx.assigneeLoad} open tasks. Move 1-2 to another teammate this week.`;
+      else if (ctx.subtaskProgress > 0 && ctx.subtaskProgress < 1)
+        recommendation = `${daysLate}d overdue at ${subPct}% subtask progress — pull the remaining ${100 - subPct}% into a 30-min huddle today and unblock.`;
+      else if (daysLate >= 7)
+        recommendation = `${daysLate}d overdue — re-baseline the date with stakeholders. Long-overdue items rarely close without scope clarity.`;
+      else
+        recommendation = `${daysLate}d overdue — ask assignee in stand-up: blocked, scope drift, or just bandwidth?`;
+    } else if (ctx.subtaskProgress < 0.3 && ctx.daysUntilDue < 5) {
+      recommendation = `Only ${subPct}% done with ${ctx.daysUntilDue}d to go — split into smaller subtasks today and assign helpers.`;
+    } else if (ctx.assigneeMissRate > 0.4) {
+      recommendation = `Assignee misses ~${Math.round(ctx.assigneeMissRate * 100)}% of deadlines — pair them with a senior or set a mid-point check-in.`;
+    } else if (ctx.assigneeLoad > 8) {
+      recommendation = `Assignee has ${ctx.assigneeLoad} open tasks — redistribute 2-3 to free them up for this one.`;
+    } else if (ctx.daysUntilDue <= 2) {
+      recommendation = `Due in ${ctx.daysUntilDue}d — confirm dependencies are unblocked and lock no scope changes from now until close.`;
+    } else {
+      recommendation = 'High risk — escalate in the next stand-up and lock dependencies before they become blockers.';
+    }
   } else if (label === 'medium') {
-    recommendation = 'Ask assignee for a status update and confirm no blockers.';
+    if (ctx.daysUntilDue <= 3 && ctx.subtaskProgress < 0.5)
+      recommendation = `${ctx.daysUntilDue}d to go at ${subPct}% — tight but doable; a 15-min sync today is worth more than waiting until Friday.`;
+    else if (ctx.assigneeLoad > 6)
+      recommendation = `Assignee has ${ctx.assigneeLoad} open tasks — sequence this clearly, ask which is highest priority for them.`;
+    else
+      recommendation = 'Status check: is anything blocked, and is the scope still what was agreed?';
   }
 
   return {
