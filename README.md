@@ -85,7 +85,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### 4. First login
 
-The first account registered at `/register` becomes the **PM (workspace owner)** automatically. After that, self-registration is disabled — all new accounts must be created by a PM via the People page.
+Registration happens on the `/login` page (the form switches between sign-in and sign-up). The first account created becomes the **PM (workspace owner)** automatically. After that, self-registration is disabled — all new accounts must be created by a PM via the People page.
 
 ---
 

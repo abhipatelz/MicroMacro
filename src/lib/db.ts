@@ -12,7 +12,10 @@ async function resolveUri(): Promise<string> {
     const { MongoMemoryServer } = await import('mongodb-memory-server');
     const g = global as any;
     if (!g.__mongoMemoryServer) {
-      g.__mongoMemoryServer = await MongoMemoryServer.create({ instance: { dbName: 'pragati' } });
+      g.__mongoMemoryServer = await MongoMemoryServer.create({
+        instance: { dbName: 'pragati' },
+        binary: { version: process.env.MONGOMS_VERSION || '7.0.14' },
+      });
       console.log(`[db] in-memory Mongo @ ${g.__mongoMemoryServer.getUri()}`);
     }
     return g.__mongoMemoryServer.getUri();
