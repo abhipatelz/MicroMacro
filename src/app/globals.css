@@ -264,6 +264,21 @@ body {
 }
 .animate-pulse-slow { animation: pulse-slow 2.8s ease-in-out infinite; }
 
+/* ── Living-pulse dot — used on Project Health panel ──────────────────────── */
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  70%  { box-shadow: 0 0 0 5px transparent; opacity: 0.85; }
+  100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+}
+.pulse-dot { animation: pulse-ring 1.8s cubic-bezier(0.66,0,0,1) infinite; }
+
+/* ── Generic small fade-in (used by inline forms) ────────────────────────── */
+@keyframes fade-in-soft-2 {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-soft { animation: fade-in-soft-2 0.22s ease-out both; }
+
 @media (prefers-reduced-motion: reduce) {
   .fade-up-stagger,
   .fade-in-late,

@@ -86,6 +86,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     if (body.status === 'done' && current.status !== 'done') set.completedAt = new Date();
     else if (body.status && body.status !== 'done') set.completedAt = null;
+    set.lastActivityAt = new Date();
     await Task.updateOne({ _id: params.id }, { $set: set });
     const fresh = await Task.findById(params.id).lean();
     return NextResponse.json(taskS(fresh));

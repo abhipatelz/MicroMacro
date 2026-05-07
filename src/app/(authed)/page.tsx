@@ -52,8 +52,18 @@ interface Summary {
 }
 interface OrgOverview {
   totals: { tasksOpen: number; tasksOverdue: number; activeProjects: number; users: number; doneThisMonth: number };
-  projects: Array<{ id: string; name: string; code: string; status: string; taskCount: number; tasksDone: number; tasksOverdue: number; health: 'good' | 'at_risk' | 'critical'; dueDate: string | null }>;
+  projects: Array<{ id: string; name: string; code: string; status: string; taskCount: number; tasksDone: number; tasksOverdue: number; health: 'good' | 'at_risk' | 'critical'; dueDate: string | null; lastActivity?: string }>;
   attention: Array<{ severity: 'critical' | 'warn'; label: string; detail: string; href: string }>;
+}
+
+/** Living pulse — derives a green/amber/grey indicator from lastActivity. */
+function pulseFor(lastActivity?: string): { color: string; label: string; pulsing: boolean } {
+  if (!lastActivity) return { color: '#cbd5e1', label: 'Quiet', pulsing: false };
+  const hoursAgo = (Date.now() - new Date(lastActivity).getTime()) / 3_600_000;
+  if (hoursAgo <= 24)      return { color: '#43A047', label: 'Active today', pulsing: true };
+  if (hoursAgo <= 24 * 3)  return { color: '#43A047', label: `${Math.round(hoursAgo / 24)}d ago`, pulsing: false };
+  if (hoursAgo <= 24 * 7)  return { color: '#f59e0b', label: `${Math.round(hoursAgo / 24)}d ago`, pulsing: false };
+  return { color: '#cbd5e1', label: 'Quiet', pulsing: false };
 }
 
 /* ── Confetti — Alembic brand palette ─────────────────────────────────────── */
@@ -590,9 +600,16 @@ function ProjectHealthPanel({ projects }: { projects: OrgOverview['projects'] })
       <div className="divide-y divide-slate-50">
         {active.map(p => {
           const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
+          const pulse = pulseFor(p.lastActivity);
           return (
             <Link key={p.id} href={`/projects/${p.id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50/60 transition-colors group">
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: HC[p.health] }} />
+              <div className="relative shrink-0" title={`${pulse.label} · ${p.health.replace('_',' ')}`} style={{ color: pulse.color }}>
+                <span
+                  aria-hidden
+                  className={`block w-2 h-2 rounded-full ${pulse.pulsing ? 'pulse-dot' : ''}`}
+                  style={{ background: pulse.color }}
+                />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold text-slate-700 truncate group-hover:text-blue-700 transition-colors leading-tight">{p.code || p.name}</div>
                 <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: '#f1f5f9' }}>
@@ -601,7 +618,10 @@ function ProjectHealthPanel({ projects }: { projects: OrgOverview['projects'] })
               </div>
               <div className="text-right shrink-0 ml-1">
                 <div className="text-xs font-bold" style={{ color: HC[p.health] }}>{pct}%</div>
-                {p.tasksOverdue > 0 && <div style={{ fontSize: 9 }} className="text-red-400 font-medium">{p.tasksOverdue} late</div>}
+                {p.tasksOverdue > 0
+                  ? <div style={{ fontSize: 9 }} className="text-red-400 font-medium">{p.tasksOverdue} late</div>
+                  : <div style={{ fontSize: 9 }} className="text-slate-300 font-medium">{pulse.label}</div>
+                }
               </div>
             </Link>
           );

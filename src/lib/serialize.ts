@@ -122,7 +122,19 @@ export function task(t: any, extras: Any = {}) {
       : null,
     subtasks: (t.subtasks || []).map(subtask),
     comments: (t.comments || []).map(comment),
+    effortLog: (t.effortLog || []).map((e: any) => ({
+      id: id(e._id),
+      userId: id(e.userId),
+      minutes: e.minutes,
+      note: e.note || '',
+      onDate: e.onDate || '',
+      source: e.source || 'manual',
+      createdAt: e.createdAt,
+    })),
+    effortMins: (t.effortLog || []).reduce((s: number, e: any) => s + (e.minutes || 0), 0),
+    lastActivityAt: t.lastActivityAt || t.updatedAt || t.createdAt,
     createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
     ...extras
   };
 }

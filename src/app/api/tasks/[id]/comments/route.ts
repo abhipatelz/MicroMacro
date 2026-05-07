@@ -26,6 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       createdAt: new Date()
     } as any;
     (t as any).comments.push(c);
+    (t as any).lastActivityAt = new Date();
     await t.save();
     const author = await User.findById(user.sub).lean();
     return NextResponse.json({

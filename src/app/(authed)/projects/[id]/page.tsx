@@ -522,6 +522,14 @@ export default function ProjectDetailPage() {
             <Download size={14} />
             {exporting ? 'Exporting…' : 'Export to Excel'}
           </button>
+          <a
+            href={`/api/projects/${id}/calendar`}
+            className="btn-secondary flex items-center gap-1.5 text-xs w-48 justify-center"
+            title="Download all upcoming task deadlines as a calendar file (.ics) — opens in Outlook, Google, Apple."
+          >
+            <Download size={14} />
+            All deadlines → .ics
+          </a>
         </div>
       </div>
 

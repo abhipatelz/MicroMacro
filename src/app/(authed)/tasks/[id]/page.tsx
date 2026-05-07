@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { Card, PriorityTag, StatusTag, formatDate, Avatar } from '@/components/ui';
-import { ChevronRight, Shield, FileText, Building2, GitBranch, MessageSquare } from 'lucide-react';
+import { ChevronRight, Shield, FileText, Building2, GitBranch, MessageSquare, CalendarPlus, Timer, Activity } from 'lucide-react';
 
 const STATUSES  = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
 const TASK_TYPES = ['task','review','approval','test','issue','corrective_action','finding','data_review'] as const;
@@ -449,6 +449,9 @@ export default function TaskDetailPage() {
           </div>
         </Card>
 
+        {/* ── Schedule meeting + Log effort ───────────────────────────── */}
+        <ScheduleEffortCard task={task} onChanged={load} />
+
         {/* Reference summary */}
         {(task.ccNo || task.documentNo || task.deployStage !== 'na') && (
           <div className="card p-4 space-y-2">
@@ -522,6 +525,178 @@ export default function TaskDetailPage() {
                 ))}
               </ul>
             )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Schedule meeting + Log effort — Outlook/Calendar friendly via .ics
+   Open standard, no Microsoft API required.
+   ────────────────────────────────────────────────────────────────────────── */
+function ScheduleEffortCard({ task, onChanged }: { task: any; onChanged: () => void }) {
+  const [openSchedule, setOpenSchedule] = useState(false);
+  const [openEffort, setOpenEffort] = useState(false);
+  const [savingEffort, setSavingEffort] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+
+  function defaultDate() {
+    const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10);
+  }
+  const [date, setDate] = useState(defaultDate());
+  const [time, setTime] = useState('10:00');
+  const [duration, setDuration] = useState(30);
+
+  const [minutes, setMinutes] = useState<number>(30);
+  const [note, setNote] = useState('');
+
+  async function downloadIcs() {
+    setScheduling(true);
+    try {
+      const at = new Date(`${date}T${time}:00`);
+      const url = `/api/tasks/${task.id}/calendar?at=${encodeURIComponent(at.toISOString())}&dur=${duration}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Calendar export failed');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `task-${String(task.id).slice(-6).toUpperCase()}.ics`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+      setOpenSchedule(false);
+      onChanged();
+    } catch { /* swallow — best-effort UI */ } finally {
+      setScheduling(false);
+    }
+  }
+
+  async function logEffort() {
+    if (!minutes || minutes < 1) return;
+    setSavingEffort(true);
+    try {
+      await api(`/tasks/${task.id}/effort`, { method: 'POST', body: { minutes, note: note.trim() } });
+      setMinutes(30); setNote('');
+      setOpenEffort(false);
+      onChanged();
+    } finally {
+      setSavingEffort(false);
+    }
+  }
+
+  const totalMins = task.effortMins || 0;
+  const totalLabel = totalMins >= 60
+    ? `${Math.floor(totalMins / 60)}h ${totalMins % 60 ? totalMins % 60 + 'm' : ''}`.trim()
+    : `${totalMins}m`;
+  const recent: any[] = (task.effortLog || []).slice(-3).reverse();
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
+        <Activity size={13} className="text-brand-500" />
+        <h3 className="text-sm font-semibold text-slate-700">Pulse</h3>
+        {totalMins > 0 && (
+          <span className="ml-auto text-[10px] font-bold text-forest-700 bg-forest-50 border border-forest-100 px-1.5 py-0.5 rounded">
+            {totalLabel} logged
+          </span>
+        )}
+      </div>
+
+      <div className="p-3 space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => { setOpenSchedule(v => !v); setOpenEffort(false); }}
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border ${
+              openSchedule
+                ? 'bg-brand-50 text-brand-700 border-brand-200'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-brand-200 hover:text-brand-700'
+            }`}
+          >
+            <CalendarPlus size={13} /> Schedule
+          </button>
+          <button
+            type="button"
+            onClick={() => { setOpenEffort(v => !v); setOpenSchedule(false); }}
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border ${
+              openEffort
+                ? 'bg-forest-50 text-forest-700 border-forest-200'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-forest-200 hover:text-forest-700'
+            }`}
+          >
+            <Timer size={13} /> Log effort
+          </button>
+        </div>
+
+        {openSchedule && (
+          <div className="rounded-lg border border-brand-100 bg-brand-50/40 p-3 space-y-2.5 fade-in-soft">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-brand-700">New calendar event</div>
+            <div className="grid grid-cols-2 gap-2">
+              <input type="date" className="input text-xs py-1.5" value={date} onChange={(e) => setDate(e.target.value)} />
+              <input type="time" className="input text-xs py-1.5" value={time} onChange={(e) => setTime(e.target.value)} />
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {[15, 30, 45, 60, 90].map((m) => (
+                <button key={m} type="button" onClick={() => setDuration(m)}
+                  className={`px-2 py-1 rounded-full text-[11px] font-bold border transition-all ${
+                    duration === m ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-500 border-slate-200 hover:border-brand-300'
+                  }`}>
+                  {m < 60 ? `${m}m` : `${m / 60}h`}
+                </button>
+              ))}
+            </div>
+            <button onClick={downloadIcs} disabled={scheduling} className="btn-primary w-full justify-center text-xs">
+              {scheduling ? 'Generating…' : 'Download .ics → Outlook'}
+            </button>
+            <p className="text-[10px] text-slate-400 leading-snug">
+              Opens in Outlook, Google Calendar, or Apple Calendar. Title carries the task code so PMs can trace it back.
+            </p>
+          </div>
+        )}
+
+        {openEffort && (
+          <div className="rounded-lg border border-forest-100 bg-forest-50/40 p-3 space-y-2.5 fade-in-soft">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-forest-700">Log time spent</div>
+            <div className="flex flex-wrap gap-1">
+              {[15, 30, 45, 60, 90, 120].map((m) => (
+                <button key={m} type="button" onClick={() => setMinutes(m)}
+                  className={`px-2 py-1 rounded-full text-[11px] font-bold border transition-all ${
+                    minutes === m ? 'bg-forest-600 text-white border-forest-600' : 'bg-white text-slate-500 border-slate-200 hover:border-forest-300'
+                  }`}>
+                  {m < 60 ? `${m}m` : `${m / 60}h`}
+                </button>
+              ))}
+              <input type="number" min={1} max={720} value={minutes}
+                onChange={(e) => setMinutes(Math.max(1, Number(e.target.value) || 0))}
+                className="input text-xs py-1 w-20" aria-label="Custom minutes" />
+            </div>
+            <input className="input text-xs py-1.5" placeholder="Optional note — what did you work on?"
+              value={note} onChange={(e) => setNote(e.target.value)} />
+            <button onClick={logEffort} disabled={savingEffort} className="btn-success w-full justify-center text-xs"
+              style={{ background: 'linear-gradient(135deg, #2B8C29 0%, #43A047 100%)' }}>
+              {savingEffort ? 'Saving…' : `Log ${minutes}m`}
+            </button>
+          </div>
+        )}
+
+        {recent.length > 0 && (
+          <div className="pt-1.5">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Recent</div>
+            <ul className="space-y-1">
+              {recent.map((e: any) => (
+                <li key={e.id} className="flex items-start gap-2 text-xs">
+                  <span className="text-forest-600 font-bold tabular-nums shrink-0">
+                    {e.minutes < 60 ? `${e.minutes}m` : `${(e.minutes / 60).toFixed(1)}h`}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-slate-500">{e.note || (e.source === 'calendar' ? 'Scheduled meeting' : 'Worked on it')}</span>
+                    <span className="text-[10px] text-slate-300 ml-1.5">{e.onDate || formatDate(e.createdAt)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

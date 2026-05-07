@@ -20,6 +20,18 @@ const CommentSchema = new Schema(
   { _id: true, timestamps: true }
 );
 
+/** Effort log entry — minutes spent on this task. */
+const EffortEntrySchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    minutes: { type: Number, required: true, min: 1, max: 24 * 60 * 30 },
+    note: { type: String, default: '' },
+    onDate: { type: String, default: '' },
+    source: { type: String, enum: ['manual', 'calendar'], default: 'manual' },
+  },
+  { _id: true, timestamps: true }
+);
+
 const TaskSchema = new Schema(
   {
     projectId: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
@@ -77,7 +89,9 @@ const TaskSchema = new Schema(
     remarks: { type: String, default: '' },
 
     subtasks: { type: [SubtaskSchema], default: [] },
-    comments: { type: [CommentSchema], default: [] }
+    comments: { type: [CommentSchema], default: [] },
+    effortLog: { type: [EffortEntrySchema], default: [] },
+    lastActivityAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

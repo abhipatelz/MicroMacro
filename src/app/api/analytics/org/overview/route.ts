@@ -111,6 +111,7 @@ export async function GET(req: NextRequest) {
         teamName: teamMap[String(p.teamId)] || 'Unassigned',
         taskCount: s.taskCount, tasksDone: s.tasksDone, tasksOverdue: s.tasksOverdue,
         health: calcHealth(s.tasksDone, s.taskCount, s.tasksOverdue),
+        lastActivity: s.lastActivity || p.updatedAt || p.createdAt,
         noActivity,
       };
     });
