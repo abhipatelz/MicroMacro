@@ -15,11 +15,33 @@ export async function readBody<T>(req: Request, schema?: ZodSchema<T>): Promise<
   return schema.parse(raw);
 }
 
+// Infrastructure / config errors that must never leak raw details to users
+const INFRA_PATTERNS = [
+  /MONGODB_URI/i,
+  /USE_IN_MEMORY_MONGO/i,
+  /mongo/i,
+  /jwt_secret/i,
+  /ECONNREFUSED/i,
+  /getaddrinfo/i,
+  /ETIMEDOUT/i,
+  /connect ETIMEOUT/i,
+];
+
+function isInfraError(msg: string) {
+  return INFRA_PATTERNS.some((re) => re.test(msg));
+}
+
 export function handleError(e: unknown) {
   if (e instanceof ZodError) {
     return NextResponse.json({ error: 'Validation failed', issues: e.issues }, { status: 400 });
   }
-  console.error(e);
-  const msg = e instanceof Error ? e.message : 'Internal error';
-  return NextResponse.json({ error: msg }, { status: 500 });
+  console.error('[handleError]', e);
+  const raw = e instanceof Error ? e.message : 'Internal error';
+
+  // Never expose database config / connection details to end users
+  const userMsg = isInfraError(raw)
+    ? 'The service is temporarily unavailable. Please try again in a moment or contact your administrator.'
+    : raw;
+
+  return NextResponse.json({ error: userMsg }, { status: 500 });
 }

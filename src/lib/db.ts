@@ -21,7 +21,9 @@ async function resolveUri(): Promise<string> {
     return g.__mongoMemoryServer.getUri();
   }
 
-  throw new Error('MONGODB_URI not set and USE_IN_MEMORY_MONGO is not true');
+  throw new Error(
+    'Database not configured: set MONGODB_URI in your environment, or set USE_IN_MEMORY_MONGO=true for local dev.'
+  );
 }
 
 export async function connectDB(): Promise<typeof mongoose> {
