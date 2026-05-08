@@ -1,14 +1,15 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
-import { CheckCircle2, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Sparkles, ShieldCheck, Bot, Activity, Compass, CalendarDays } from 'lucide-react';
 
+/* Marketing tiles — each one maps to a real, shipped feature. */
 const FEATURES = [
-  { text: 'Unified task management across every team and project',  accent: false },
-  { text: 'Real-time project health, KPIs, and attention feed',     accent: false },
-  { text: 'AI-powered risk triage and insights — built in',         accent: true  },
-  { text: 'Lifecycle templates for any industry workflow',          accent: false },
+  { Icon: Bot,          label: 'QA Copilot',   line: 'Live AI grounded in 21 CFR, ICH, GAMP — answers with citations and one-click tasks.' },
+  { Icon: Activity,     label: 'Risk Radar',   line: 'Predicts which deadlines will slip, ranks them, and lets you re-assign in one click.' },
+  { Icon: Compass,      label: 'Insights',     line: 'Three actions to take today, in plain English. No dashboards to interpret.' },
+  { Icon: CalendarDays, label: 'Calendar + Personal', line: 'Outlook-friendly meeting export, effort logging, and a private to-do list per user.' },
 ];
 
 function StrengthMeter({ password }: { password: string }) {
@@ -49,7 +50,6 @@ function StrengthMeter({ password }: { password: string }) {
 
 export default function LoginPage() {
   const router = useRouter();
-  // mode: 'login' = normal sign-in | 'setup' = first-run workspace setup
   const [mode, setMode] = useState<'login' | 'setup'>('login');
   const [isFirstRun, setIsFirstRun] = useState(false);
   const [email, setEmail] = useState('');
@@ -59,7 +59,31 @@ export default function LoginPage() {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Check if this is a fresh workspace (no users yet)
+  // Carousel state — auto-advances every 4.2s
+  const [tileIdx, setTileIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTileIdx(i => (i + 1) % FEATURES.length), 4200);
+    return () => clearInterval(id);
+  }, []);
+
+  // Pointer-aware spotlight on the brand panel (CSS variables, no rerenders)
+  const stageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+    const onMove = (e: PointerEvent) => {
+      const r = el.getBoundingClientRect();
+      const x = ((e.clientX - r.left) / r.width) * 100;
+      const y = ((e.clientY - r.top) / r.height) * 100;
+      el.style.setProperty('--mx', `${x}%`);
+      el.style.setProperty('--my', `${y}%`);
+    };
+    el.addEventListener('pointermove', onMove);
+    return () => el.removeEventListener('pointermove', onMove);
+  }, []);
+
   useEffect(() => {
     api<{ initialized: boolean }>('/system/status').then((d) => {
       if (!d.initialized) setIsFirstRun(true);
@@ -88,47 +112,90 @@ export default function LoginPage() {
   return (
     <>
       <style>{`
+        @keyframes word-rise {
+          from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
+          to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+        }
+        @keyframes fade-up   { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fade-in   { from { opacity: 0; }                              to { opacity: 1; } }
+        @keyframes fade-in-soft { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes glow-pulse {
-          0%, 100% { opacity: 0.55; transform: scale(1); }
-          50%       { opacity: 0.80; transform: scale(1.06); }
+          0%, 100% { opacity: 0.45; transform: scale(1); }
+          50%      { opacity: 0.75; transform: scale(1.06); }
         }
-        @keyframes logo-float {
-          0%, 100% { transform: translateY(0px); }
-          50%       { transform: translateY(-6px); }
-        }
-        @keyframes fade-up {
-          from { opacity: 0; transform: translateY(16px); }
+        @keyframes orbit-1   { from { transform: rotate(0deg) translateX(220px) rotate(0deg);    } to { transform: rotate(360deg) translateX(220px) rotate(-360deg);   } }
+        @keyframes orbit-2   { from { transform: rotate(0deg) translateX(160px) rotate(0deg);    } to { transform: rotate(-360deg) translateX(160px) rotate(360deg);   } }
+        @keyframes shine     { 0% { transform: translateX(-110%); } 60%, 100% { transform: translateX(150%); } }
+        @keyframes tile-in   {
+          from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes fade-in-soft {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
+
+        .word                { display: inline-block; opacity: 0; animation: word-rise 0.7s cubic-bezier(.22,.95,.36,1) forwards; }
+        .fade-up             { animation: fade-up 0.6s ease-out forwards; }
+        .fade-up-1           { animation: fade-up 0.6s 0.05s ease-out both; }
+        .fade-up-2           { animation: fade-up 0.6s 0.10s ease-out both; }
+        .fade-up-3           { animation: fade-up 0.6s 0.15s ease-out both; }
+        .fade-in             { animation: fade-in 0.6s ease-out forwards; }
+        .fade-in-soft        { animation: fade-in-soft 0.32s ease-out both; }
+        .form-swap           { animation: fade-in-soft 0.32s ease-out both; }
+        .tile-in             { animation: tile-in 0.45s cubic-bezier(.22,.95,.36,1) both; }
+        .orbit-dot-1         { animation: orbit-1 26s linear infinite; }
+        .orbit-dot-2         { animation: orbit-2 19s linear infinite; }
+        .glow                { animation: glow-pulse 7s ease-in-out infinite; }
+
+        /* Pointer-aware spotlight — falls back to a centered glow if no pointer */
+        .stage::before {
+          content: '';
+          position: absolute; inset: 0; pointer-events: none;
+          background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 35%),
+                      rgba(99, 165, 245, 0.10) 0%, transparent 55%);
+          transition: background 0.2s ease;
         }
-        @keyframes shimmer-line {
-          0%   { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        @keyframes orbit {
-          from { transform: rotate(0deg) translateX(180px) rotate(0deg); }
-          to   { transform: rotate(360deg) translateX(180px) rotate(-360deg); }
-        }
-        .logo-float    { animation: logo-float 5s ease-in-out infinite; }
-        .fade-up       { animation: fade-up 0.6s ease-out forwards; }
-        .fade-up-1     { animation: fade-up 0.6s 0.1s ease-out both; }
-        .fade-up-2     { animation: fade-up 0.6s 0.2s ease-out both; }
-        .fade-up-3     { animation: fade-up 0.6s 0.3s ease-out both; }
-        .fade-in-soft  { animation: fade-in-soft 0.35s ease-out both; }
-        .form-swap     { animation: fade-in-soft 0.35s ease-out both; }
-        .shimmer-line::after {
+
+        /* Submit button shine on hover */
+        .btn-shine { position: relative; overflow: hidden; }
+        .btn-shine::after {
           content: '';
           position: absolute; inset: 0;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
-          animation: shimmer-line 2.6s ease-in-out infinite;
+          background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,0.35) 50%, transparent 65%);
+          transform: translateX(-110%);
+          transition: opacity 0.2s;
+          pointer-events: none;
+          opacity: 0;
         }
-        .orbit-dot { animation: orbit 18s linear infinite; }
+        .btn-shine:hover:not(:disabled)::after { opacity: 1; animation: shine 1.1s ease-out; }
+
+        /* Floating input — label rises when focused/filled */
+        .floating { position: relative; }
+        .floating input {
+          width: 100%; padding: 22px 14px 8px; border-radius: 12px;
+          border: 1px solid #E2E8F0; background: #FFFFFF; font-size: 14px; color: #0f172a;
+          transition: border-color 0.18s, box-shadow 0.18s;
+        }
+        .floating input:focus {
+          outline: none; border-color: #1769C8;
+          box-shadow: 0 0 0 4px rgba(23,105,200,0.12);
+        }
+        .floating label {
+          position: absolute; left: 14px; top: 14px;
+          font-size: 13px; color: #94A3B8; pointer-events: none;
+          transition: transform 0.18s ease, font-size 0.18s ease, color 0.18s ease;
+          transform-origin: 0 0;
+        }
+        .floating input:focus + label,
+        .floating input:not(:placeholder-shown) + label {
+          transform: translateY(-9px) scale(0.78);
+          color: #1769C8; font-weight: 600; letter-spacing: 0.02em;
+        }
+        .floating input::placeholder { color: transparent; }
+
         @media (prefers-reduced-motion: reduce) {
-          .logo-float, .orbit-dot, .shimmer-line::after { animation: none !important; }
-          .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-in-soft, .form-swap { animation-duration: 0.01ms !important; }
+          .word, .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-in,
+          .fade-in-soft, .form-swap, .tile-in { animation-duration: 0.01ms !important; }
+          .orbit-dot-1, .orbit-dot-2, .glow, .btn-shine::after { animation: none !important; }
+          .stage::before { background: radial-gradient(500px circle at 50% 35%,
+                            rgba(99,165,245,0.08) 0%, transparent 55%); }
         }
       `}</style>
 
@@ -136,99 +203,127 @@ export default function LoginPage() {
 
         {/* ════ LEFT — Brand panel ════════════════════════════════════════ */}
         <div
-          className="hidden lg:flex lg:w-[54%] flex-col relative overflow-hidden"
-          style={{ background: 'linear-gradient(160deg, #050E1D 0%, #091828 40%, #0B1F3A 70%, #0C2347 100%)' }}
+          ref={stageRef}
+          className="stage hidden lg:flex lg:w-[55%] flex-col relative overflow-hidden"
+          style={{ background: 'linear-gradient(160deg, #050E1D 0%, #081729 38%, #0B1F3A 70%, #0C2347 100%)' }}
         >
-          <div className="absolute inset-0 pointer-events-none" style={{
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px)',
-            backgroundSize: '28px 28px',
+          {/* Subtle dot grid */}
+          <div className="absolute inset-0 pointer-events-none opacity-50" style={{
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px)',
+            backgroundSize: '32px 32px',
           }} />
-          <div className="absolute pointer-events-none" style={{
-            top: '18%', left: '50%', transform: 'translateX(-50%)',
-            width: 480, height: 480, borderRadius: '50%',
+
+          {/* Ambient glows */}
+          <div className="glow absolute pointer-events-none" style={{
+            top: '20%', left: '50%', transform: 'translateX(-50%)',
+            width: 520, height: 520, borderRadius: '50%',
             background: 'radial-gradient(circle, rgba(21,101,192,0.22) 0%, transparent 65%)',
-            animation: 'glow-pulse 6s ease-in-out infinite',
           }} />
           <div className="absolute pointer-events-none" style={{
-            bottom: '-10%', right: '-10%', width: 360, height: 360, borderRadius: '50%',
+            bottom: '-12%', right: '-8%', width: 380, height: 380, borderRadius: '50%',
             background: 'radial-gradient(circle, rgba(43,160,71,0.14) 0%, transparent 70%)',
           }} />
 
-          {/* Subtle orbiting accent dots — visual delight */}
-          <div className="absolute pointer-events-none" style={{ top: '24%', left: '50%' }}>
-            <div className="orbit-dot" style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: '#1E88E5', boxShadow: '0 0 12px rgba(30,136,229,0.7)',
+          {/* Two orbit dots — accent only */}
+          <div className="absolute pointer-events-none" style={{ top: '32%', left: '50%' }}>
+            <div className="orbit-dot-1" style={{
+              width: 5, height: 5, borderRadius: '50%',
+              background: '#60A5FA', boxShadow: '0 0 14px rgba(96,165,250,0.85)',
             }} />
           </div>
-          <div className="absolute pointer-events-none" style={{ top: '28%', left: '50%', animationDelay: '-9s' }}>
-            <div className="orbit-dot" style={{
+          <div className="absolute pointer-events-none" style={{ top: '48%', left: '50%' }}>
+            <div className="orbit-dot-2" style={{
               width: 4, height: 4, borderRadius: '50%',
-              background: '#43A047', boxShadow: '0 0 10px rgba(67,160,71,0.7)',
-              animationDelay: '-9s',
+              background: '#43A047', boxShadow: '0 0 12px rgba(67,160,71,0.8)',
             }} />
           </div>
 
-          <div className="relative flex flex-col flex-1 px-14 py-12">
-            <div className="flex-1 flex flex-col justify-center">
-              <div className="flex justify-center mb-10 logo-float">
-                <div style={{
-                  background: '#ffffff', borderRadius: 20, padding: '22px 40px',
-                  boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 24px 64px rgba(0,0,0,0.5),
-                              0 8px 24px rgba(21,101,192,0.25), inset 0 1px 0 rgba(255,255,255,0.9)`,
-                }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logo-full.png" alt="Pragati" style={{ height: 52, width: 'auto', display: 'block' }} />
-                </div>
+          <div className="relative flex flex-col flex-1 px-12 lg:px-16 py-10">
+            {/* Top — clean wordmark, top-left aligned (modern style) */}
+            <div className="fade-up flex items-center gap-2.5">
+              <div style={{
+                background: '#ffffff', borderRadius: 10, padding: '6px 8px',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo-icon.png" alt="" style={{ height: 22, width: 22, display: 'block' }} />
               </div>
-
-              <div className="fade-up-1 text-center" style={{ fontSize: 10, letterSpacing: '0.22em' }}>
-                <span className="text-blue-400/60 uppercase font-bold">Project Intelligence Platform</span>
+              <div className="text-white font-black tracking-tight" style={{ fontSize: 17, letterSpacing: '-0.01em' }}>
+                Pragati
               </div>
-
-              <h1 className="fade-up-2 text-center font-black text-white mt-3 leading-none"
-                style={{ fontSize: 'clamp(58px, 5.8vw, 80px)', letterSpacing: '-0.035em' }}>
-                Pragati.
-              </h1>
-
-              <div className="fade-up-2 flex justify-center mt-5">
-                <div className="relative h-0.5 w-16 rounded-full overflow-hidden shimmer-line"
-                  style={{ background: 'linear-gradient(90deg, #1769C8, #43A047)' }} />
+              <div className="text-blue-300/50 font-bold uppercase ml-1" style={{ fontSize: 9, letterSpacing: '0.18em' }}>
+                Project Intelligence
               </div>
-
-              <p className="fade-up-3 text-center text-white/40 mt-4 leading-relaxed mx-auto max-w-xs" style={{ fontSize: 14 }}>
-                Built for teams who care about execution, visibility, and continuous improvement.
-              </p>
-
-              <ul className="fade-up-3 mt-9 space-y-3 max-w-xs mx-auto w-full">
-                {FEATURES.map((f) => (
-                  <li key={f.text} className="flex items-start gap-3">
-                    <CheckCircle2 size={15} className="shrink-0 mt-0.5"
-                      style={{ color: f.accent ? '#43A047' : 'rgba(96,165,250,0.7)' }} />
-                    <span style={{ fontSize: 13, color: f.accent ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.42)' }}
-                      className="leading-snug">{f.text}</span>
-                  </li>
-                ))}
-              </ul>
             </div>
 
-            <div className="text-center pb-2">
-              <div style={{ fontSize: 11, fontStyle: 'italic' }} className="text-white/18 tracking-wide">
-                Progress over perfection — every day
+            {/* Hero — confident, minimal headline */}
+            <div className="flex-1 flex flex-col justify-center max-w-[540px]">
+              <div className="font-black text-white leading-[0.98] tracking-[-0.035em]"
+                   style={{ fontSize: 'clamp(48px, 4.6vw, 64px)' }}>
+                <span className="word" style={{ animationDelay: '0.05s' }}>Project </span>
+                <span className="word" style={{ animationDelay: '0.18s' }}>intelligence,</span><br/>
+                <span className="word" style={{ animationDelay: '0.32s' }}>built </span>
+                <span className="word" style={{ animationDelay: '0.45s', background: 'linear-gradient(90deg,#60A5FA,#43A047)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                  in.
+                </span>
               </div>
-              <div style={{ fontSize: 10 }} className="text-white/10 uppercase tracking-[0.18em] mt-1.5">
-                Pragati · Project Intelligence · v2
+
+              <p className="fade-up-2 text-white/45 mt-6 leading-relaxed max-w-md" style={{ fontSize: 14.5 }}>
+                The PM tool that doesn&rsquo;t just track work — it tells you which three things to fix today,
+                why they matter, and gives you one click to do them.
+              </p>
+
+              {/* Rotating feature tile — exactly one shown, crossfaded */}
+              <div className="fade-up-3 mt-10 max-w-md">
+                <div className="flex items-center gap-2 mb-3">
+                  {FEATURES.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setTileIdx(i)}
+                      aria-label={`Feature ${i + 1}`}
+                      className="h-1 rounded-full transition-all"
+                      style={{
+                        width: i === tileIdx ? 28 : 14,
+                        background: i === tileIdx ? '#60A5FA' : 'rgba(255,255,255,0.18)',
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur p-5 min-h-[112px]">
+                  {(() => {
+                    const F = FEATURES[tileIdx];
+                    const Icon = F.Icon;
+                    return (
+                      <div key={tileIdx} className="tile-in flex items-start gap-3.5">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                             style={{ background: 'linear-gradient(135deg,#1565C0 0%, #1769C8 100%)', boxShadow: '0 4px 14px rgba(21,101,192,0.45)' }}>
+                          <Icon size={18} className="text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-white font-bold text-[15px] tracking-tight leading-tight">{F.label}</div>
+                          <div className="text-white/55 text-[13px] mt-1 leading-snug">{F.line}</div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
+            </div>
+
+            {/* Bottom — quiet stamp */}
+            <div className="text-white/25" style={{ fontSize: 10, letterSpacing: '0.2em' }}>
+              <span className="uppercase font-semibold">v2 · GxP-aware · Audit trail · 21 CFR Part 11</span>
             </div>
           </div>
         </div>
 
         {/* ════ RIGHT — Form panel ════════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col justify-center items-center bg-white px-8 py-12 relative">
+        <div className="flex-1 flex flex-col justify-center items-center bg-white px-6 py-12 relative">
+          {/* Brand bar */}
           <div className="absolute top-0 left-0 right-0 h-[3px]"
             style={{ background: 'linear-gradient(90deg, #1565C0 0%, #1769C8 50%, #2B8C29 100%)' }} />
 
-          <div className="w-full max-w-[340px] fade-up">
+          <div className="w-full max-w-[360px] fade-up">
 
             {/* Mobile branding */}
             <div className="flex flex-col items-center mb-8 lg:hidden">
@@ -239,7 +334,7 @@ export default function LoginPage() {
               <div className="text-xl font-black text-slate-900 mt-2 tracking-tight">Pragati</div>
             </div>
 
-            {/* First-run banner — forest accent signals fresh workspace */}
+            {/* First-run banner */}
             {isFirstRun && mode === 'login' && (
               <div className="mb-6 rounded-xl border border-forest-200 bg-forest-50 px-4 py-3 flex items-start gap-3 fade-in-soft">
                 <Sparkles size={16} className="text-forest-600 shrink-0 mt-0.5" />
@@ -257,76 +352,77 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Heading */}
             <div className="mb-7 form-swap" key={mode + '-h'}>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              <h2 className="text-[26px] font-black text-slate-900 tracking-tight leading-tight">
                 {mode === 'login' ? 'Welcome back' : 'Set up workspace'}
               </h2>
-              <p className="text-sm text-slate-400 mt-1 leading-snug">
+              <p className="text-sm text-slate-400 mt-1.5 leading-snug">
                 {mode === 'login'
                   ? 'Sign in to your Pragati workspace.'
-                  : 'Create the first PM account. You can add team members later.'}
+                  : 'Create the first PM account. Add the team after.'}
               </p>
             </div>
 
-            <form onSubmit={submit} className="space-y-4 form-swap" key={mode + '-f'}>
+            <form onSubmit={submit} className="space-y-3.5 form-swap" key={mode + '-f'}>
               {mode === 'setup' && (
                 <>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Full name</label>
-                    <input className="input" placeholder="Your name" required
+                  <div className="floating">
+                    <input id="lp-name" placeholder=" " required
                       value={name} onChange={(e) => setName(e.target.value)} />
+                    <label htmlFor="lp-name">Full name</label>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                      Job title <span className="normal-case font-normal text-slate-300">(optional)</span>
-                    </label>
-                    <input className="input" placeholder="e.g. Product Manager"
+                  <div className="floating">
+                    <input id="lp-title" placeholder=" "
                       value={title} onChange={(e) => setTitle(e.target.value)} />
+                    <label htmlFor="lp-title">Job title (optional)</label>
                   </div>
                 </>
               )}
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
-                <input className="input" type="email" placeholder="you@company.com" required
+              <div className="floating">
+                <input id="lp-email" type="email" placeholder=" " required
                   autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <label htmlFor="lp-email">Work email</label>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
-                  {mode === 'login' && (
+                <div className="floating">
+                  <input id="lp-pass" type="password" required
+                    minLength={mode === 'setup' ? 8 : 1}
+                    placeholder=" "
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <label htmlFor="lp-pass">{mode === 'setup' ? 'Password (min 8 chars)' : 'Password'}</label>
+                </div>
+                {mode === 'login' && (
+                  <div className="text-right mt-1.5">
                     <a href="/forgot-password" className="text-xs text-blue-600 font-semibold hover:text-blue-800 transition-colors">
                       Forgot password?
                     </a>
-                  )}
-                </div>
-                <input className="input" type="password" required minLength={mode === 'setup' ? 8 : 1}
-                  placeholder={mode === 'setup' ? 'Min 8 characters' : '••••••••'}
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                )}
                 {mode === 'setup' && <StrengthMeter password={password} />}
               </div>
 
               {err && (
-                <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug">
+                <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug fade-in-soft">
                   {err}
                 </div>
               )}
 
-              <button type="submit" disabled={loading}
-                aria-busy={loading}
-                className="btn-primary w-full justify-center py-3 text-sm font-bold group mt-1"
-                style={{ boxShadow: '0 4px 14px rgba(21,101,192,0.35)' }}
-              >
+              <button type="submit" disabled={loading} aria-busy={loading}
+                className="btn-primary btn-shine w-full justify-center py-3.5 text-sm font-bold group mt-1"
+                style={{ boxShadow: '0 6px 20px rgba(21,101,192,0.32)' }}>
                 {loading ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
                     <span>{mode === 'login' ? 'Signing you in…' : 'Creating workspace…'}</span>
                   </>
                 ) : (
-                  <>{mode === 'login' ? 'Sign in' : 'Create workspace'}<ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></>
+                  <>
+                    <span>{mode === 'login' ? 'Sign in' : 'Create workspace'}</span>
+                    <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  </>
                 )}
               </button>
             </form>
@@ -340,19 +436,14 @@ export default function LoginPage() {
                     className="text-blue-600 font-semibold hover:underline">Sign in</button>
                 </>
               ) : (
-                <span className="text-xs text-slate-300">
-                  No account? Ask your PM to create one for you.
-                </span>
+                <span className="text-xs text-slate-300">No account? Ask your PM to invite you.</span>
               )}
             </p>
 
-            <div className="mt-10 pt-6 border-t border-slate-100">
+            <div className="mt-9 pt-5 border-t border-slate-100">
               <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
                 <ShieldCheck size={12} className="text-forest-600" aria-hidden="true" />
                 <span>Encrypted in transit · GxP-aware audit trail</span>
-              </div>
-              <div style={{ fontSize: 10 }} className="text-slate-300 text-center mt-2 tracking-wider uppercase">
-                Pragati · Project Intelligence Platform
               </div>
             </div>
           </div>
