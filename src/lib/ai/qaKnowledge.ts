@@ -307,26 +307,35 @@ export const KB: KBEntry[] = [
 ];
 
 // ── Matching engine ────────────────────────────────────────────────────────────
-export function findBestAnswer(query: string): KBEntry | null {
+function scoreEntries(query: string): { entry: KBEntry; score: number }[] {
   const q = query.toLowerCase();
-
-  // Score each entry
   const scored = KB.map(entry => {
     let score = 0;
     for (const kw of entry.keywords) {
-      if (q.includes(kw)) score += kw.split(' ').length * 3; // longer keyword = better signal
+      if (q.includes(kw)) score += kw.split(' ').length * 3;
     }
-    // Also check individual words from keyword phrases
     const allWords = entry.keywords.join(' ').split(' ');
     for (const word of allWords) {
       if (word.length > 3 && q.includes(word)) score += 1;
     }
     return { entry, score };
   });
-
   scored.sort((a, b) => b.score - a.score);
-  const best = scored[0];
-  return best.score >= 2 ? best.entry : null;
+  return scored;
+}
+
+export function findBestAnswer(query: string): KBEntry | null {
+  const scored = scoreEntries(query);
+  return scored[0]?.score >= 2 ? scored[0].entry : null;
+}
+
+// Top-K relevant entries used to ground the LLM (RAG-style).
+// Returns up to `k` entries with score >= minScore, ordered by score desc.
+export function findRelevantEntries(query: string, k = 3, minScore = 2): KBEntry[] {
+  return scoreEntries(query)
+    .filter(s => s.score >= minScore)
+    .slice(0, k)
+    .map(s => s.entry);
 }
 
 // ── General guidance for unmatched questions ──────────────────────────────────
