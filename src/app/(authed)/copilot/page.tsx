@@ -291,7 +291,7 @@ function CopilotInner() {
   const [streaming, setStreaming]     = useState(false);
   const [projects, setProjects]       = useState<any[]>([]);
   const [me, setMe]                   = useState<any>(null);
-  const [noKey, setNoKey]             = useState(false);
+  const [mode, setMode]               = useState<'llm' | 'kb' | null>(null);
 
   // Task context (when launched from a task page)
   const [taskCtx, setTaskCtx]         = useState<any>(null);
@@ -352,7 +352,6 @@ function CopilotInner() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        if (res.status === 503) setNoKey(true);
         const errMsg = err.error || `Error ${res.status} — please try again.`;
         setMessages(prev => {
           const copy = [...prev];
@@ -361,6 +360,10 @@ function CopilotInner() {
         });
         return;
       }
+
+      // Pick up the runtime mode from the response header (LLM vs KB-only)
+      const m = res.headers.get('X-Copilot-Mode');
+      if (m === 'llm' || m === 'kb') setMode(m);
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -434,14 +437,26 @@ function CopilotInner() {
             <Bot size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight">QA Copilot</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight">QA Copilot</h1>
+              {mode === 'llm' && (
+                <span className="text-[9px] font-bold uppercase tracking-wider text-forest-700 bg-forest-50 border border-forest-200 px-1.5 py-0.5 rounded-full">
+                  Live AI
+                </span>
+              )}
+              {mode === 'kb' && (
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">
+                  KB mode
+                </span>
+              )}
+            </div>
             {taskCtx ? (
               <p className="text-[11px] text-brand-600 font-semibold truncate max-w-[300px]">
                 <Sparkles size={9} className="inline mr-0.5 -mt-0.5" />
                 Context: {taskCtx.title}
               </p>
             ) : (
-              <p className="text-[11px] text-slate-400">Ask anything about QA procedures · answers + instant task creation</p>
+              <p className="text-[11px] text-slate-400">Ask anything about QA — conversational, regulation-grounded, with one-click task creation.</p>
             )}
           </div>
         </div>
@@ -452,11 +467,14 @@ function CopilotInner() {
         )}
       </div>
 
-      {/* No API key banner */}
-      {noKey && (
-        <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-          <strong>Setup needed:</strong> Add <code className="bg-amber-100 px-1 rounded font-mono">GEMINI_API_KEY</code> to your environment variables, then redeploy.{' '}
-          Get a <strong>free</strong> key (no credit card) at <strong>aistudio.google.com</strong> → "Get API key".
+      {/* KB-mode banner — shows once a response has come back without a key set */}
+      {mode === 'kb' && (
+        <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 flex items-start gap-2">
+          <span className="text-base shrink-0">💡</span>
+          <div>
+            <strong>Running in knowledge-base mode.</strong> Answers come from a curated regulatory KB rather than a live LLM.
+            For richer, conversational answers, set <code className="bg-amber-100 px-1 rounded font-mono">GEMINI_API_KEY</code> on the server (free, no credit card at <strong>aistudio.google.com → Get API key</strong>).
+          </div>
         </div>
       )}
 
