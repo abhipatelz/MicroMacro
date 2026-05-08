@@ -114,8 +114,17 @@ function QuickAdd({ projects, userId, onAdded, open, onClose }: {
   const [errMsg, setErrMsg] = useState('');
   const [dueOverride, setDueOverride] = useState<string>('');
   const [priorityOverride, setPriorityOverride] = useState<Priority | ''>('');
+  const [personal, setPersonal] = useState<{ id: string; name: string; code: string } | null>(null);
   const parsed = useMemo(() => parseNaturalInput(raw), [raw]);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Lazy-load Personal project on first open — created server-side if missing
+  useEffect(() => {
+    if (!open || personal) return;
+    api<{ id: string; name: string; code: string }>('/projects/personal')
+      .then(setPersonal)
+      .catch(() => {});
+  }, [open, personal]);
 
   // Effective values: explicit override beats natural-language parsing
   const effDue = dueOverride || parsed.dueDate || '';
@@ -268,12 +277,18 @@ function QuickAdd({ projects, userId, onAdded, open, onClose }: {
               required
             >
               <option value="">Select project…</option>
-              {projects.map((p) => (
+              {personal && (
+                <option value={personal.id}>👤 Personal · just for me</option>
+              )}
+              {projects.filter(p => !personal || p.id !== personal.id).map((p) => (
                 <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ''}{p.name}</option>
               ))}
             </select>
-            {projects.length === 0 && (
+            {projects.length === 0 && !personal && (
               <p className="text-xs text-amber-600 mt-1">No projects yet. <Link href="/projects/new" className="font-semibold underline">Create one</Link>.</p>
+            )}
+            {personal && projectId === personal.id && (
+              <p className="text-[11px] text-slate-400 mt-1">Personal tasks are private to you — they don&rsquo;t appear in team views.</p>
             )}
           </div>
 
