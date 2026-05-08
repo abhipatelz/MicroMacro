@@ -25,16 +25,56 @@ export default function TeamDetailPage() {
   const [view, setView] = useState<'progress' | 'microtasks' | 'projects'>('progress');
 
   async function load() {
-    setTeam(await api<any>(`/teams/${id}`));
-    setBoard(await api<any[]>(`/teams/${id}/board`));
-    setProgress(await api<any>(`/analytics/team/${id}/progress`));
+    const [t, b, p] = await Promise.all([
+      api<any>(`/teams/${id}`),
+      api<any[]>(`/teams/${id}/board`),
+      api<any>(`/analytics/team/${id}/progress`),
+    ]);
+    setTeam(t);
+    setBoard(b);
+    setProgress(p);
   }
   useEffect(() => {
     load();
     api<any[]>('/users').then(setUsers);
   }, [id]);
 
-  if (!team) return <div className="text-slate-500">Loading…</div>;
+  if (!team) {
+    return (
+      <div className="space-y-6 page-enter" aria-busy="true" aria-live="polite">
+        <div className="space-y-2">
+          <div className="skeleton h-7 w-48" />
+          <div className="skeleton h-4 w-3/4" />
+          <div className="skeleton h-3 w-32" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-1 space-y-3">
+            <div className="card p-4 space-y-3">
+              <div className="skeleton h-4 w-24" />
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="skeleton h-7 w-7 rounded-full shrink-0" />
+                  <div className="skeleton h-3 flex-1" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="lg:col-span-3 space-y-3">
+            <div className="card p-4 space-y-3">
+              <div className="skeleton h-4 w-32" />
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="skeleton h-3 w-full" />
+                  <div className="skeleton h-2 w-1/2" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <span className="sr-only">Loading team…</span>
+      </div>
+    );
+  }
 
   async function addMember() {
     if (!newMember) return;

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { Avatar, Card, LifecycleTag, ProgressBar } from '@/components/ui';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { ChevronRight, Shield, AlertTriangle, Pause, Users, TrendingUp, TrendingDown, Sparkles } from 'lucide-react';
 
 interface ProjectInsight {
   id: string; name: string; code: string; lifecycle: string;
@@ -29,14 +30,33 @@ interface ArchiveProject {
   taskCount: number; tasksDone: number; completedAt: string | null;
 }
 
+interface TopAction {
+  id: string;
+  title: string;
+  why: string;
+  link: string;
+  kind: 'gxp' | 'stuck' | 'overload' | 'critical' | 'atrisk';
+}
+
 interface InsightsData {
   brief: string[];
+  topActions: TopAction[];
+  velocityHeadline: string;
+  movers: { risingStars: ProjectInsight[]; needAttention: ProjectInsight[] };
   projects: ProjectInsight[];
   people: PersonInsight[];
   stuckTasks: StuckTask[];
   velocity: { label: string; completed: number }[];
   archive: ArchiveProject[];
 }
+
+const ACTION_KIND = {
+  gxp:      { Icon: Shield,        bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-700',     iconBg: 'bg-red-100' },
+  stuck:    { Icon: Pause,         bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   iconBg: 'bg-amber-100' },
+  overload: { Icon: Users,         bg: 'bg-purple-50',  border: 'border-purple-200',  text: 'text-purple-800',  iconBg: 'bg-purple-100' },
+  critical: { Icon: AlertTriangle, bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-700',     iconBg: 'bg-red-100' },
+  atrisk:   { Icon: AlertTriangle, bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   iconBg: 'bg-amber-100' },
+} as const;
 
 const HEALTH_CONFIG = {
   healthy:  { dot: '🟢', label: 'Healthy',  bg: 'bg-forest-50',  border: 'border-forest-200',  text: 'text-forest-700'  },
@@ -103,20 +123,73 @@ export default function InsightsPage() {
       <div>
         <h1 className="text-2xl font-black text-slate-900">Insights</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Live intelligence — no guesswork, no dashboards you have to interpret.
+          What needs your attention today — ranked by impact, with one click to act.
         </p>
       </div>
 
-      {/* Morning brief */}
-      <div className="rounded-xl border border-brand-200 bg-gradient-to-r from-brand-50 to-slate-50 p-4">
-        <div className="text-[10px] font-bold uppercase tracking-widest text-brand-500 mb-2">
-          Team Brief · right now
+      {/* Top 3 Actions Today */}
+      {data.topActions && data.topActions.length > 0 ? (
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2">
+            <Sparkles size={13} className="text-brand-500" />
+            <h2 className="text-[11px] font-bold uppercase tracking-widest text-brand-600">
+              Top {data.topActions.length} action{data.topActions.length > 1 ? 's' : ''} today
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {data.topActions.map((a, i) => {
+              const c = ACTION_KIND[a.kind];
+              const Icon = c.Icon;
+              return (
+                <Link
+                  href={a.link}
+                  key={a.id}
+                  className={`group rounded-xl border ${c.border} ${c.bg} p-4 hover:shadow-md transition-all hover:-translate-y-0.5`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-lg ${c.iconBg} flex items-center justify-center shrink-0`}>
+                      <Icon size={15} className={c.text} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-1.5 mb-1">
+                        <span className="text-[10px] font-black text-slate-400">#{i + 1}</span>
+                        <h3 className={`text-sm font-bold leading-tight ${c.text}`}>{a.title}</h3>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-snug">{a.why}</p>
+                      <div className={`mt-2 inline-flex items-center gap-0.5 text-[11px] font-semibold ${c.text} group-hover:gap-1.5 transition-all`}>
+                        Take action <ChevronRight size={11} />
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </div>
-        <div className="space-y-1.5">
-          {data.brief.map((line, i) => (
-            <p key={i} className="text-sm text-slate-700 leading-relaxed">{line}</p>
-          ))}
+      ) : (
+        <div className="rounded-xl border border-forest-200 bg-gradient-to-r from-forest-50 to-slate-50 p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-forest-100 flex items-center justify-center shrink-0">
+            <Sparkles size={18} className="text-forest-600" />
+          </div>
+          <div>
+            <div className="text-sm font-bold text-forest-700">Nothing urgent on your plate today.</div>
+            <div className="text-xs text-forest-600/80 mt-0.5">
+              No critical projects, no overloaded teammates, no blockers. Time to pick up momentum work.
+            </div>
+          </div>
         </div>
+      )}
+
+      {/* Velocity headline */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+          (data.velocity?.[3]?.completed ?? 0) >= (data.velocity?.[2]?.completed ?? 0)
+            ? 'bg-forest-50 text-forest-600' : 'bg-amber-50 text-amber-600'
+        }`}>
+          {(data.velocity?.[3]?.completed ?? 0) >= (data.velocity?.[2]?.completed ?? 0)
+            ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+        </div>
+        <p className="text-sm text-slate-700 leading-snug">{data.velocityHeadline}</p>
       </div>
 
       {/* Top stats row */}
@@ -203,15 +276,56 @@ export default function InsightsPage() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-          <div className="mt-2 text-center text-xs text-slate-400">
-            {(data.velocity?.[3]?.completed ?? 0) > (data.velocity?.[2]?.completed ?? 0)
-              ? '↑ Accelerating this week'
-              : (data.velocity?.[3]?.completed ?? 0) < (data.velocity?.[2]?.completed ?? 0)
-              ? '↓ Slowing this week'
-              : '→ Steady pace'}
-          </div>
         </Card>
       </div>
+
+      {/* Movers — what changed this week */}
+      {(data.movers?.risingStars?.length > 0 || data.movers?.needAttention?.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {data.movers.risingStars.length > 0 && (
+            <Card title="Rising stars · most progress this week">
+              <div className="space-y-2">
+                {data.movers.risingStars.map(p => (
+                  <Link href={`/projects/${p.id}`} key={p.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-forest-50/40 transition-colors group">
+                    <div className="w-7 h-7 rounded-md bg-forest-50 border border-forest-100 flex items-center justify-center shrink-0">
+                      <TrendingUp size={13} className="text-forest-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] text-slate-400">{p.code}</span>
+                        <span className="text-sm font-medium text-slate-700 truncate group-hover:text-brand-700">{p.name}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-400">{p.completedThisWeek} task{p.completedThisWeek > 1 ? 's' : ''} shipped</div>
+                    </div>
+                    <ChevronRight size={13} className="text-slate-300 group-hover:text-brand-500 transition-colors" />
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          )}
+          {data.movers.needAttention.length > 0 && (
+            <Card title="Need attention · stalled this week">
+              <div className="space-y-2">
+                {data.movers.needAttention.map(p => (
+                  <Link href={`/projects/${p.id}`} key={p.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-amber-50/40 transition-colors group">
+                    <div className="w-7 h-7 rounded-md bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+                      <Pause size={13} className="text-amber-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] text-slate-400">{p.code}</span>
+                        <span className="text-sm font-medium text-slate-700 truncate group-hover:text-brand-700">{p.name}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-400">No movement in {p.stagnantDays}d · {p.openTasks} open</div>
+                    </div>
+                    <ChevronRight size={13} className="text-slate-300 group-hover:text-brand-500 transition-colors" />
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Team pulse */}
       <Card title="Team pulse">

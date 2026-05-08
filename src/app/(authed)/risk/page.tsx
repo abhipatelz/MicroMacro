@@ -2,7 +2,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
-import { Activity, AlertTriangle, Info, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import {
+  Activity, AlertTriangle, Info, ChevronDown, ChevronUp, RefreshCw,
+  UserPlus, Clock, ChevronRight, ExternalLink, Sparkles, X,
+} from 'lucide-react';
 
 interface RiskFeature {
   name: string; value: number; weight: number; contribution: number; explanation: string;
@@ -11,7 +14,7 @@ interface RiskTask {
   taskId: string; title: string; probability: number; label: 'low' | 'medium' | 'high';
   features: RiskFeature[]; recommendation: string;
   projectId: string; projectCode?: string; projectName?: string;
-  assigneeName?: string; dueDate?: string;
+  assigneeId?: string; assigneeName?: string; dueDate?: string;
 }
 interface RiskData {
   model: { baseRate: number; trainedOn: number };
@@ -37,8 +40,127 @@ function RiskBar({ probability }: { probability: number }) {
   );
 }
 
-function TaskCard({ t }: { t: RiskTask }) {
-  const [open, setOpen] = useState(false);
+/* ────────────────────────────────────────────────────────────────────────
+   Inline action: re-assign / snooze. Optimistic — local UI updates first.
+   ──────────────────────────────────────────────────────────────────────── */
+function InlineActions({ task, users, onChanged }: {
+  task: RiskTask; users: { id: string; name: string }[]; onChanged: () => void;
+}) {
+  const [open, setOpen]       = useState<'reassign' | 'snooze' | null>(null);
+  const [busy, setBusy]       = useState(false);
+  const [done, setDone]       = useState<string | null>(null);
+
+  async function reassign(userId: string) {
+    setBusy(true);
+    try {
+      await api(`/tasks/${task.taskId}`, { method: 'PATCH', body: { assigneeId: userId || null } });
+      setDone(`Re-assigned to ${users.find(u => u.id === userId)?.name ?? 'unassigned'}`);
+      setOpen(null);
+      onChanged();
+    } finally { setBusy(false); }
+  }
+
+  async function snooze(days: number) {
+    setBusy(true);
+    try {
+      const base = task.dueDate ? new Date(task.dueDate) : new Date();
+      base.setDate(base.getDate() + days);
+      await api(`/tasks/${task.taskId}`, {
+        method: 'PATCH',
+        body: { dueDate: base.toISOString() }
+      });
+      setDone(`Due date extended by ${days} day${days > 1 ? 's' : ''}`);
+      setOpen(null);
+      onChanged();
+    } finally { setBusy(false); }
+  }
+
+  if (done) {
+    return (
+      <div className="mt-2 text-[11px] text-forest-700 font-semibold flex items-center gap-1.5">
+        ✓ {done}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2.5">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setOpen(o => o === 'reassign' ? null : 'reassign')}
+          className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border transition-all ${
+            open === 'reassign'
+              ? 'bg-brand-600 text-white border-brand-600'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-brand-300 hover:text-brand-700'
+          }`}
+        >
+          <UserPlus size={11} /> Re-assign
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(o => o === 'snooze' ? null : 'snooze')}
+          className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border transition-all ${
+            open === 'snooze'
+              ? 'bg-amber-500 text-white border-amber-500'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300 hover:text-amber-700'
+          }`}
+        >
+          <Clock size={11} /> Extend due
+        </button>
+        <Link
+          href={`/tasks/${task.taskId}`}
+          className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-800 transition-all"
+        >
+          <ExternalLink size={11} /> Open
+        </Link>
+      </div>
+
+      {open === 'reassign' && (
+        <div className="mt-2 rounded-lg border border-slate-200 bg-white p-2.5 fade-in-soft">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Assign to</div>
+          <div className="flex flex-wrap gap-1">
+            {users.length === 0 && <span className="text-[11px] text-slate-400">No users available.</span>}
+            {users.slice(0, 8).map(u => (
+              <button
+                key={u.id}
+                disabled={busy || u.id === task.assigneeId}
+                onClick={() => reassign(u.id)}
+                className="text-[11px] px-2 py-1 rounded-full border border-slate-200 hover:border-brand-300 hover:bg-brand-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                {u.name}{u.id === task.assigneeId ? ' (current)' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {open === 'snooze' && (
+        <div className="mt-2 rounded-lg border border-slate-200 bg-white p-2.5 fade-in-soft">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Push due date by</div>
+          <div className="flex flex-wrap gap-1">
+            {[3, 7, 14].map(d => (
+              <button
+                key={d}
+                disabled={busy}
+                onClick={() => snooze(d)}
+                className="text-[11px] px-2 py-1 rounded-full border border-slate-200 hover:border-amber-300 hover:bg-amber-50 disabled:opacity-30 transition-all"
+              >
+                +{d} days
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1.5">
+            Re-baselining the date logs an updated_at — past misses still count for predictions.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskCard({ t, users, onChanged }: { t: RiskTask; users: any[]; onChanged: () => void }) {
+  const [showFactors, setShowFactors] = useState(false);
   const cfg = RISK_CFG[t.label];
   const topFeatures = [...t.features].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)).slice(0, 3);
 
@@ -68,15 +190,17 @@ function TaskCard({ t }: { t: RiskTask }) {
         → {t.recommendation}
       </div>
 
+      <InlineActions task={t} users={users} onChanged={onChanged} />
+
       <button
-        onClick={() => setOpen(o => !o)}
-        className={`mt-2 flex items-center gap-1 text-[11px] ${cfg.text} opacity-60 hover:opacity-100 transition-opacity`}
+        onClick={() => setShowFactors(o => !o)}
+        className={`mt-2 flex items-center gap-1 text-[11px] ${cfg.text} opacity-50 hover:opacity-90 transition-opacity`}
       >
-        {open ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-        {open ? 'Hide' : 'Show'} risk factors
+        {showFactors ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+        {showFactors ? 'Hide' : 'Why'} risk factors
       </button>
 
-      {open && (
+      {showFactors && (
         <div className="mt-2 space-y-1 pl-1 border-t border-current/10 pt-2">
           {topFeatures.map(f => (
             <div key={f.name} className="flex items-center gap-2 text-[11px]">
@@ -92,8 +216,48 @@ function TaskCard({ t }: { t: RiskTask }) {
   );
 }
 
+/* ────────────────────────────────────────────────────────────────────────
+   Top-3 banner — the highest-impact items to address before stand-up.
+   ──────────────────────────────────────────────────────────────────────── */
+function StandupBanner({ tasks }: { tasks: RiskTask[] }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed || tasks.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-red-200 bg-gradient-to-r from-red-50 via-orange-50 to-amber-50 p-4 fade-in-soft">
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+          <AlertTriangle size={17} className="text-red-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline justify-between gap-2 mb-1.5">
+            <h2 className="text-sm font-black text-red-700">
+              {tasks.length} thing{tasks.length > 1 ? 's' : ''} to fix before stand-up
+            </h2>
+            <button onClick={() => setDismissed(true)} className="text-red-400 hover:text-red-700" aria-label="Dismiss">
+              <X size={13} />
+            </button>
+          </div>
+          <ol className="space-y-1.5">
+            {tasks.map((t, i) => (
+              <li key={t.taskId} className="flex items-start gap-2 text-xs">
+                <span className="font-black text-red-400 shrink-0 w-4">{i + 1}.</span>
+                <Link href={`/tasks/${t.taskId}`} className="text-slate-700 hover:text-red-700 leading-snug min-w-0">
+                  <span className="font-semibold">{t.title}</span>
+                  <span className="text-slate-400"> — {t.recommendation}</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RiskRadarPage() {
   const [data, setData]       = useState<RiskData | null>(null);
+  const [users, setUsers]     = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState<'all' | 'high' | 'medium'>('all');
   const [teams, setTeams]     = useState<any[]>([]);
@@ -108,13 +272,20 @@ export default function RiskRadarPage() {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { api<any[]>('/teams').then(setTeams); }, []);
+  useEffect(() => {
+    Promise.all([
+      api<any[]>('/teams').then(setTeams),
+      api<any[]>('/users').then(setUsers),
+    ]).catch(() => {});
+  }, []);
   useEffect(() => { load(); }, [teamId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tasks = data?.tasks ?? [];
   const visible = tasks.filter(t => filter === 'all' ? true : t.label === filter);
   const highCount   = tasks.filter(t => t.label === 'high').length;
   const mediumCount = tasks.filter(t => t.label === 'medium').length;
+
+  const top3 = tasks.filter(t => t.label === 'high').slice(0, 3);
 
   return (
     <div className="max-w-3xl space-y-5 pb-10">
@@ -126,8 +297,8 @@ export default function RiskRadarPage() {
             <h1 className="text-2xl font-black text-slate-900">Risk Radar</h1>
           </div>
           <p className="text-sm text-slate-500">
-            Every open task scored by deadline-miss probability using a model trained on your team's history.
-            {data && <span className="ml-1 text-slate-400">(trained on {data.model.trainedOn} completed tasks)</span>}
+            Your team's open tasks, ranked by deadline-miss probability — with inline actions to fix them right here.
+            {data && <span className="ml-1 text-slate-400">(model trained on {data.model.trainedOn} closed tasks)</span>}
           </p>
         </div>
         <button onClick={load} disabled={loading} className="btn-secondary flex items-center gap-1.5 text-xs shrink-0">
@@ -135,6 +306,9 @@ export default function RiskRadarPage() {
           Refresh
         </button>
       </div>
+
+      {/* Top-3 stand-up banner */}
+      {!loading && top3.length > 0 && <StandupBanner tasks={top3} />}
 
       {/* Summary tiles */}
       {data && (
@@ -188,7 +362,7 @@ export default function RiskRadarPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {visible.map(t => <TaskCard key={t.taskId} t={t} />)}
+          {visible.map(t => <TaskCard key={t.taskId} t={t} users={users} onChanged={load} />)}
         </div>
       )}
 

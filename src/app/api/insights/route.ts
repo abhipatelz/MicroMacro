@@ -187,8 +187,108 @@ export async function GET(req: NextRequest) {
     if (totalDoneThisWeek > 0 && criticalProjects.length === 0) briefLines.push(`✅ Team completed ${totalDoneThisWeek} task${totalDoneThisWeek > 1 ? 's' : ''} this week — Deliver Results.`);
     if (briefLines.length === 0) briefLines.push('✅ All projects are healthy. Team is delivering. Keep the momentum.');
 
+    // ── Top 3 Actions Today ──────────────────────────────────────────────
+    // Ranked by impact: GxP > stuck-blockers > overload > critical projects.
+    type Action = {
+      id: string;
+      title: string;
+      why: string;
+      link: string;
+      kind: 'gxp' | 'stuck' | 'overload' | 'critical' | 'atrisk';
+    };
+    const actions: Action[] = [];
+
+    // 1. GxP overdue — highest priority, patient safety
+    const worstGxpProject = projectInsights
+      .filter(p => p.issues.some(i => i.includes('GxP')))
+      .sort((a, b) => a.score - b.score)[0];
+    if (worstGxpProject) {
+      const gxpIssue = worstGxpProject.issues.find(i => i.includes('GxP'))!;
+      actions.push({
+        id: `gxp-${worstGxpProject.id}`,
+        title: `Escalate GxP overdue in ${worstGxpProject.code}`,
+        why: `${gxpIssue} — patient-safety relevant. Address before stand-up.`,
+        link: `/projects/${worstGxpProject.id}`,
+        kind: 'gxp',
+      });
+    }
+
+    // 2. Most-stuck task — concrete unblock action
+    const worstStuck = stuckTasks.sort((a: any, b: any) => b.daysSince - a.daysSince)[0];
+    if (worstStuck && actions.length < 3) {
+      actions.push({
+        id: `stuck-${worstStuck.id}`,
+        title: `Unblock "${worstStuck.title}"`,
+        why: `${worstStuck.daysSince} days without movement · assigned to ${worstStuck.assignee}. Ask in stand-up: blocked, scope drift, or bandwidth?`,
+        link: `/tasks/${worstStuck.id}`,
+        kind: 'stuck',
+      });
+    }
+
+    // 3. Most-overloaded person — rebalance action
+    const worstOverload = peopleInsights.filter(p => p.loadLevel === 'overloaded').sort((a, b) => b.loadScore - a.loadScore)[0];
+    if (worstOverload && actions.length < 3) {
+      actions.push({
+        id: `load-${worstOverload.id}`,
+        title: `Rebalance ${worstOverload.name.split(' ')[0]}'s workload`,
+        why: `${worstOverload.openTasks} open${worstOverload.overdueCount > 0 ? `, ${worstOverload.overdueCount} overdue` : ''} — move 2-3 tasks to a teammate this week.`,
+        link: `/people/${worstOverload.id}`,
+        kind: 'overload',
+      });
+    }
+
+    // 4. Worst-scoring project that isn't already covered above
+    if (actions.length < 3) {
+      const worstProject = projectInsights
+        .filter(p => p.health !== 'healthy' && !actions.some(a => a.link.endsWith(p.id)))
+        .sort((a, b) => a.score - b.score)[0];
+      if (worstProject) {
+        actions.push({
+          id: `proj-${worstProject.id}`,
+          title: `Triage ${worstProject.code} — ${worstProject.name}`,
+          why: `Score ${worstProject.score}/100 · ${worstProject.issues.slice(0, 2).join(', ')}.`,
+          link: `/projects/${worstProject.id}`,
+          kind: worstProject.health === 'critical' ? 'critical' : 'atrisk',
+        });
+      }
+    }
+
+    // ── Velocity headline (plain English) ─────────────────────────────────
+    const thisWeek = velocity[3].completed;
+    const lastWeek = velocity[2].completed;
+    const avg4w    = velocity.reduce((a, v) => a + v.completed, 0) / 4;
+    let velocityHeadline: string;
+    if (thisWeek === 0 && lastWeek === 0) {
+      velocityHeadline = 'No tasks completed this week or last — are deliverables defined small enough to ship?';
+    } else if (thisWeek === 0) {
+      velocityHeadline = `0 tasks completed this week — last week the team shipped ${lastWeek}. Worth checking what changed.`;
+    } else if (lastWeek === 0 && thisWeek > 0) {
+      velocityHeadline = `Shipped ${thisWeek} task${thisWeek > 1 ? 's' : ''} this week — momentum returning.`;
+    } else {
+      const pct = Math.round(((thisWeek - lastWeek) / lastWeek) * 100);
+      const vsAvg = thisWeek - avg4w;
+      if (pct >= 25) velocityHeadline = `Shipped ${thisWeek} this week — up ${pct}% from last week. Strong pace.`;
+      else if (pct <= -25) velocityHeadline = `Shipped ${thisWeek} this week — down ${Math.abs(pct)}% from last week. Pace is slipping.`;
+      else if (vsAvg >= 2)  velocityHeadline = `Shipped ${thisWeek} this week — above the 4-week average of ${avg4w.toFixed(1)}.`;
+      else if (vsAvg <= -2) velocityHeadline = `Shipped ${thisWeek} this week — below the 4-week average of ${avg4w.toFixed(1)}.`;
+      else velocityHeadline = `Steady pace — ${thisWeek} task${thisWeek > 1 ? 's' : ''} this week, in line with the 4-week average.`;
+    }
+
+    // ── Movers — what changed this week ──────────────────────────────────
+    const risingStars = projectInsights
+      .filter(p => p.completedThisWeek >= 2)
+      .sort((a, b) => b.completedThisWeek - a.completedThisWeek)
+      .slice(0, 3);
+    const needAttention = projectInsights
+      .filter(p => p.health !== 'healthy' && p.stagnantDays >= 5)
+      .sort((a, b) => b.stagnantDays - a.stagnantDays)
+      .slice(0, 3);
+
     return NextResponse.json({
       brief: briefLines,
+      topActions: actions,
+      velocityHeadline,
+      movers: { risingStars, needAttention },
       projects: projectInsights.sort((a, b) => a.score - b.score),
       people: peopleInsights.sort((a, b) => b.loadScore - a.loadScore),
       stuckTasks,
