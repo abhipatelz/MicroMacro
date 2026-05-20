@@ -742,7 +742,7 @@ export default function DashboardPage() {
 
   const filteredTasks = data.tasks.filter(t => {
     if (filter === 'open')    return t.status !== 'done';
-    if (filter === 'overdue') return t.status !== 'done' && t.dueDate && daysUntil(t.dueDate) !== null && daysUntil(t.dueDate)! < 0;
+    if (filter === 'overdue') return t.status !== 'done' && !!t.dueDate && new Date(t.dueDate).getTime() < Date.now();
     if (filter === 'done')    return t.status === 'done';
     return true;
   });
@@ -814,7 +814,7 @@ export default function DashboardPage() {
       {celebrating && <Celebration taskTitle={celebrating.title} onDone={() => setCelebrating(null)} />}
 
       {/* ── Hero backdrop — soft brand wash behind the greeting ───────────── */}
-      <div aria-hidden className="pointer-events-none absolute -top-6 -left-10 -right-10 h-[340px] -z-0 overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute -top-6 -left-10 right-0 h-[340px] -z-0 overflow-hidden">
         <div className="absolute inset-0" style={{
           background: 'radial-gradient(ellipse at 25% 0%, rgba(21,101,192,0.10) 0%, transparent 55%), radial-gradient(ellipse at 80% 10%, rgba(67,160,71,0.07) 0%, transparent 60%)',
         }} />
