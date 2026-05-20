@@ -31,9 +31,8 @@ function CredentialsModal({ name, email, tempPassword, onClose }: {
   name: string; email: string; tempPassword: string; onClose: () => void;
 }) {
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-[calc(100vw-32px)] sm:w-[420px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[420px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-5">
           <div>
             <div className="text-base font-bold text-slate-900">Account created</div>
@@ -65,7 +64,7 @@ function CredentialsModal({ name, email, tempPassword, onClose }: {
 
         <button onClick={onClose} className="btn-primary w-full justify-center">Done</button>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -96,9 +95,8 @@ function AddMemberModal({ onClose, onCreated }: {
   }
 
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-[calc(100vw-32px)] sm:w-[400px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[400px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-5">
           <div>
             <div className="text-base font-bold text-slate-900">Add team member</div>
@@ -141,7 +139,7 @@ function AddMemberModal({ onClose, onCreated }: {
           </button>
         </form>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -151,10 +149,8 @@ function RoleConfirmDialog({ user, targetRole, onConfirm, onCancel, saving }: {
 }) {
   const promote = targetRole === 'pm';
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-[calc(100vw-32px)] sm:w-[380px]"
-        style={{ animation: 'celebration-pop 0.2s ease-out' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onCancel}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[380px] modal-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-col items-center text-center gap-4">
           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${promote ? 'bg-blue-50' : 'bg-amber-50'}`}>
             {promote ? <Shield size={22} className="text-blue-600" /> : <AlertTriangle size={22} className="text-amber-500" />}
@@ -179,7 +175,7 @@ function RoleConfirmDialog({ user, targetRole, onConfirm, onCancel, saving }: {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -210,9 +206,8 @@ function EditUserModal({ user, onClose, onSaved }: {
   }
 
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-[calc(100vw-32px)] sm:w-[420px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[420px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-5">
           <div>
             <div className="text-base font-bold text-slate-900">Edit profile</div>
@@ -257,7 +252,7 @@ function EditUserModal({ user, onClose, onSaved }: {
           </div>
         </form>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -266,9 +261,8 @@ function RemoveConfirmDialog({ user, onConfirm, onCancel, saving }: {
   user: any; onConfirm: () => void; onCancel: () => void; saving: boolean;
 }) {
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-[calc(100vw-32px)] sm:w-[380px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onCancel}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[380px] modal-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-col items-center text-center gap-4">
           <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
             <Trash2 size={22} className="text-red-600" />
@@ -290,7 +284,7 @@ function RemoveConfirmDialog({ user, onConfirm, onCancel, saving }: {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
