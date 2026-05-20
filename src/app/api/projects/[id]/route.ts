@@ -8,7 +8,8 @@ import { requireUser, requireRole } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { project as projectS, task as taskS } from '@/lib/serialize';
 import { LIFECYCLES } from '@/lib/lifecycles';
-import { ProjectUpdateSchema } from '@/lib/validations';
+import { ProjectUpdateSchema, DeleteProjectSchema } from '@/lib/validations';
+import bcrypt from 'bcryptjs';
 
 export const runtime = 'nodejs';
 
@@ -86,9 +87,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireRole(req, 'pm');
+    const { error, user } = await requireRole(req, 'pm');
     if (error) return error;
     await connectDB();
+
+    const body = await readBody(req, DeleteProjectSchema);
+    const pmUser = await User.findById(user.sub).select('passwordHash').lean();
+    if (!pmUser || !bcrypt.compareSync(body.password, (pmUser as any).passwordHash)) {
+      return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
+    }
+
     await Task.deleteMany({ projectId: params.id });
     await Project.deleteOne({ _id: params.id });
     return NextResponse.json({ ok: true });

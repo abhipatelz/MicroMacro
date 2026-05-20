@@ -12,7 +12,7 @@ import {
   TaskLink,
   formatDate
 } from '@/components/ui';
-import { Download, GripVertical, CheckCircle2, Plus } from 'lucide-react';
+import { Download, GripVertical, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 
 const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
 
@@ -329,14 +329,114 @@ function QuickAddTask({
   );
 }
 
+function DeleteProjectModal({
+  projectName,
+  projectId,
+  onClose,
+  onDeleted,
+}: {
+  projectName: string;
+  projectId: string;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [password, setPassword] = useState('');
+  const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  async function confirm() {
+    if (!password.trim()) { setErr('Password is required'); return; }
+    setLoading(true);
+    setErr('');
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (res.status === 401) { setErr('Incorrect password'); setLoading(false); return; }
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setErr(j.error || 'Delete failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+      onDeleted();
+    } catch {
+      setErr('Network error. Please try again.');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-project-title"
+        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[400px] modal-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+            <Trash2 size={18} className="text-red-600" />
+          </div>
+          <div>
+            <h2 id="delete-project-title" className="text-base font-bold text-slate-800">Delete project</h2>
+            <p className="text-xs text-slate-500 mt-0.5 leading-snug">
+              This will permanently delete <span className="font-semibold text-slate-700">{projectName}</span> and all its tasks.
+            </p>
+          </div>
+        </div>
+        <p className="text-xs text-slate-500 mb-3">Enter your PM password to confirm:</p>
+        <input
+          ref={inputRef}
+          type="password"
+          className="input w-full mb-1"
+          placeholder="Your password"
+          value={password}
+          onChange={(e) => { setPassword(e.target.value); setErr(''); }}
+          onKeyDown={(e) => e.key === 'Enter' && confirm()}
+          autoComplete="current-password"
+        />
+        {err && <p className="text-xs text-red-600 mb-3">{err}</p>}
+        {!err && <div className="mb-3" />}
+        <div className="flex gap-2 justify-end">
+          <button className="btn-ghost text-sm" onClick={onClose} disabled={loading}>
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+            onClick={confirm}
+            disabled={loading || !password.trim()}
+          >
+            {loading ? 'Deleting…' : 'Delete permanently'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
+  const [me, setMe] = useState<any>(null);
   const [view, setView] = useState<'phases' | 'board'>('phases');
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   async function exportProject() {
     setExporting(true);
@@ -376,7 +476,10 @@ export default function ProjectDetailPage() {
       setLoadErr(e?.message || 'Could not load this project.');
     }
   }
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    load();
+    api<any>('/auth/me').then((d) => setMe(d.user)).catch(() => {});
+  }, [id]);
 
   if (loadErr) {
     return (
@@ -534,8 +637,28 @@ export default function ProjectDetailPage() {
             <Download size={14} />
             All deadlines → .ics
           </a>
+          {me?.role === 'pm' && (
+            <button
+              onClick={() => setDeleteOpen(true)}
+              className="flex items-center gap-1.5 text-xs w-48 justify-center px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <Trash2 size={14} />
+              Delete project
+            </button>
+          )}
         </div>
       </div>
+      {deleteOpen && project && (
+        <DeleteProjectModal
+          projectName={project.name}
+          projectId={id}
+          onClose={() => setDeleteOpen(false)}
+          onDeleted={() => {
+            setDeleteOpen(false);
+            if (typeof window !== 'undefined') window.location.replace('/projects');
+          }}
+        />
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>

@@ -131,6 +131,12 @@ export const ProjectUpdateSchema = z.object({
 });
 export type ProjectUpdateInput = z.infer<typeof ProjectUpdateSchema>;
 
+// Requires PM password re-entry for destructive project deletion (21 CFR 11 audit intent).
+export const DeleteProjectSchema = z.object({
+  password: z.string().min(1, 'Password is required'),
+});
+export type DeleteProjectInput = z.infer<typeof DeleteProjectSchema>;
+
 /* ── Task schemas ────────────────────────────────────────────────────────── */
 
 export const TaskCreateSchema = z.object({
