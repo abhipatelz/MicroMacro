@@ -15,6 +15,7 @@
     "@anthropic-ai/sdk": "^0.91.1",
     "@google/generative-ai": "^0.24.1",
     "@types/nodemailer": "^8.0.0",
+    "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^2.4.3",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
