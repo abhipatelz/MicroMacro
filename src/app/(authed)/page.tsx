@@ -71,22 +71,20 @@ const CONFETTI = ['#1565C0','#1E88E5','#90CAF9','#43A047','#A5D6A7','#0D47A1'];
 function Celebration({ taskTitle, onDone }: { taskTitle: string; onDone: () => void }) {
   useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, [onDone]);
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-      {Array.from({ length: 60 }, (_, i) => (
+    <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden flex items-center justify-center p-4">
+      {Array.from({ length: 24 }, (_, i) => (
         <div key={i} style={{
-          position: 'absolute', left: `${(i * 1.7) % 100}%`, top: '-12px',
-          width: 5 + (i % 6) * 1.5, height: 5 + (i % 6) * 1.5,
+          position: 'absolute', left: `${(i * 4.2) % 100}%`, top: '-12px',
+          width: 5 + (i % 5) * 1.5, height: 5 + (i % 5) * 1.5,
           backgroundColor: CONFETTI[i % CONFETTI.length],
           borderRadius: i % 3 !== 0 ? '50%' : '2px',
-          animation: `confetti-fall ${0.85 + (i % 7) * 0.14}s ${(i * 0.025) % 0.9}s ease-in forwards`,
+          animation: `confetti-fall ${0.9 + (i % 5) * 0.15}s ${(i * 0.03) % 0.5}s ease-in forwards`,
         }} />
       ))}
-      <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'celebration-pop 0.35s ease-out forwards' }}>
-        <div className="bg-white rounded-2xl shadow-2xl px-10 py-8 text-center max-w-xs mx-4 border border-slate-100">
-          <div className="text-4xl mb-3">✅</div>
-          <div className="text-xl font-black text-slate-900">Done!</div>
-          <div className="text-slate-400 mt-2 text-sm line-clamp-2">"{taskTitle}"</div>
-        </div>
+      <div className="bg-white rounded-2xl shadow-2xl px-10 py-8 text-center max-w-xs border border-slate-100 modal-in">
+        <div className="text-4xl mb-3">✅</div>
+        <div className="text-xl font-black text-slate-900">Done!</div>
+        <div className="text-slate-400 mt-2 text-sm line-clamp-2">"{taskTitle}"</div>
       </div>
     </div>
   );
@@ -206,18 +204,15 @@ function QuickAdd({ projects, userId, onAdded, open, onClose }: {
 
   // Render via portal to document.body so we escape any transformed parent
   return createPortal(
-    <>
-      <div
-        className="fixed inset-0 z-[100] bg-slate-900/45 backdrop-blur-sm"
-        onClick={onClose}
-        style={{ animation: 'fadeIn 0.18s ease-out' }}
-      />
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 overlay-in"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="quick-add-title"
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] bg-white rounded-2xl shadow-2xl border border-slate-100 w-[calc(100vw-32px)] sm:w-[460px] max-h-[calc(100vh-32px)] overflow-y-auto"
-        style={{ animation: 'celebration-pop 0.25s ease-out' }}
+        className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-[460px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -387,7 +382,7 @@ function QuickAdd({ projects, userId, onAdded, open, onClose }: {
           </span>
         </div>
       </div>
-    </>,
+    </div>,
     document.body
   );
 }
