@@ -201,14 +201,6 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
       ],
     },
     {
-      title: 'Steer',
-      items: [
-        { href: '/org',      label: 'Operations Hub', icon: PieChart,  tour: 'nav-org',      iconColor: '#E65100', iconBg: '#FBE9E7' },
-        { href: '/risk',     label: 'Task Triage',    icon: Activity,  tour: 'nav-risk',     iconColor: '#C62828', iconBg: '#FFEBEE' },
-        { href: '/insights', label: 'Trends',         icon: Lightbulb, badge: 'Live', tour: 'nav-insights', iconColor: '#F57F17', iconBg: '#FFF9C4' },
-      ],
-    },
-    {
       title: 'People',
       items: [
         { href: '/teams',  label: 'Teams',  icon: Users,   tour: 'nav-teams',  iconColor: '#2E7D32', iconBg: '#E8F5E9' },
@@ -219,6 +211,14 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
       title: 'Assist',
       items: [
         { href: '/copilot', label: 'QA Copilot', icon: Bot, iconColor: '#5C6BC0', iconBg: '#E8EAF6' },
+      ],
+    },
+    {
+      title: 'Steer',
+      items: [
+        { href: '/org',      label: 'Operations Hub', icon: PieChart,  tour: 'nav-org',      iconColor: '#E65100', iconBg: '#FBE9E7' },
+        { href: '/risk',     label: 'Task Triage',    icon: Activity,  tour: 'nav-risk',     iconColor: '#C62828', iconBg: '#FFEBEE' },
+        { href: '/insights', label: 'Trends',         icon: Lightbulb, badge: 'Live', tour: 'nav-insights', iconColor: '#F57F17', iconBg: '#FFF9C4' },
       ],
     },
   ];
