@@ -793,9 +793,9 @@ export default function DashboardPage() {
               main element. z-index -1 places it behind all page content
               but above the body background. top-14 keeps it below the
               fixed app header (56px). ─────────────────────────────── */}
-      <div aria-hidden className="pointer-events-none fixed top-14 left-0 right-0 h-[280px]" style={{ zIndex: -1 }}>
+      <div aria-hidden className="pointer-events-none fixed top-14 left-0 right-0 h-[200px]" style={{ zIndex: -1 }}>
         <div className="absolute inset-0" style={{
-          background: 'linear-gradient(180deg, rgba(21,101,192,0.09) 0%, rgba(21,101,192,0.035) 60%, transparent 100%)',
+          background: 'linear-gradient(180deg, rgba(21,101,192,0.09) 0%, rgba(21,101,192,0.05) 45%, rgba(21,101,192,0.01) 80%, transparent 100%)',
         }} />
       </div>
 
