@@ -666,23 +666,25 @@ function AttentionPanel({ items }: { items: OrgOverview['attention'] }) {
 
 /* ── PM Org pulse strip ───────────────────────────────────────────────────── */
 function OrgPulse({ totals, projects }: { totals: OrgOverview['totals']; projects: OrgOverview['projects'] }) {
-  const critical = projects.filter(p => p.health === 'critical').length;
-  const atRisk   = projects.filter(p => p.health === 'at_risk').length;
-  const allHealthy = critical === 0 && atRisk === 0;
+  // projects is empty during the first paint (we patch totals before full org data arrives).
+  // Only describe org health once we have real projects, otherwise leave the sub-label neutral
+  // so cards don't flip from filled-green to white as data lands.
+  const hasProjects = projects.length > 0;
+  const critical    = projects.filter(p => p.health === 'critical').length;
+  const atRisk      = projects.filter(p => p.health === 'at_risk').length;
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
       <StatCard label="Active projects" value={totals.activeProjects} icon={FolderKanban}
         accent="#1565C0" filled delay={0}
-        sub={critical > 0 ? `${critical} critical` : atRisk > 0 ? `${atRisk} at risk` : 'All healthy'} />
+        sub={!hasProjects ? '' : critical > 0 ? `${critical} critical` : atRisk > 0 ? `${atRisk} at risk` : 'All healthy'} />
       <StatCard label="Open tasks" value={totals.tasksOpen} icon={Target} accent="#475569" delay={70}
         sub="across all projects" />
       <StatCard label="Overdue" value={totals.tasksOverdue} icon={AlertTriangle} delay={140}
         accent={totals.tasksOverdue > 0 ? '#dc2626' : '#94a3b8'}
-        filled={totals.tasksOverdue > 0}
         urgent={totals.tasksOverdue > 0}
         sub={totals.tasksOverdue > 0 ? 'Needs resolution' : 'None — great work'} />
       <StatCard label="Done this month" value={totals.doneThisMonth} icon={TrendingUp} delay={210}
-        accent="#16a34a" filled={allHealthy && totals.doneThisMonth > 0}
+        accent="#16a34a"
         sub="tasks shipped" />
     </div>
   );
@@ -813,10 +815,10 @@ export default function DashboardPage() {
     <div className="pb-20 max-w-5xl page-enter relative">
       {celebrating && <Celebration taskTitle={celebrating.title} onDone={() => setCelebrating(null)} />}
 
-      {/* ── Hero backdrop — soft brand wash behind the greeting ───────────── */}
+      {/* ── Hero backdrop — soft uniform brand wash behind the greeting ───── */}
       <div aria-hidden className="pointer-events-none absolute -top-6 -left-10 right-0 h-[340px] -z-0 overflow-hidden">
         <div className="absolute inset-0" style={{
-          background: 'radial-gradient(ellipse 70% 100% at 20% 0%, rgba(21,101,192,0.12) 0%, transparent 75%), radial-gradient(ellipse 55% 90% at 85% 5%, rgba(21,101,192,0.08) 0%, transparent 70%), radial-gradient(ellipse at 60% 15%, rgba(67,160,71,0.05) 0%, transparent 65%)',
+          background: 'linear-gradient(180deg, rgba(21,101,192,0.10) 0%, rgba(21,101,192,0.04) 55%, transparent 100%)',
         }} />
       </div>
 
