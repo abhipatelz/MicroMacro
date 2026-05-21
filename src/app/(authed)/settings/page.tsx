@@ -203,35 +203,26 @@ export default function SettingsPage() {
     <div className="max-w-4xl pb-12 space-y-5">
 
       {/* ── Hero profile card ─────────────────────────────────────────────── */}
-      <div className="rounded-2xl overflow-hidden relative" style={{
-        background: 'linear-gradient(135deg, #071223 0%, #0B1E3A 60%, #0D2347 100%)',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.1)',
-      }}>
-        <div className="absolute pointer-events-none" style={{
-          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
-          backgroundSize: '24px 24px', inset: 0, borderRadius: 16,
-        }} />
+      <div className="bg-white rounded-2xl border border-slate-200/80 px-7 py-6 flex items-center gap-5"
+        style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.05), 0 1px 2px rgba(15,23,42,0.03)' }}>
+        <div className="shrink-0">
+          <Avatar name={user.name} size={64} />
+        </div>
 
-        <div className="relative px-7 py-6 flex items-center gap-5">
-          <div className="shrink-0 p-1 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', boxShadow: '0 0 0 2px rgba(255,255,255,0.12)' }}>
-            <Avatar name={user.name} size={72} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight truncate">{nameWithId}</h1>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{
+              background: isPM ? '#E3F2FD' : '#E8F5E9',
+              color: isPM ? '#1565C0' : '#2E7D32',
+            }}>
+              {isPM ? 'PM' : 'Individual Contributor'}
+            </span>
           </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-black text-white tracking-tight truncate">{nameWithId}</h1>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{
-                background: isPM ? 'rgba(21,101,192,0.35)' : 'rgba(43,140,41,0.35)',
-                color: isPM ? '#90CAF9' : '#A5D6A7',
-              }}>
-                {isPM ? 'PM' : 'Individual Contributor'}
-              </span>
-            </div>
-            <div className="mt-2 text-sm text-white/60">{COMPANY_NAME}</div>
-            <div className="mt-1 text-xs text-white/40 flex items-center gap-1.5">
-              <Mail size={11} className="text-white/30" />
-              {user.email}
-            </div>
+          <div className="mt-1 text-sm text-slate-500">{COMPANY_NAME}</div>
+          <div className="mt-0.5 text-xs text-slate-400 flex items-center gap-1.5">
+            <Mail size={11} className="text-slate-300" />
+            {user.email}
           </div>
         </div>
       </div>

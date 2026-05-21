@@ -554,11 +554,6 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
               </>
             )}
           </div>
-
-          {/* User avatar */}
-          <Link href="/settings" className="shrink-0 ml-1">
-            <Avatar name={user.name} size={30} />
-          </Link>
         </div>
       </header>
 
