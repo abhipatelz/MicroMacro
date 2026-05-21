@@ -222,25 +222,50 @@ export function daysUntil(s?: string | Date | null) {
 }
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
-const AVATAR_PALETTE = [
-  '#1565C0','#0D47A1','#1976D2','#388E3C','#2E7D32',
-  '#6D4C41','#4527A0','#00695C','#C62828','#558B2F',
+// Each palette entry is a [lighter, darker] gradient pair for a soft 3-D feel.
+const AVATAR_GRADIENTS: Array<[string, string]> = [
+  ['#1E88E5', '#1565C0'], // brand blue
+  ['#5E35B1', '#311B92'], // deep purple
+  ['#00897B', '#00695C'], // teal
+  ['#EF6C00', '#E65100'], // orange
+  ['#43A047', '#2E7D32'], // forest
+  ['#C62828', '#B71C1C'], // red
+  ['#039BE5', '#0277BD'], // light blue
+  ['#7B1FA2', '#4A148C'], // purple
+  ['#6D4C41', '#4E342E'], // warm brown
+  ['#546E7A', '#37474F'], // blue grey
 ];
 
 export function Avatar({ name, size = 28 }: { name?: string | null; size?: number }) {
-  // First letter of the first name, deterministically coloured by full name.
+  // Initials: first letter of first word + first letter of last word.
+  // Single-word names render a single letter. Coloured deterministically by name.
   const trimmed = (name || '').trim();
-  const letter = (trimmed[0] || '?').toUpperCase();
-  const bg = AVATAR_PALETTE[trimmed.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_PALETTE.length];
-  const radius = Math.round(size * 0.5);
+  const parts   = trimmed ? trimmed.split(/\s+/).filter(Boolean) : [];
+  const first   = (parts[0]?.[0] || '?').toUpperCase();
+  const last    = parts.length > 1 ? (parts[parts.length - 1][0] || '').toUpperCase() : '';
+  const initials = (first + last) || '?';
+
+  const hash    = trimmed.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const [lo, hi] = AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length];
+
   return (
     <div
-      className="font-bold flex items-center justify-center text-white shrink-0 select-none"
-      style={{ width: size, height: size, fontSize: size * 0.44, background: bg, borderRadius: radius, lineHeight: 1 }}
+      className="flex items-center justify-center text-white shrink-0 select-none"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * (initials.length === 1 ? 0.46 : 0.40),
+        fontWeight: 600,
+        letterSpacing: '0.02em',
+        background: `linear-gradient(135deg, ${lo} 0%, ${hi} 100%)`,
+        borderRadius: '50%',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 2px rgba(15,23,42,0.12)',
+        lineHeight: 1,
+      }}
       title={trimmed || ''}
       aria-label={trimmed || 'User'}
     >
-      {letter}
+      {initials}
     </div>
   );
 }
