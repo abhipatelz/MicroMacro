@@ -104,13 +104,18 @@ export default function TeamDetailPage() {
             title={`Members (${team.members.length})`}
             action={
               <button
-                className="text-xs text-brand-700 hover:underline"
+                className="text-xs font-bold text-brand-700 hover:text-brand-800 px-2 py-1 rounded-md hover:bg-blue-50 transition-colors"
                 onClick={() => setAdding((v) => !v)}
               >
-                {adding ? 'Cancel' : '+ Add'}
+                {adding ? 'Cancel' : '+ Add member'}
               </button>
             }
           >
+            {/* Helper note — membership IS the access mechanism */}
+            <div className="mb-3 -mt-1 text-[11px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-2 leading-snug">
+              Add someone here to give them access to every project assigned to this team.
+              Membership is the tag — no separate permissions needed.
+            </div>
             {adding && (
               <div className="flex gap-2 mb-3">
                 <select

@@ -3,7 +3,7 @@ import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
 import { User } from '@/models/User';
-import { requireUser } from '@/lib/auth';
+import { requireUser, isLead } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
 import { TaskUpdateSchema } from '@/lib/validations';
@@ -64,8 +64,24 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const { forbidden } = await assertTaskInScope(params.id, user!.sub);
     if (forbidden) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const body = await readBody(req, TaskUpdateSchema);
-    const current = await Task.findById(params.id).select('status').lean();
+    const current = await Task.findById(params.id).select('status assigneeId').lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    // Contributors (non-leads) can only update their own task's status.
+    // All other edits — title, due date, assignee, priority, etc. —
+    // require lead role. Leads keep full edit rights.
+    if (!isLead(user!.role)) {
+      const isAssignee = current.assigneeId && String(current.assigneeId) === String(user!.sub);
+      const keys = Object.keys(body).filter(k => body[k as keyof typeof body] !== undefined);
+      const onlyStatusChange = isAssignee && keys.length === 1 && keys[0] === 'status';
+      if (!onlyStatusChange) {
+        return NextResponse.json(
+          { error: 'Only leads can edit task fields. Contributors can change status on their own tasks.' },
+          { status: 403 },
+        );
+      }
+    }
+
     const set: any = {};
     for (const [k, v] of Object.entries(body)) {
       if (v === undefined) continue;
@@ -87,6 +103,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   try {
     const { error, user } = await requireUser(req);
     if (error) return error;
+    if (!isLead(user!.role)) {
+      return NextResponse.json({ error: 'Only leads can delete tasks.' }, { status: 403 });
+    }
     await connectDB();
     const { t, forbidden } = await assertTaskInScope(params.id, user!.sub);
     if (!t || forbidden) return NextResponse.json({ error: 'Not found' }, { status: 404 });

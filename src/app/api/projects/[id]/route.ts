@@ -59,7 +59,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireUser(req);
+    const { error, user } = await requireRole(req, 'pm', 'lead');
     if (error) return error;
     await connectDB();
     const scope = await getLeadScope(user!.sub);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
-import { requireUser } from '@/lib/auth';
+import { requireUser, requireRole } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
 import { TaskCreateSchema } from '@/lib/validations';
@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { error, user } = await requireUser(req);
+    const { error, user } = await requireRole(req, 'pm', 'lead');
     if (error) return error;
     await connectDB();
     const body = await readBody(req, TaskCreateSchema);
