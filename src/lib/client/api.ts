@@ -24,7 +24,7 @@ export async function api<T = any>(
     let msg = `HTTP ${res.status}`;
     try {
       const j = await res.json();
-      msg = j.error || JSON.stringify(j);
+      msg = j.message || j.error || JSON.stringify(j);
       // Stale JWT pointing to a deleted/reset user
       if (msg === 'User not found' && typeof window !== 'undefined') {
         window.location.replace('/login');

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { PasswordReset } from '@/models/PasswordReset';
-import { sendPasswordResetEmail } from '@/lib/mailer';
+import { sendPasswordResetEmail, isMailerConfigured, MailerNotConfiguredError } from '@/lib/mailer';
 import { readBody } from '@/lib/http';
 
 export const runtime = 'nodejs';
@@ -16,6 +16,20 @@ const RATE_MAX        = 3;               // max requests per window per email
 
 export async function POST(req: NextRequest) {
   try {
+    // Fail loud BEFORE doing any user lookup — it's independent of the email
+    // value, so disclosing it does not enable account enumeration.
+    if (!isMailerConfigured()) {
+      console.error('[forgot-password] mailer not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS.');
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'mailer_not_configured',
+          message: "Password reset email isn't set up on this deployment. Please contact your administrator.",
+        },
+        { status: 503 },
+      );
+    }
+
     await connectDB();
     const { email } = await readBody(req, Body);
     const lowerEmail = email.toLowerCase();
@@ -54,15 +68,29 @@ export async function POST(req: NextRequest) {
     try {
       await sendPasswordResetEmail(lowerEmail, resetUrl, user.name);
     } catch (mailErr: any) {
-      // SMTP failure: log fully, but don't crash the request
-      console.error('[forgot-password] SMTP error:', mailErr.message);
-      // Mark the token used so it can't be exploited if email failed
+      // Invalidate the token first so a partial send can't be exploited.
       await PasswordReset.updateOne({ tokenHash }, { used: true });
-      // Return a specific error only in dev so the UI can surface it
+
+      // If it's a config issue, surface explicitly (independent of email value).
+      if (mailErr instanceof MailerNotConfiguredError) {
+        console.error('[forgot-password] mailer not configured:', mailErr.message);
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'mailer_not_configured',
+            message: "Password reset email isn't set up on this deployment. Please contact your administrator.",
+          },
+          { status: 503 },
+        );
+      }
+
+      // Transient SMTP failures (timeout, auth) — log loudly but stay silent
+      // to the client to preserve anti-enumeration.
+      console.error('[forgot-password] SMTP error:', mailErr?.message || mailErr);
       if (process.env.NODE_ENV !== 'production') {
         return NextResponse.json(
           { ok: false, error: `Email delivery failed: ${mailErr.message}` },
-          { status: 502 }
+          { status: 502 },
         );
       }
     }

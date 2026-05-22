@@ -1,10 +1,26 @@
 import nodemailer from 'nodemailer';
 
+export class MailerNotConfiguredError extends Error {
+  code = 'mailer_not_configured' as const;
+  missing: string[];
+  constructor(missing: string[]) {
+    super(`Email not configured. Missing env vars: ${missing.join(', ')}`);
+    this.missing = missing;
+  }
+}
+
+export function isMailerConfigured(): boolean {
+  const { SMTP_HOST, SMTP_USER, SMTP_PASS } = process.env;
+  return !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
+}
+
 function buildTransport() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    throw new Error('Email not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env');
-  }
+  const missing: string[] = [];
+  if (!SMTP_HOST) missing.push('SMTP_HOST');
+  if (!SMTP_USER) missing.push('SMTP_USER');
+  if (!SMTP_PASS) missing.push('SMTP_PASS');
+  if (missing.length) throw new MailerNotConfiguredError(missing);
   return nodemailer.createTransport({
     host: SMTP_HOST,
     port: Number(SMTP_PORT || 587),
@@ -54,7 +70,7 @@ export async function sendPasswordResetEmail(
 
         <!-- Header -->
         <tr>
-          <td style="background:#0B1628;padding:28px 32px;">
+          <td style="background:linear-gradient(135deg,#1565C0 0%,#1769C8 100%);padding:28px 32px;">
             <p style="margin:0;color:#fff;font-size:18px;font-weight:800;letter-spacing:-0.02em;">Pragati</p>
             <p style="margin:4px 0 0;color:rgba(255,255,255,0.3);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;">
               Project Intelligence

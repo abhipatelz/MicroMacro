@@ -418,6 +418,13 @@ a { transition: color 0.15s ease, opacity 0.15s ease; }
 .dark .border-blue-100,
 .dark .border-blue-200 { border-color: rgba(217,119,87,0.22) !important; }
 
+/* DatePicker portal (rendered into body, outside .dark cascade in some flows) */
+.dark .datepicker-pop {
+  background: #30302e !important;
+  border-color: rgba(255,255,255,0.10) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4) !important;
+}
+
 /* Selection */
 .dark ::selection { background: rgba(217,119,87,0.35); color: #faf9f5; }
 

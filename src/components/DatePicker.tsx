@@ -1,5 +1,6 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 /**
@@ -24,20 +25,54 @@ export function DatePicker({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const today = new Date();
 
   const selected = value ? parseISO(value) : null;
   const [viewMonth, setViewMonth] = useState(() => selected || today);
 
+  useEffect(() => { setMounted(true); }, []);
+
   useEffect(() => {
     if (open && selected) setViewMonth(selected);
   }, [open, value]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Compute popover position relative to the viewport (portal to body).
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return;
+    const POP_WIDTH  = 260;
+    const POP_HEIGHT = 300; // approx, used only to decide flip direction
+    const place = () => {
+      const r = ref.current!.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const spaceBelow = vh - r.bottom;
+      const openUp     = spaceBelow < POP_HEIGHT + 12 && r.top > POP_HEIGHT + 12;
+      let left = r.right - POP_WIDTH;          // right-align with trigger
+      if (left < 8) left = 8;                  // clamp to viewport
+      if (left + POP_WIDTH > vw - 8) left = vw - POP_WIDTH - 8;
+      const top = openUp ? r.top - POP_HEIGHT - 6 : r.bottom + 6;
+      setCoords({ top, left });
+    };
+    place();
+    window.addEventListener('scroll',  place, true);
+    window.addEventListener('resize',  place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (ref.current?.contains(t)) return;
+      if (popRef.current?.contains(t)) return;
+      setOpen(false);
     };
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('mousedown', close);
@@ -87,11 +122,19 @@ export function DatePicker({
         )}
       </button>
 
-      {open && (
+      {mounted && open && coords && createPortal(
         <div
-          className="absolute z-50 mt-1.5 right-0 bg-white rounded-xl border border-slate-100 p-3 fade-in-soft"
-          style={{ width: 260, boxShadow: '0 8px 32px rgba(15,23,42,0.14), 0 2px 8px rgba(15,23,42,0.06)' }}
+          ref={popRef}
+          className="fixed bg-white rounded-xl border border-slate-100 p-3 fade-in-soft datepicker-pop"
+          style={{
+            top: coords.top,
+            left: coords.left,
+            width: 260,
+            zIndex: 9999,
+            boxShadow: '0 8px 32px rgba(15,23,42,0.18), 0 2px 8px rgba(15,23,42,0.08)',
+          }}
           onClick={e => e.stopPropagation()}
+          onMouseDown={e => e.stopPropagation()}
         >
           <CalendarGrid
             viewMonth={viewMonth}
@@ -118,7 +161,8 @@ export function DatePicker({
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
