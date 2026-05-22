@@ -33,11 +33,12 @@ export async function POST(req: NextRequest) {
     const exists = await User.findOne({ email: body.email.toLowerCase() });
     if (exists) return NextResponse.json({ error: 'Email already in use' }, { status: 409 });
     const user = await User.create({
-      email: body.email.toLowerCase(),
-      name: body.name,
+      email:        body.email.toLowerCase(),
+      name:         body.name,
       passwordHash: bcrypt.hashSync(body.password, 10),
-      role: 'lead',
-      title: body.title || ''
+      role:         'lead',
+      title:        body.title || '',
+      hasSeenTour:  false,
     });
     const token = signToken({
       sub: String(user._id),

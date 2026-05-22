@@ -9,7 +9,7 @@ import {
   TaskLink, formatDate, useToast,
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
-import { Download, GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, X } from 'lucide-react';
+import { Download, GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { chimeIfEnabled } from '@/lib/sound';
 
 const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
@@ -23,13 +23,42 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string; bo
 };
 
 /* ── Kanban board ─────────────────────────────────────────────────────────── */
+const COLUMN_WIDTH = 230;
+const COLUMN_GAP   = 12;
+
 function KanbanBoard({ tasks, onMove }: { tasks: any[]; onMove: (taskId: string, status: string) => void }) {
   const [localTasks, setLocalTasks] = useState<any[]>(tasks);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const dragCounter = useRef<Record<string, number>>({});
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canLeft,  setCanLeft]  = useState(false);
+  const [canRight, setCanRight] = useState(false);
 
   useEffect(() => { setLocalTasks(tasks); }, [tasks]);
+
+  // Track whether the scroller can be scrolled in either direction so we
+  // can show/hide the arrow buttons.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const sync = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      setCanLeft(el.scrollLeft > 4);
+      setCanRight(el.scrollLeft < max - 4);
+    };
+    sync();
+    el.addEventListener('scroll', sync, { passive: true });
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', sync); ro.disconnect(); };
+  }, [localTasks.length]);
+
+  function scrollByCols(dir: -1 | 1) {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * (COLUMN_WIDTH + COLUMN_GAP) * 2, behavior: 'smooth' });
+  }
 
   function handleDragStart(e: React.DragEvent, taskId: string) {
     setDraggingId(taskId);
@@ -59,8 +88,37 @@ function KanbanBoard({ tasks, onMove }: { tasks: any[]; onMove: (taskId: string,
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-3" style={{ minHeight: 480 }}>
-      {STATUSES.map(col => {
+    <div className="relative">
+      {/* Left arrow */}
+      <button
+        type="button"
+        aria-label="Scroll left"
+        onClick={() => scrollByCols(-1)}
+        className={`hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 w-9 h-9 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 shadow-md transition-all ${
+          canLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <ChevronLeft size={16} />
+      </button>
+
+      {/* Right arrow */}
+      <button
+        type="button"
+        aria-label="Scroll right"
+        onClick={() => scrollByCols(1)}
+        className={`hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-20 w-9 h-9 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 shadow-md transition-all ${
+          canRight ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <ChevronRight size={16} />
+      </button>
+
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto pb-3 kanban-scroll scroll-smooth"
+        style={{ minHeight: 480, scrollSnapType: 'x mandatory' }}
+      >
+        {STATUSES.map(col => {
         const meta = STATUS_META[col];
         const colTasks = localTasks.filter(t => t.status === col);
         const isOver = dragOverCol === col;
@@ -68,7 +126,8 @@ function KanbanBoard({ tasks, onMove }: { tasks: any[]; onMove: (taskId: string,
         return (
           <div key={col} className="shrink-0 flex flex-col rounded-xl transition-all duration-150"
             style={{
-              width: 230,
+              width: COLUMN_WIDTH,
+              scrollSnapAlign: 'start',
               background: isOver ? meta.bg : '#f8fafc',
               border: `2px solid ${isOver ? meta.border : '#e9eef5'}`,
               boxShadow: isOver ? `0 0 0 3px ${meta.border}` : undefined,
@@ -144,6 +203,7 @@ function KanbanBoard({ tasks, onMove }: { tasks: any[]; onMove: (taskId: string,
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

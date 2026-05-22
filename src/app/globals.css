@@ -418,6 +418,14 @@ a { transition: color 0.15s ease, opacity 0.15s ease; }
 .dark .border-blue-100,
 .dark .border-blue-200 { border-color: rgba(217,119,87,0.22) !important; }
 
+/* Kanban horizontal scroller — slim track so the slider doesn't add visual weight. */
+.kanban-scroll::-webkit-scrollbar         { height: 8px; }
+.kanban-scroll::-webkit-scrollbar-track   { background: transparent; }
+.kanban-scroll::-webkit-scrollbar-thumb   { background: #cbd5e1; border-radius: 4px; }
+.kanban-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.dark .kanban-scroll::-webkit-scrollbar-thumb       { background: #3a3935; }
+.dark .kanban-scroll::-webkit-scrollbar-thumb:hover { background: #4a4945; }
+
 /* DatePicker portal (rendered into body, outside .dark cascade in some flows) */
 .dark .datepicker-pop {
   background: #30302e !important;

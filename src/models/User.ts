@@ -38,6 +38,12 @@ const UserSchema = new Schema(
     // ── First-login flag ────────────────────────────────────────────────
     mustChangePassword: { type: Boolean, default: false },
 
+    // ── Onboarding tour ─────────────────────────────────────────────────
+    // Defaults to true so existing users don't see the tour on first
+    // login after this change. The register + invite paths explicitly
+    // set this to false so a fresh lead sees the tour exactly once.
+    hasSeenTour: { type: Boolean, default: true },
+
     // ── Notification preferences ────────────────────────────────────────
     notifTaskAssigned:  { type: Boolean, default: true  },
     notifTaskDueSoon:   { type: Boolean, default: true  },  // 24h before due

@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
       passwordHash: bcrypt.hashSync(body.password, 10),
       role:         'lead',
       title:        body.title || '',
+      hasSeenTour:  false,
     });
 
     invite.consumedByUserId = user._id;

@@ -3,6 +3,10 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Sparkles, FolderKanban, Users, ListChecks, ArrowRight, X } from 'lucide-react';
 
+// Authoritative state lives on the User record server-side (User.hasSeenTour),
+// so once dismissed the tour never reappears even on a new browser / device.
+// localStorage is used only as a fast-path to avoid a brief flash on the next
+// render after dismissal.
 const STORAGE_KEY = 'pragati-tour-v1';
 
 interface Step {
@@ -44,7 +48,7 @@ const STEPS: Step[] = [
   },
 ];
 
-export function FirstTimeTour() {
+export function FirstTimeTour({ alreadySeen = false }: { alreadySeen?: boolean }) {
   const [mounted, setMounted] = useState(false);
   const [open, setOpen]       = useState(false);
   const [step, setStep]       = useState(0);
@@ -52,17 +56,19 @@ export function FirstTimeTour() {
   useEffect(() => {
     setMounted(true);
     if (typeof window === 'undefined') return;
-    const done = localStorage.getItem(STORAGE_KEY);
-    if (!done) {
-      // Slight delay so the dashboard finishes its entry animation first.
-      const t = setTimeout(() => setOpen(true), 600);
-      return () => clearTimeout(t);
-    }
-  }, []);
+    if (alreadySeen) return;
+    if (localStorage.getItem(STORAGE_KEY)) return;
+    // Slight delay so the dashboard finishes its entry animation first.
+    const t = setTimeout(() => setOpen(true), 600);
+    return () => clearTimeout(t);
+  }, [alreadySeen]);
 
   function close() {
     setOpen(false);
     if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, '1');
+    // Fire-and-forget: persist on the user record so the tour never returns
+    // on another browser / device. Failure is non-fatal.
+    fetch('/api/me/tour-seen', { method: 'POST', credentials: 'include' }).catch(() => {});
   }
 
   if (!mounted || !open) return null;

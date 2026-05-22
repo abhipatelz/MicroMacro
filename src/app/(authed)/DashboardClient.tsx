@@ -88,7 +88,9 @@ const HEALTH_META: Record<string, { label: string; bg: string; text: string; dot
 type ActionFilter = 'week' | 'nextWeek' | 'month' | 'untilDate';
 
 /* ── Main page ────────────────────────────────────────────────────────────── */
-export default function DashboardClient({ initialData }: { initialData: DashResp }) {
+export default function DashboardClient({
+  initialData, hasSeenTour,
+}: { initialData: DashResp; hasSeenTour: boolean }) {
   const dash = initialData;
 
   const ongoingProjects = useMemo(() =>
@@ -167,7 +169,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
       </div>
 
       {/* First-time tour for new leads */}
-      <FirstTimeTour />
+      <FirstTimeTour alreadySeen={hasSeenTour} />
     </div>
   );
 }
