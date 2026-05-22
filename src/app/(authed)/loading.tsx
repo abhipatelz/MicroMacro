@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import { PragatiMark } from '@/components/PragatiMark';
 
 // Server-rendered loading state — no JS, no client hydration, paints instantly.
 // One rotating message is picked per request via a tiny inline script so we keep
@@ -33,10 +33,7 @@ export default function Loading() {
             animation: 'spin 1.5s linear infinite reverse',
           }} />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #1256B0, #1769C8)' }}>
-            <Image src="/logo-icon.png" alt="" width={14} height={14} style={{ objectFit: 'contain' }} />
-          </div>
+          <PragatiMark size={26} flat />
         </div>
       </div>
 

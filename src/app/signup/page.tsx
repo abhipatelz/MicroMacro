@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
+import { PragatiMark } from '@/components/PragatiMark';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { CheckCircle2, AlertTriangle, ShieldCheck, Mail } from 'lucide-react';
@@ -199,12 +199,9 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center p-6"
       style={{ background: 'radial-gradient(ellipse at top, #E3F2FD 0%, #F8FAFC 60%)' }}>
       <div className="w-full max-w-[420px]">
-        {/* Pragati logo + tagline */}
+        {/* Pragati mark + wordmark */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center shadow-md mb-3"
-            style={{ boxShadow: '0 4px 16px rgba(21,101,192,0.25)' }}>
-            <Image src="/logo-icon.png" alt="Pragati" width={26} height={26} priority style={{ objectFit: 'contain' }} />
-          </div>
+          <PragatiMark size={56} className="mb-3" />
           <div className="text-lg font-black tracking-tight text-slate-900">Pragati</div>
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mt-0.5">Project Intelligence</div>
         </div>

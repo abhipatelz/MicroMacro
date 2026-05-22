@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { api } from '@/lib/client/api';
+import { PragatiMark } from '@/components/PragatiMark';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -32,10 +32,10 @@ export default function ForgotPasswordPage() {
 
       <div className="w-full max-w-sm">
 
-        {/* Logo */}
-        <div className="flex justify-center mb-10">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <Image src="/logo-full.png" alt="Pragati" width={180} height={36} priority style={{ width: 180, height: 'auto' }} />
+        {/* Brand mark */}
+        <div className="flex flex-col items-center mb-10">
+          <PragatiMark size={56} />
+          <div className="text-xl font-black text-slate-900 mt-3 tracking-tight">Pragati</div>
         </div>
 
         {sent ? (

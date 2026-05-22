@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Avatar } from './ui';
+import { PragatiMark } from './PragatiMark';
 import { api } from '@/lib/client/api';
 
 // Modal only shown when a TL clicks "Invite a lead" — defer its JS until needed.
@@ -173,14 +173,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
       <div className="flex items-center gap-2.5 px-4 h-14 shrink-0 border-b"
         style={{ borderColor: dark ? 'rgba(255,255,255,0.07)' : '#e8edf4' }}>
         <Link href="/" className="flex items-center gap-2 flex-1 min-w-0">
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            background: 'linear-gradient(135deg, #1256B0 0%, #1E88E5 100%)',
-            borderRadius: 8, padding: '4px 5px', lineHeight: 0, flexShrink: 0,
-          }}>
-            <Image src="/logo-icon.png" alt="" width={18} height={18} priority
-              style={{ display: 'block', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
-          </span>
+          <PragatiMark size={28} flat />
           <div className="min-w-0">
             <div className={`font-black text-[13px] tracking-tight leading-none ${dark ? 'text-white' : 'text-slate-900'}`}>
               Pragati
@@ -400,15 +393,8 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
             aria-label="Open navigation">
             <Menu size={18} />
           </button>
-          <Link href="/" className="flex items-center gap-1.5">
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              background: 'linear-gradient(135deg, #1256B0 0%, #1E88E5 100%)',
-              borderRadius: 7, padding: '3px 4px', lineHeight: 0,
-            }}>
-              <Image src="/logo-icon.png" alt="" width={15} height={15} priority
-                style={{ display: 'block', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
-            </span>
+          <Link href="/" className="flex items-center gap-2">
+            <PragatiMark size={22} flat />
             <span className={`font-black text-sm tracking-tight ${dark ? 'text-white' : 'text-slate-900'}`}>Pragati</span>
           </Link>
         </div>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
+import { PragatiMark } from '@/components/PragatiMark';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
 function StrengthMeter({ password }: { password: string }) {
@@ -17,7 +18,7 @@ function StrengthMeter({ password }: { password: string }) {
   const labels = ['', 'Very weak', 'Weak', 'Okay', 'Strong', 'Excellent'];
   if (!password) return null;
   return (
-    <div className="mt-2 space-y-1.5">
+    <div className="mt-2 space-y-1.5 fade-in-soft">
       <div className="flex items-center gap-2">
         <div className="flex gap-0.5 flex-1">
           {[1,2,3,4,5].map(i => (
@@ -78,115 +79,259 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-5 relative">
-      <div className="absolute top-0 left-0 right-0 h-[3px]"
-        style={{ background: 'linear-gradient(90deg, #1565C0 0%, #1769C8 50%, #2B8C29 100%)' }} />
+    <>
+      <style>{`
+        @keyframes glow-pulse {
+          0%, 100% { opacity: 0.55; transform: scale(1); }
+          50%      { opacity: 0.85; transform: scale(1.08); }
+        }
+        @keyframes logo-float {
+          0%, 100% { transform: translateY(0px); }
+          50%      { transform: translateY(-8px); }
+        }
+        @keyframes fade-up {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fade-in-soft {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer-line {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        @keyframes orbit-a {
+          from { transform: rotate(0deg)   translateX(170px) rotate(0deg); }
+          to   { transform: rotate(360deg) translateX(170px) rotate(-360deg); }
+        }
+        @keyframes orbit-b {
+          from { transform: rotate(0deg)   translateX(220px) rotate(0deg); }
+          to   { transform: rotate(-360deg) translateX(220px) rotate(360deg); }
+        }
+        .logo-float    { animation: logo-float 5.5s ease-in-out infinite; }
+        .fade-up       { animation: fade-up 0.55s ease-out forwards; }
+        .fade-up-1     { animation: fade-up 0.55s 0.10s ease-out both; }
+        .fade-up-2     { animation: fade-up 0.55s 0.20s ease-out both; }
+        .fade-up-3     { animation: fade-up 0.55s 0.32s ease-out both; }
+        .fade-in-soft  { animation: fade-in-soft 0.35s ease-out both; }
+        .form-swap     { animation: fade-in-soft 0.32s ease-out both; }
+        .shimmer-line::after {
+          content: '';
+          position: absolute; inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+          animation: shimmer-line 2.6s ease-in-out infinite;
+        }
+        .orbit-a { animation: orbit-a 22s linear infinite; }
+        .orbit-b { animation: orbit-b 30s linear infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .logo-float, .orbit-a, .orbit-b, .shimmer-line::after { animation: none !important; }
+          .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-in-soft, .form-swap { animation-duration: 0.01ms !important; }
+        }
+      `}</style>
 
-      <div className="w-full max-w-[340px]">
+      <div className="min-h-screen flex">
 
-        {/* Wordmark — no logo image. Just the name. */}
-        <div className="text-center mb-10">
-          <div className="text-3xl font-black tracking-tight text-slate-900">Pragati</div>
-          <div className="text-[11px] text-slate-400 mt-1 tracking-wide">
-            Project intelligence
+        {/* ════ LEFT — Pragati brand panel ═══════════════════════════════ */}
+        <div
+          className="hidden lg:flex lg:w-[54%] flex-col relative overflow-hidden"
+          style={{ background: 'linear-gradient(160deg, #050E1D 0%, #091828 40%, #0B1F3A 70%, #0C2347 100%)' }}
+        >
+          {/* Dot grid texture */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }} />
+
+          {/* Glowing blue halo */}
+          <div className="absolute pointer-events-none" style={{
+            top: '20%', left: '50%', transform: 'translateX(-50%)',
+            width: 520, height: 520, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(30,136,229,0.28) 0%, transparent 65%)',
+            animation: 'glow-pulse 6s ease-in-out infinite',
+          }} />
+          {/* Subtle forest accent in the corner */}
+          <div className="absolute pointer-events-none" style={{
+            bottom: '-12%', right: '-12%', width: 380, height: 380, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(43,160,71,0.18) 0%, transparent 70%)',
+          }} />
+
+          {/* Orbiting accents */}
+          <div className="absolute pointer-events-none" style={{ top: '34%', left: '50%' }}>
+            <div className="orbit-a" style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: '#42A5F5', boxShadow: '0 0 14px rgba(66,165,245,0.85)',
+            }} />
+          </div>
+          <div className="absolute pointer-events-none" style={{ top: '34%', left: '50%' }}>
+            <div className="orbit-b" style={{
+              width: 5, height: 5, borderRadius: '50%',
+              background: '#67D376', boxShadow: '0 0 12px rgba(103,211,118,0.8)',
+            }} />
+          </div>
+
+          <div className="relative flex flex-col flex-1 px-14 py-12">
+            <div className="flex-1 flex flex-col justify-center">
+
+              {/* Custom Pragati mark — CSS-built, no image asset */}
+              <div className="flex justify-center mb-9 logo-float">
+                <PragatiMark size={96} />
+              </div>
+
+              {/* Wordmark */}
+              <h1
+                className="fade-up-1 text-center font-black text-white leading-none"
+                style={{ fontSize: 'clamp(56px, 5.6vw, 78px)', letterSpacing: '-0.035em' }}
+              >
+                Pragati
+              </h1>
+
+              <div className="fade-up-2 flex justify-center mt-5">
+                <div className="relative h-0.5 w-20 rounded-full overflow-hidden shimmer-line"
+                  style={{ background: 'linear-gradient(90deg, #1769C8, #43A047)' }} />
+              </div>
+
+              <p
+                className="fade-up-2 text-center text-white/55 mt-5 leading-relaxed mx-auto"
+                style={{ fontSize: 14, maxWidth: 320 }}
+              >
+                A bird's-eye view of every project,
+                <br />every action, every contributor.
+              </p>
+
+              <div className="fade-up-3 flex justify-center mt-8 gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400/60" />
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400/30" />
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400/15" />
+              </div>
+            </div>
+
+            <div className="text-center pb-2 fade-up-3">
+              <div style={{ fontSize: 11, fontStyle: 'italic' }} className="text-white/30 tracking-wide">
+                Progress over perfection — every day.
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* First-run banner */}
-        {isFirstRun && mode === 'login' && (
-          <div className="mb-6 rounded-xl border border-forest-200 bg-forest-50 px-4 py-3 flex items-start gap-2.5">
-            <Sparkles size={15} className="text-forest-600 shrink-0 mt-0.5" />
-            <div className="text-xs leading-snug">
-              <div className="font-semibold text-forest-800">No accounts yet</div>
-              <button onClick={() => { setMode('setup'); setErr(''); }}
-                className="text-forest-700 font-bold underline hover:no-underline mt-0.5">
-                Set up your workspace →
-              </button>
+        {/* ════ RIGHT — Form panel ═══════════════════════════════════════ */}
+        <div className="flex-1 flex flex-col justify-center items-center bg-white px-6 py-12 relative">
+          <div className="absolute top-0 left-0 right-0 h-[3px]"
+            style={{ background: 'linear-gradient(90deg, #1565C0 0%, #1769C8 50%, #2B8C29 100%)' }} />
+
+          <div className="w-full max-w-[340px] fade-up">
+
+            {/* Mobile branding — same Pragati mark, no image */}
+            <div className="flex flex-col items-center mb-8 lg:hidden">
+              <PragatiMark size={56} />
+              <div className="text-2xl font-black text-slate-900 mt-3 tracking-tight">Pragati</div>
             </div>
-          </div>
-        )}
 
-        {/* Heading */}
-        <h2 className="text-xl font-bold text-slate-900 mb-6">
-          {mode === 'login' ? 'Sign in' : 'Set up workspace'}
-        </h2>
-
-        <form onSubmit={submit} className="space-y-3.5">
-          {mode === 'setup' && (
-            <>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Full name</label>
-                <input className="input" placeholder="Your name" required
-                  value={name} onChange={e => setName(e.target.value)} />
+            {/* First-run banner */}
+            {isFirstRun && mode === 'login' && (
+              <div className="mb-6 rounded-xl border border-forest-200 bg-forest-50 px-4 py-3 flex items-start gap-2.5 fade-in-soft">
+                <Sparkles size={15} className="text-forest-600 shrink-0 mt-0.5" />
+                <div className="text-xs leading-snug">
+                  <div className="font-semibold text-forest-800">Welcome to Pragati</div>
+                  <button onClick={() => { setMode('setup'); setErr(''); }}
+                    className="text-forest-700 font-bold underline hover:no-underline mt-0.5">
+                    Set up your workspace →
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">
-                  Job title <span className="font-normal text-slate-300">(optional)</span>
-                </label>
-                <input className="input" placeholder="e.g. Team Lead"
-                  value={title} onChange={e => setTitle(e.target.value)} />
-              </div>
-            </>
-          )}
-
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Email</label>
-            <input className="input" type="email" placeholder="you@company.com" required
-              autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-[11px] font-semibold text-slate-500">Password</label>
-              {mode === 'login' && (
-                <a href="/forgot-password" className="text-[11px] text-blue-600 font-semibold hover:text-blue-800">
-                  Forgot?
-                </a>
-              )}
-            </div>
-            <input className="input" type="password" required
-              minLength={mode === 'setup' ? 8 : 1}
-              placeholder={mode === 'setup' ? 'Min 8 characters' : '••••••••'}
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              value={password} onChange={e => setPassword(e.target.value)} />
-            {mode === 'setup' && <StrengthMeter password={password} />}
-          </div>
-
-          {err && (
-            <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 leading-snug">
-              {err}
-            </div>
-          )}
-
-          <button type="submit" disabled={loading} aria-busy={loading}
-            className="btn-primary w-full justify-center py-3 text-sm font-bold group mt-2">
-            {loading ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
-                <span>{mode === 'login' ? 'Signing in…' : 'Creating…'}</span>
-              </>
-            ) : (
-              <>
-                {mode === 'login' ? 'Sign in' : 'Create workspace'}
-                <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-              </>
             )}
-          </button>
-        </form>
 
-        {/* Mode toggle / footer note */}
-        <div className="mt-5 text-center text-xs text-slate-400">
-          {mode === 'setup' ? (
-            <>
-              Already have an account?{' '}
-              <button onClick={() => { setMode('login'); setErr(''); }}
-                className="text-blue-600 font-semibold hover:underline">Sign in</button>
-            </>
-          ) : (
-            <span className="text-slate-300">No account? Ask your team lead.</span>
-          )}
+            {/* Heading */}
+            <div className="mb-7 form-swap" key={mode + '-h'}>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                {mode === 'login' ? 'Welcome back' : 'Set up workspace'}
+              </h2>
+              <p className="text-sm text-slate-400 mt-1 leading-snug">
+                {mode === 'login'
+                  ? 'Sign in to continue.'
+                  : 'Create the first lead account.'}
+              </p>
+            </div>
+
+            <form onSubmit={submit} className="space-y-4 form-swap" key={mode + '-f'}>
+              {mode === 'setup' && (
+                <>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Full name</label>
+                    <input className="input" placeholder="Your name" required
+                      value={name} onChange={e => setName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Job title <span className="normal-case font-normal text-slate-300">(optional)</span>
+                    </label>
+                    <input className="input" placeholder="e.g. Team Lead"
+                      value={title} onChange={e => setTitle(e.target.value)} />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
+                <input className="input" type="email" placeholder="you@company.com" required
+                  autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
+                  {mode === 'login' && (
+                    <a href="/forgot-password" className="text-xs text-blue-600 font-semibold hover:text-blue-800 transition-colors">
+                      Forgot?
+                    </a>
+                  )}
+                </div>
+                <input className="input" type="password" required minLength={mode === 'setup' ? 8 : 1}
+                  placeholder={mode === 'setup' ? 'Min 8 characters' : '••••••••'}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={password} onChange={e => setPassword(e.target.value)} />
+                {mode === 'setup' && <StrengthMeter password={password} />}
+              </div>
+
+              {err && (
+                <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug">
+                  {err}
+                </div>
+              )}
+
+              <button type="submit" disabled={loading} aria-busy={loading}
+                className="btn-primary w-full justify-center py-3 text-sm font-bold group mt-1"
+                style={{ boxShadow: '0 4px 14px rgba(21,101,192,0.35)' }}
+              >
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
+                    <span>{mode === 'login' ? 'Signing in…' : 'Creating workspace…'}</span>
+                  </>
+                ) : (
+                  <>
+                    {mode === 'login' ? 'Sign in' : 'Create workspace'}
+                    <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <p className="mt-5 text-center text-sm text-slate-400">
+              {mode === 'setup' ? (
+                <>
+                  Already have an account?{' '}
+                  <button onClick={() => { setMode('login'); setErr(''); }}
+                    className="text-blue-600 font-semibold hover:underline">Sign in</button>
+                </>
+              ) : (
+                <span className="text-xs text-slate-300">No account? Ask your team lead.</span>
+              )}
+            </p>
+          </div>
         </div>
+
       </div>
-    </div>
+    </>
   );
 }
