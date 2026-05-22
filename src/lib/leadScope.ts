@@ -3,25 +3,27 @@ import mongoose from 'mongoose';
 
 // Scope of records visible to a single team lead.
 //
-// Phase-1 visibility rule (decided in PR #35):
+// Visibility rule:
 //   A lead sees ONLY:
 //     • projects where they are the owner (project.ownerId === userId), OR
-//     • projects assigned to a team where they're the leadId.
-//   The people-workload panel on the dashboard surfaces ONLY members of
-//   teams they lead.
+//     • projects assigned to a team where they are the leadId OR a member.
+//   The people-workload panel on the dashboard surfaces members of all
+//   teams the lead belongs to (as leadId or memberIds).
 //
 // Other leads' projects, tasks, and team members are invisible — both in
 // the dashboard rollup and on the projects list / detail pages.
 export interface LeadScope {
   userOid:    mongoose.Types.ObjectId;
-  teamOids:   mongoose.Types.ObjectId[];     // teams where this user is leadId
+  teamOids:   mongoose.Types.ObjectId[];     // teams where this user is leadId OR a member
   memberOids: mongoose.Types.ObjectId[];     // union of memberIds across those teams (incl. the lead themselves)
 }
 
 export async function getLeadScope(userId: string): Promise<LeadScope> {
   const userOid = new mongoose.Types.ObjectId(userId);
+
+  // A team lead can see projects for any team they lead OR belong to as a member.
   const teams = await Team.find(
-    { leadId: userOid },
+    { $or: [{ leadId: userOid }, { memberIds: userOid }] },
     '_id memberIds',
   ).lean();
 
