@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { Card, PriorityTag, StatusTag, StatusSelect, formatDate, Avatar } from '@/components/ui';
-import { ChevronRight, Shield, FileText, Building2, GitBranch, MessageSquare, CalendarPlus, Timer, Activity, Bot, Sparkles } from 'lucide-react';
+import { ChevronRight, Shield, FileText, Building2, GitBranch, MessageSquare, CalendarPlus, Timer, Activity } from 'lucide-react';
 
 const STATUSES  = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
 const TASK_TYPES = ['task','review','approval','test','issue','corrective_action','finding','data_review'] as const;
@@ -504,55 +504,6 @@ export default function TaskDetailPage() {
           </Card>
         )}
 
-        {/* QA Copilot — context-aware help */}
-        <div className="card overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-brand-50/60 to-slate-50/40 flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-brand-600 to-brand-800 flex items-center justify-center shrink-0 shadow-sm">
-              <Bot size={12} className="text-white" />
-            </div>
-            <h3 className="text-sm font-semibold text-slate-700">QA Copilot</h3>
-            <span className="ml-auto text-[10px] font-bold text-brand-600 bg-brand-50 border border-brand-100 px-1.5 py-0.5 rounded">AI</span>
-          </div>
-          <div className="p-3 space-y-2.5">
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Get guidance specific to this{' '}
-              <span className="font-semibold text-slate-700">{TASK_TYPE_LABELS[task.taskType] ?? task.taskType?.replace(/_/g, ' ') ?? 'task'}</span>
-              {task.gxpCritical ? ' — GxP critical process.' : '.'}
-            </p>
-            <button
-              onClick={() => router.push(`/copilot?taskId=${id}`)}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
-              style={{ background: 'linear-gradient(135deg,#1256B0 0%,#1769C8 100%)' }}
-            >
-              <Sparkles size={12} />
-              Get help with this task
-            </button>
-          </div>
-        </div>
-
-        {/* AI triage if present */}
-        {task.aiTriage?.severity && (
-          <div className="card p-4">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">AI Triage</h4>
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                task.aiTriage.severity === 'critical' ? 'bg-red-50 text-red-700' :
-                task.aiTriage.severity === 'major' ? 'bg-amber-50 text-amber-700' :
-                'bg-slate-100 text-slate-600'
-              }`}>{task.aiTriage.severity}</span>
-              {task.aiTriage.category && (
-                <span className="text-xs text-slate-500">{task.aiTriage.category}</span>
-              )}
-            </div>
-            {task.aiTriage.rationale?.length > 0 && (
-              <ul className="text-xs text-slate-500 space-y-1">
-                {task.aiTriage.rationale.slice(0,3).map((r: string, i: number) => (
-                  <li key={i} className="flex gap-1.5"><span className="text-slate-300">·</span>{r}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,26 +1,26 @@
-# Pragati — Quality Informatics Project Manager
+# Pragati — Quality Informatics Project Tracker
 
-> Project & task management built for pharma QA teams. Tracks Deviations, CAPAs, Change Controls, Software Changes and Validation work with GxP compliance built in.
+> Project & task tracker for pharma QA-IT team leads. Phase 1: minimal, fast, single-purpose.
 
-**Live:** https://pragatialm.vercel.app · **Version:** 1.0.0
+**Live:** https://pragatialm.vercel.app
 
 ---
 
-## What it does
+## What it does (phase 1)
 
-Pragati is a purpose-built PM tool for Quality Informatics. Unlike generic project tools, it understands pharma lifecycles, GxP-critical tasks, QA sign-off requirements and regulatory context out of the box.
+Pragati gives a QA-IT team lead one place to see **what's running, what's due, and who's on what** — and nothing else.
 
-- **Lifecycle templates** for Deviation, CAPA, Change Control, Software Change, CSV Validation, Audit, Pharmacovigilance, Data Integrity and more
-- **GxP-critical task flagging** with QA sign-off tracking on every task
-- **Kanban board** (To Do → In Progress → Review → Blocked → Done) with drag-and-drop
-- **Operations Hub** — org-wide pulse: project health matrix, people at work, KPI strip
-- **Task Triage** — every open task scored for deadline-miss probability with one-click re-assign / extend due / open
-- **Trends** — team velocity, momentum, rising stars, stalled projects, team-pulse load levels
-- **QA Triage Assistant** — rule-based classifier that scores any quality event by severity and suggests CAPAs (fully auditable, 21 CFR Part 11 traceable)
-- **QA Copilot** — conversational helper for KB lookups and regulatory questions
-- **Teams** — function-aligned (CSV, Data Integrity, PV, Lab Informatics, Audit, Training); PMs can edit name, lead, members and description inline
-- **Excel export** — any project to a meeting-ready workbook (Executive Summary, All Tasks, Blockers & Bottlenecks)
-- **Two roles** — **PM** (full access) and **Individual Contributor** (own tasks, projects, triage, copilot)
+The dashboard has three panels and that's the entire surface area:
+
+1. **Projects** — every project the lead is accountable for, with code, lifecycle, owner, progress, open / overdue task counts, due date, and a rule-based health badge (healthy / at-risk / critical).
+2. **Pending tasks** (sticky right rail) — the lead's own open tasks bucketed by due window: **Overdue · This week · Next week · Later**. Always visible while scrolling.
+3. **Team workload** — every team member as a row: open tasks, overdue, completed in last 7 days, and a load level (healthy / busy / overloaded).
+
+That's it. No analytics tabs. No AI copilot. No org dashboards. No yearly view. Drilling into a project still opens the full Kanban board and task workflow, but the lead's home is one screen.
+
+### Auth
+- Pragati is **lead-only**. Employees stay in the database as assignable people but cannot sign in.
+- New leads join via one-time **invite links** generated from the profile menu. Single-use, 7-day expiry, full audit trail (who invited whom, when consumed) — 21 CFR Part 11 §11.10(d).
 
 ---
 
@@ -34,9 +34,7 @@ Pragati is a purpose-built PM tool for Quality Informatics. Unlike generic proje
 | Auth | JWT + bcrypt + httpOnly cookies |
 | Validation | Zod (every API body) |
 | Styling | Tailwind CSS |
-| Charts | Recharts |
 | Excel export | ExcelJS |
-| LLM (Copilot only) | Google Generative AI / Anthropic SDK |
 | Deployment | Vercel |
 
 ---
@@ -46,12 +44,12 @@ Pragati is a purpose-built PM tool for Quality Informatics. Unlike generic proje
 ### Prerequisites
 
 - Node.js 18+
-- MongoDB Atlas cluster (or use in-memory mode for local dev)
+- MongoDB Atlas cluster (or in-memory mode for local dev)
 
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/abhieq3/MicroMacro.git
+git clone https://github.com/abhipatelz/MicroMacro.git
 cd MicroMacro
 npm install
 ```
@@ -79,9 +77,6 @@ SMTP_HOST=smtp.yourprovider.com
 SMTP_USER=your@email.com
 SMTP_PASS=yourpassword
 APP_URL=https://yourdomain.com
-
-# Optional — enables QA Copilot LLM augmentation
-GEMINI_API_KEY=your-google-ai-key
 ```
 
 ### 3. Run locally
@@ -94,7 +89,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### 4. First login
 
-Registration happens on `/login` (the form switches between sign-in and sign-up). The first account created becomes the **PM (workspace owner)** automatically. After that, self-registration is disabled — all new accounts must be created by a PM via the People page.
+The very first user to hit `/login`'s sign-up form becomes the **workspace lead**. After that, self-registration is disabled. Every subsequent lead must be invited via the **profile menu → Invite a lead** flow.
 
 ### 5. Useful scripts
 
@@ -119,30 +114,23 @@ vercel env add JWT_SECRET
 vercel --prod
 ```
 
-The app is a standard Next.js App Router project — zero additional Vercel configuration needed. The included `vercel.json` is intentionally minimal.
+Standard Next.js App Router project. The included `vercel.json` is intentionally minimal.
 
 ---
 
-## Roles
+## Access model
 
-| Feature | PM | Individual Contributor |
-|---|:---:|:---:|
-| Dashboard (personal tasks + summary) | ✓ | ✓ |
-| Projects — view | ✓ | ✓ |
-| Projects — create / edit / delete | ✓ | — |
-| Tasks — update status | ✓ | ✓ |
-| Operations Hub | ✓ | — |
-| Task Triage | ✓ | — |
-| Trends | ✓ | — |
-| Teams — view | ✓ | ✓ |
-| Teams — create / edit / manage members | ✓ | — |
-| People — manage users & roles | ✓ | — |
-| QA Triage Assistant | ✓ | ✓ |
-| QA Copilot | ✓ | ✓ |
-| Yearly task view | ✓ | ✓ |
-| Excel export | ✓ | ✓ |
+Only one role can sign in: **lead** (legacy name `pm` still accepted for back-compat). Employees exist as assignable records but receive 403 from `/api/auth/login`.
 
-Destructive project deletion requires the PM's password re-entry (21 CFR Part 11 audit intent).
+| Capability | Lead |
+|---|:---:|
+| Dashboard (Projects · Pending · Team workload) | ✓ |
+| Projects — view / create / edit / delete | ✓ |
+| Tasks — create / update / sign off | ✓ |
+| Invite another lead | ✓ |
+| Settings (profile, notifications, password) | ✓ |
+
+Destructive project deletion requires password re-entry (21 CFR Part 11 audit intent).
 
 ---
 
@@ -152,41 +140,33 @@ Destructive project deletion requires the PM's password re-entry (21 CFR Part 11
 src/
 ├── app/
 │   ├── (authed)/              # All authenticated pages
-│   │   ├── page.tsx           # Dashboard
-│   │   ├── projects/          # List, detail, new
-│   │   ├── tasks/[id]/        # Task detail
-│   │   ├── org/               # Operations Hub
-│   │   ├── risk/              # Task Triage
-│   │   ├── insights/          # Trends
-│   │   ├── teams/             # Teams (PM-editable)
-│   │   ├── people/            # People management (PM)
-│   │   ├── triage/            # QA Triage Assistant
-│   │   ├── copilot/           # QA Copilot
-│   │   ├── yearly/            # Yearly view
-│   │   ├── settings/          # User profile, security, notifications
-│   │   └── ai/                # Legacy URL redirects (/ai/risk, /ai/triage)
-│   ├── api/                   # All API routes
-│   │   ├── auth/              # Login, register, password, first-password
-│   │   ├── projects/          # CRUD + export + calendar
+│   │   ├── page.tsx           # Dashboard (the three-panel home)
+│   │   ├── projects/          # List, detail (Kanban), new
+│   │   ├── tasks/[id]/        # Task detail, comments, sign-off, effort
+│   │   └── settings/          # Profile, security, notifications
+│   ├── api/                   # API routes
+│   │   ├── auth/              # login, signup, register, password, forgot/reset
+│   │   ├── invites/           # invite-link issuance + validation
+│   │   ├── projects/          # CRUD + export (xlsx) + calendar (.ics)
 │   │   ├── tasks/             # CRUD + subtasks + comments + sign-off + effort
-│   │   ├── teams/             # CRUD (PM PATCH/DELETE)
-│   │   ├── users/             # People management
-│   │   ├── ai/                # Triage + risk scoring
-│   │   ├── insights/          # Trends analytics
-│   │   ├── analytics/         # Operations Hub analytics
-│   │   ├── dashboard/         # Personal dashboard payload
-│   │   └── me/                # Current-user endpoints
-│   └── login/                 # Public login / signup
+│   │   ├── teams/             # GET only (filter dropdowns)
+│   │   ├── users/             # /me read/update
+│   │   ├── lifecycles/        # lifecycle template list (filter dropdowns)
+│   │   ├── insights/          # per-project health + per-user workload (dashboard)
+│   │   ├── dashboard/         # personal dashboard payload
+│   │   └── me/                # /me/summary, /me/tasks
+│   ├── login/                 # Public login
+│   ├── signup/                # Public invite-token signup
+│   ├── forgot-password/       # Public password-reset request
+│   └── reset-password/        # Public password-reset token consumer
 ├── components/
-│   ├── AppShell.tsx           # Sidebar, top bar, notifications
-│   ├── ui.tsx                 # Shared primitives (Card, Avatar, LifecycleTag, …)
+│   ├── AppShell.tsx           # Sidebar, top bar, profile menu, notifications
+│   ├── InviteLeadModal.tsx    # Invite-a-lead modal (portal)
 │   ├── CommandPalette.tsx     # ⌘K global search
-│   ├── Toast.tsx              # Toast notifications
-│   └── Tour.tsx               # Onboarding tour
+│   ├── ui.tsx                 # Shared primitives (Card, Avatar, LifecycleTag, …)
+│   └── Toast.tsx              # Toast notifications
 ├── lib/
-│   ├── auth.ts                # JWT helpers (requireUser, requireRole)
-│   ├── jwt.ts                 # JWT sign/verify
-│   ├── password.ts            # bcrypt helpers
+│   ├── auth.ts                # JWT helpers (requireUser, requireRole, isLead)
 │   ├── db.ts                  # MongoDB connection (cached)
 │   ├── http.ts                # readBody, handleError
 │   ├── validations.ts         # Zod schemas — single source of truth
@@ -195,51 +175,30 @@ src/
 │   ├── mailer.ts              # Password reset emails
 │   ├── ics.ts                 # Calendar (.ics) export
 │   ├── naturalDate.ts         # "next monday" date parsing
-│   ├── culture.ts             # Workspace culture defaults
-│   ├── alp.ts                 # ALP (Account Lifecycle Provisioning) helpers
-│   ├── ai/
-│   │   ├── triage.ts          # QA event severity classifier (rule-based)
-│   │   ├── qaKnowledge.ts     # Curated KB powering triage
-│   │   └── risk.ts            # Task risk scoring model
+│   ├── culture.ts             # Workspace defaults
+│   ├── devSeed.ts             # Seed data for in-memory mode
 │   └── client/api.ts          # Frontend fetch wrapper
 └── models/                    # Mongoose schemas
     ├── User.ts
+    ├── Invite.ts
     ├── Project.ts
     ├── Task.ts
-    └── Team.ts
+    ├── Team.ts
+    └── PasswordReset.ts
 ```
-
----
-
-## QA Triage Assistant
-
-The triage engine is a **rule-based classifier** tuned for pharma QA language. It is fully auditable — every severity point traces to a specific signal in source. No LLM is in the scoring path; this is a hard requirement for 21 CFR Part 11 reproducibility.
-
-**Categories detected**
-- Data Integrity (ALCOA+)
-- CSV / Computerized System Validation
-- Pharmacovigilance / ICSR
-- Audit Trail Issues
-- Lab Informatics (LIMS, chromatography)
-- Training / Competency
-
-**Severity signals include**
-patient safety keywords, batch impact, regulatory/inspection exposure, data falsification, shared credentials, audit trail compromise, repeat findings, and more.
-
-CAPA suggestions are drawn from 21 CFR Part 11, ICH Q10, GAMP 5 and ALCOA+ guidance. See [`CLAUDE.md`](./CLAUDE.md) for the architectural guardrails on this engine.
 
 ---
 
 ## Compliance posture
 
-Pragati is a validated GxP application and is designed against:
+Pragati is designed as a validated GxP application against:
 
 - **CSV** (Computerized System Validation) — the system itself
 - **GAMP 5** — components categorised by software category (Cat 3 / 4 / 5)
-- **21 CFR Part 11** — electronic records & electronic signatures, immutable audit trails, password re-entry on destructive actions
+- **21 CFR Part 11** — electronic records & electronic signatures, immutable audit trails, password re-entry on destructive actions, invite audit trail for §11.10(d) access control
 - **ALCOA+** — Attributable, Legible, Contemporaneous, Original, Accurate, plus Complete, Consistent, Enduring, Available
 
-See [`CLAUDE.md`](./CLAUDE.md) for non-negotiable architectural constraints (auth, DB, triage engine, validation boundaries).
+See [`CLAUDE.md`](./CLAUDE.md) for non-negotiable architectural constraints (auth must remain custom JWT, DB must remain Mongoose, Zod at every write boundary).
 
 ---
 
@@ -253,14 +212,22 @@ See [`CLAUDE.md`](./CLAUDE.md) for non-negotiable architectural constraints (aut
 | `SMTP_HOST` | For email | SMTP server hostname |
 | `SMTP_USER` | For email | SMTP username |
 | `SMTP_PASS` | For email | SMTP password |
-| `APP_URL` | For email | Public URL used in password reset links |
-| `GEMINI_API_KEY` | Copilot | Google Generative AI key — used only by Copilot, never by the triage engine |
+| `APP_URL` | For email | Public URL used in password reset + invite links |
 
 ---
 
-## Contributing
+## Phase 2 (not built)
 
-See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development workflow, commit conventions and PR checklist.
+Deliberately deferred until phase 1 is in real use and the team asks for them:
+
+- Org-wide analytics, trends, velocity charts
+- QA-event triage assistant (rule-based; logic preserved out of tree, not removed permanently)
+- Conversational QA copilot
+- Yearly contributor view
+- Team management UI
+- People management UI
+
+The shape of phase 2 follows from what leads actually need once phase 1 is daily-driven, not from what we can imagine in advance.
 
 ---
 
