@@ -143,6 +143,21 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* Summary strip */}
+      <div className="flex flex-wrap gap-3 mb-5">
+        {[
+          { label: 'Projects',    value: sortedProjects.length, color: 'text-blue-700', bg: 'bg-blue-50' },
+          { label: 'Open tasks',  value: dash.teamTasks.length, color: 'text-slate-700', bg: 'bg-slate-100' },
+          { label: 'Overdue',     value: totalOverdue,           color: totalOverdue > 0 ? 'text-red-600' : 'text-slate-400', bg: totalOverdue > 0 ? 'bg-red-50' : 'bg-slate-100' },
+          { label: 'Team',        value: dash.people.length,    color: 'text-emerald-700', bg: 'bg-emerald-50' },
+        ].map(s => (
+          <div key={s.label} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${s.bg}`}>
+            <span className={`text-sm font-black ${s.color}`}>{s.value}</span>
+            <span className="text-xs text-slate-500 font-medium">{s.label}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Main layout: left content + right sidebar */}
       <div className="flex gap-6 items-start">
 

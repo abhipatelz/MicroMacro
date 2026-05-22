@@ -66,6 +66,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const body = await readBody(req, ProjectUpdateSchema);
     const current = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).select('status').lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    // Block marking completed when open tasks remain
+    if (body.status === 'completed') {
+      const openCount = await Task.countDocuments({ projectId: params.id, status: { $ne: 'done' } });
+      if (openCount > 0) {
+        return NextResponse.json(
+          { error: `${openCount} task${openCount === 1 ? '' : 's'} still open — mark them done first` },
+          { status: 422 },
+        );
+      }
+    }
+
     const patch: any = {};
     for (const [k, v] of Object.entries(body)) {
       if (v === undefined) continue;

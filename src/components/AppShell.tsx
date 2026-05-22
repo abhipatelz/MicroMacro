@@ -21,13 +21,10 @@ export interface CurrentUser {
   mustChangePassword?: boolean;
 }
 
-/* ── Dark-mode hook ─────────────────────────────────────────────────── */
+/* ── Dark-mode hook ─────────────────────────────────────────────── */
 function useDarkMode(): [boolean, () => void] {
   const [dark, setDark] = useState(false);
-  useEffect(() => {
-    const stored = localStorage.getItem('theme');
-    setDark(stored === 'dark');
-  }, []);
+  useEffect(() => { setDark(localStorage.getItem('theme') === 'dark'); }, []);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('theme', dark ? 'dark' : 'light');
@@ -35,7 +32,7 @@ function useDarkMode(): [boolean, () => void] {
   return [dark, () => setDark(d => !d)];
 }
 
-/* ── Force password change modal ─────────────────────────────────────────── */
+/* ── Force password change modal ─────────────────────────────────── */
 function ForcePasswordModal({ onDone }: { onDone: () => void }) {
   const [pw, setPw]           = useState('');
   const [confirm, setConfirm] = useState('');
@@ -78,7 +75,7 @@ function ForcePasswordModal({ onDone }: { onDone: () => void }) {
         </p>
         <form onSubmit={submit} className="mt-6 space-y-4">
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">New password</label>
+            <label className="label">New password</label>
             <input type="password" autoFocus required minLength={8} className="input text-sm"
               placeholder="Min 8 characters" value={pw}
               onChange={e => { setPw(e.target.value); setErr(''); }} />
@@ -102,7 +99,7 @@ function ForcePasswordModal({ onDone }: { onDone: () => void }) {
             )}
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Confirm password</label>
+            <label className="label">Confirm password</label>
             <input type="password" required className="input text-sm" placeholder="Re-enter password"
               value={confirm} onChange={e => { setConfirm(e.target.value); setErr(''); }} />
             {confirm && pw !== confirm && (
@@ -123,7 +120,7 @@ function ForcePasswordModal({ onDone }: { onDone: () => void }) {
   );
 }
 
-/* ── Main shell ─────────────────────────────────────────────────────────────── */
+/* ── Main shell ─────────────────────────────────────────────────────── */
 export default function AppShell({ user, children }: { user: CurrentUser; children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
@@ -135,43 +132,26 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
   const [dark, toggleDark]            = useDarkMode();
   const [mustChangePw, setMustChangePw] = useState(!!user.mustChangePassword);
 
-  /* Drawer & scroll lock */
   useEffect(() => { setOpen(false); }, [pathname]);
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
-  /* Nav items — each with a distinct icon colour matching Alembic colour palette */
-  type NavItem = { href: string; label: string; icon: any; tour?: string; badge?: string; iconColor: string; iconBg: string };
-  type NavSection = { title: string; items: NavItem[] };
+  type NavItem = { href: string; label: string; icon: any; iconColor: string; iconBg: string };
 
-  const employeeSections: NavSection[] = [
-    {
-      title: 'Work',
-      items: [
-        { href: '/',         label: 'My Tasks', icon: LayoutDashboard, tour: 'nav-tasks',    iconColor: '#1565C0', iconBg: '#E3F2FD' },
-        { href: '/projects', label: 'Projects', icon: FolderKanban,   tour: 'nav-projects', iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
-      ],
-    },
+  const pmNav: NavItem[] = [
+    { href: '/',         label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/projects', label: 'Projects',  icon: FolderKanban,    iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
+    { href: '/teams',    label: 'Teams',     icon: Users,           iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
 
-  // Phase 1: lead sidebar — Dashboard, Projects, Teams. Everything else
-  // (Trends, Operations Hub, Task Triage, QA Copilot, People, Yearly view)
-  // is hidden from nav but the routes remain reachable by URL for re-enable
-  // in later phases.
-  const pmSections: NavSection[] = [
-    {
-      title: 'Plan',
-      items: [
-        { href: '/',         label: 'Dashboard', icon: LayoutDashboard, tour: 'nav-home',     iconColor: '#1565C0', iconBg: '#E3F2FD' },
-        { href: '/projects', label: 'Projects',  icon: FolderKanban,    tour: 'nav-projects', iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
-        { href: '/teams',    label: 'Teams',     icon: Users,           tour: 'nav-teams',    iconColor: '#2E7D32', iconBg: '#E8F5E9' },
-      ],
-    },
+  const employeeNav: NavItem[] = [
+    { href: '/',         label: 'My Tasks', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/projects', label: 'Projects', icon: FolderKanban,    iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
   ];
 
-  const sections = (user.role === 'pm' || user.role === 'lead') ? pmSections : employeeSections;
+  const nav = (user.role === 'pm' || user.role === 'lead') ? pmNav : employeeNav;
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname?.startsWith(href);
 
   async function logout() {
@@ -180,71 +160,78 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
     router.refresh();
   }
 
-  /* ── Sidebar content ─────────────────────────────────────────────────────────── */
-  const SidebarContent = (
+  /* ── Sidebar inner content ─────────────────────────────────────────── */
+  const SidebarInner = (
     <>
-      {/* Nav */}
-      <nav className="flex-1 px-3 pt-4 overflow-auto pb-2">
-        {sections.map((section, si) => (
-          <div key={section.title} className={si > 0 ? 'mt-4' : ''}>
-            <div style={{ fontSize: 9, letterSpacing: '0.18em' }}
-              className="text-slate-400 dark:text-white/25 uppercase font-bold px-3 mb-1.5">
-              {section.title}
+      {/* Brand header — same visual weight as the old top bar */}
+      <div className="flex items-center gap-2.5 px-4 h-14 shrink-0 border-b"
+        style={{ borderColor: dark ? 'rgba(255,255,255,0.07)' : '#e8edf4' }}>
+        <Link href="/" className="flex items-center gap-2 flex-1 min-w-0">
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            background: 'linear-gradient(135deg, #1256B0 0%, #1E88E5 100%)',
+            borderRadius: 8, padding: '4px 5px', lineHeight: 0, flexShrink: 0,
+          }}>
+            <Image src="/logo-icon.png" alt="" width={18} height={18} priority
+              style={{ display: 'block', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
+          </span>
+          <div className="min-w-0">
+            <div className={`font-black text-[13px] tracking-tight leading-none ${dark ? 'text-white' : 'text-slate-900'}`}>
+              Pragati
             </div>
-            <div className="space-y-0.5">
-              {section.items.map((n) => {
-                const Icon = n.icon;
-                const active = isActive(n.href);
-                return (
-                  <Link
-                    key={n.href}
-                    href={n.href}
-                    prefetch
-                    data-tour={n.tour}
-                    className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 group ${
-                      active
-                        ? 'text-brand-700 dark:text-blue-300'
-                        : 'text-slate-600 dark:text-white/45 hover:text-slate-900 dark:hover:text-white/85 hover:bg-slate-50 dark:hover:bg-white/5'
-                    }`}
-                    style={active ? {
-                      background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
-                      borderLeft: `3px solid ${n.iconColor}`,
-                      paddingLeft: '9px',
-                    } : {}}
-                  >
-                    {/* Coloured icon box */}
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
-                      style={{
-                        background: active
-                          ? (dark ? `${n.iconColor}30` : n.iconBg)
-                          : (dark ? `${n.iconColor}18` : `${n.iconColor}14`),
-                      }}>
-                      <Icon size={14} style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }} />
-                    </div>
-                    <span className="flex-1 truncate">{n.label}</span>
-                    {n.badge && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                        style={{ background: dark ? 'rgba(67,160,71,0.22)' : '#E8F5E9', color: dark ? '#86efac' : '#2E7D32' }}>
-                        {n.badge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
+            <div style={{ fontSize: 8, letterSpacing: '0.14em' }} className={dark ? 'text-white/30' : 'text-slate-400'}>
+              PROJECT INTELLIGENCE
             </div>
           </div>
-        ))}
+        </Link>
+        {/* Close on mobile */}
+        <button className={`lg:hidden p-1 rounded-md ml-auto ${dark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'}`}
+          onClick={() => setOpen(false)}>
+          <X size={15} />
+        </button>
+      </div>
+
+      {/* Nav items */}
+      <nav className="flex-1 px-3 py-4 overflow-auto space-y-0.5">
+        {nav.map(n => {
+          const Icon   = n.icon;
+          const active = isActive(n.href);
+          return (
+            <Link key={n.href} href={n.href} prefetch
+              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                active
+                  ? 'text-brand-700 dark:text-blue-300'
+                  : 'text-slate-600 dark:text-white/45 hover:text-slate-900 dark:hover:text-white/85 hover:bg-slate-50 dark:hover:bg-white/5'
+              }`}
+              style={active ? {
+                background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
+                borderLeft: `3px solid ${n.iconColor}`,
+                paddingLeft: '9px',
+              } : {}}
+            >
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
+                style={{
+                  background: active
+                    ? (dark ? `${n.iconColor}30` : n.iconBg)
+                    : (dark ? `${n.iconColor}18` : `${n.iconColor}14`),
+                }}>
+                <Icon size={14} style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }} />
+              </div>
+              <span className="flex-1 truncate">{n.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* User footer */}
+      {/* User profile footer */}
       {profileOpen && (
         <div className="fixed inset-0 z-40" onClick={() => { setProfileOpen(false); setConfirmLogout(false); }} />
       )}
-      <div data-tour="user-profile"
-        className="px-3 py-3 border-t border-slate-100 dark:border-white/5 relative"
+      <div className="px-3 py-3 border-t shrink-0 relative"
+        style={{ borderColor: dark ? 'rgba(255,255,255,0.05)' : '#e8edf4' }}
         onClick={() => setProfileOpen(o => !o)}>
 
-        {/* Profile popup */}
+        {/* Profile popup (opens upward) */}
         <div className={`absolute bottom-full left-2 right-2 mb-1.5 rounded-xl overflow-hidden z-50 transition-all duration-200 ${
           profileOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-1.5 pointer-events-none'
         }`} onClick={e => e.stopPropagation()} style={{
@@ -252,6 +239,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
           border: dark ? '1px solid rgba(255,255,255,0.09)' : '1px solid #e2e8f0',
           boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
         }}>
+
           {/* Normal menu */}
           <div className={`transition-all duration-200 ${confirmLogout ? 'opacity-0 pointer-events-none absolute inset-0' : 'opacity-100'}`}>
             <div className="px-3 py-2.5 flex items-center gap-2.5"
@@ -262,15 +250,15 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
                   {user.name}
                 </div>
                 <div style={{ fontSize: 10 }} className={dark ? 'text-white/35 truncate' : 'text-slate-400 truncate'}>
-                  {(user.role === 'pm' || user.role === 'lead') ? 'Lead' : 'Individual Contributor'}
+                  {(user.role === 'pm' || user.role === 'lead') ? 'Team Lead' : 'Individual Contributor'}
                 </div>
               </div>
             </div>
             <div className="py-1">
               {[
-                { href: '/settings',              Icon: User,  label: 'Profile & identity' },
-                { href: '/settings#notifications', Icon: Bell,  label: 'Notifications' },
-                { href: '/settings#security',      Icon: Lock,  label: 'Security' },
+                { href: '/settings',               Icon: User,  label: 'Profile & identity' },
+                { href: '/settings#notifications',  Icon: Bell,  label: 'Notifications' },
+                { href: '/settings#security',       Icon: Lock,  label: 'Security' },
               ].map(({ href, Icon, label }) => (
                 <Link key={href} href={href}
                   className={`flex items-center gap-2.5 px-3 py-2 text-xs transition-colors ${
@@ -279,24 +267,22 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
                   <Icon size={12} className="shrink-0" /> {label}
                 </Link>
               ))}
-              <button
-                type="button"
-                onClick={() => { setInviteOpen(true); setProfileOpen(false); }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors ${
-                  dark ? 'text-white/55 hover:text-white/90 hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                <UserPlus size={12} className="shrink-0" /> Invite a lead
-              </button>
+              {(user.role === 'pm' || user.role === 'lead') && (
+                <button type="button"
+                  onClick={() => { setInviteOpen(true); setProfileOpen(false); }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors ${
+                    dark ? 'text-white/55 hover:text-white/90 hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}>
+                  <UserPlus size={12} className="shrink-0" /> Invite a lead
+                </button>
+              )}
               <div className={`mx-3 my-1 h-px ${dark ? 'bg-white/6' : 'bg-slate-100'}`} />
               <div className="flex items-center gap-1 px-1">
                 <button onClick={toggleDark}
                   className={`flex items-center gap-2 flex-1 px-2 py-2 rounded-lg text-xs transition-colors ${
                     dark ? 'text-white/50 hover:text-white/90 hover:bg-white/5' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                   }`}>
-                  {dark
-                    ? <Sun  size={12} className="shrink-0 text-amber-400/70" />
-                    : <Moon size={12} className="shrink-0" />}
+                  {dark ? <Sun size={12} className="shrink-0 text-amber-400/70" /> : <Moon size={12} className="shrink-0" />}
                   <span>{dark ? 'Light mode' : 'Dark mode'}</span>
                   <span className="ml-auto w-7 h-3.5 rounded-full flex items-center shrink-0 transition-all duration-200"
                     style={{ background: dark ? '#1565C0' : '#e2e8f0', padding: '2px' }}>
@@ -308,8 +294,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
                   className={`flex items-center gap-1.5 px-2 py-2 rounded-lg text-xs transition-colors shrink-0 ${
                     dark ? 'text-red-400/55 hover:text-red-400 hover:bg-white/5' : 'text-red-500 hover:text-red-600 hover:bg-red-50'
                   }`}>
-                  <LogOut size={12} className="shrink-0" />
-                  <span>Sign out</span>
+                  <LogOut size={12} /> <span>Sign out</span>
                 </button>
               </div>
             </div>
@@ -332,15 +317,13 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
                 <button onClick={() => setConfirmLogout(false)}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                     dark ? 'text-white/50 hover:text-white/80' : 'text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200'
-                  }`}
-                  style={dark ? { background: 'rgba(255,255,255,0.07)' } : {}}>
+                  }`} style={dark ? { background: 'rgba(255,255,255,0.07)' } : {}}>
                   Cancel
                 </button>
                 <button onClick={logout}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                     dark ? 'text-red-300 hover:text-red-200' : 'text-red-600 bg-red-50 hover:bg-red-100'
-                  }`}
-                  style={dark ? { background: 'rgba(239,68,68,0.18)' } : {}}>
+                  }`} style={dark ? { background: 'rgba(239,68,68,0.18)' } : {}}>
                   Sign out
                 </button>
               </div>
@@ -356,7 +339,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
           <div className="flex-1 min-w-0">
             <div className={`text-xs font-semibold truncate ${dark ? 'text-white/80' : 'text-slate-700'}`}>{user.name}</div>
             <div style={{ fontSize: 10 }} className={dark ? 'text-white/30 truncate' : 'text-slate-400 truncate'}>
-              {user.title || ((user.role === 'pm' || user.role === 'lead') ? 'Lead' : 'Individual Contributor')}
+              {user.title || ((user.role === 'pm' || user.role === 'lead') ? 'Team Lead' : 'Contributor')}
             </div>
           </div>
           <ChevronUp size={11} className={`shrink-0 transition-transform duration-150 ${dark ? 'text-white/20' : 'text-slate-300'} ${profileOpen ? '' : 'rotate-180'}`} />
@@ -366,49 +349,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
   );
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
-
-
-      {/* ── Top header (always visible — Alembic Academy style) ────────── */}
-      <header
-        className="fixed top-0 inset-x-0 z-50 flex items-center gap-3 px-4 h-14"
-        style={{
-          background: dark ? '#0B1628' : '#ffffff',
-          borderBottom: dark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e2e8f0',
-          boxShadow: dark ? 'none' : '0 1px 4px rgba(21,101,192,0.07)',
-        }}
-      >
-        {/* Hamburger (mobile only) */}
-        <button
-          onClick={() => setOpen(o => !o)}
-          className={`lg:hidden p-1.5 rounded-md transition-colors -ml-1 ${
-            dark ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-          }`}
-          aria-label="Open navigation">
-          <Menu size={20} />
-        </button>
-
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            background: 'linear-gradient(135deg, #1256B0 0%, #1E88E5 100%)',
-            borderRadius: 8, padding: '5px 6px', lineHeight: 0, flexShrink: 0,
-          }}>
-            <Image src="/logo-icon.png" alt="" width={20} height={20} priority
-              style={{ display: 'block', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
-          </span>
-          <div className="hidden sm:block">
-            <div className={`font-black text-sm tracking-tight leading-tight ${dark ? 'text-white' : 'text-slate-900'}`}>
-              Pragati
-            </div>
-            <div style={{ fontSize: 9, letterSpacing: '0.14em' }} className={dark ? 'text-white/30' : 'text-slate-400'}>
-              PROJECT INTELLIGENCE
-            </div>
-          </div>
-        </Link>
-
-      </header>
+    <div className="min-h-screen flex" style={{ background: 'var(--bg-page)' }}>
 
       {/* Mobile backdrop */}
       <div
@@ -419,48 +360,61 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
         aria-hidden="true"
       />
 
-      <div className="flex pt-14 min-h-screen">
+      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+      <aside
+        className={`
+          w-[220px] shrink-0 flex flex-col
+          fixed inset-y-0 left-0 z-50
+          lg:sticky lg:top-0 lg:h-screen
+          transition-transform duration-300 ease-in-out
+          ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+        style={{
+          background: dark ? '#0B1628' : '#ffffff',
+          borderRight: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e8edf4',
+        }}
+      >
+        {SidebarInner}
+      </aside>
 
-        {/* ── Sidebar (light-themed on desktop, drawer on mobile) ──────── */}
-        <aside
-          className={`
-            w-60 shrink-0 flex flex-col
-            fixed top-14 left-0
-            lg:sticky lg:top-14
-            z-40 lg:z-auto
-            h-[calc(100vh-3.5rem)]
-            transition-transform duration-300 ease-in-out
-            ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          `}
+      {/* ── Main content ─────────────────────────────────────────────────── */}
+      <div className="flex-1 min-w-0 flex flex-col">
+
+        {/* Mobile-only slim top strip */}
+        <div className="lg:hidden sticky top-0 z-30 flex items-center gap-2.5 px-3 h-11"
           style={{
             background: dark ? '#0B1628' : '#ffffff',
-            borderRight: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0',
-          }}
-        >
-          {/* Mobile close button */}
+            borderBottom: dark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e8edf4',
+          }}>
           <button
-            className={`lg:hidden absolute top-3 right-3 p-1.5 rounded-md transition-colors ${
-              dark ? 'text-white/30 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'
+            onClick={() => setOpen(o => !o)}
+            className={`p-1.5 rounded-md -ml-1 transition-colors ${
+              dark ? 'text-white/50 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
             }`}
-            onClick={() => setOpen(false)}>
-            <X size={16} />
+            aria-label="Open navigation">
+            <Menu size={18} />
           </button>
+          <Link href="/" className="flex items-center gap-1.5">
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: 'linear-gradient(135deg, #1256B0 0%, #1E88E5 100%)',
+              borderRadius: 7, padding: '3px 4px', lineHeight: 0,
+            }}>
+              <Image src="/logo-icon.png" alt="" width={15} height={15} priority
+                style={{ display: 'block', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
+            </span>
+            <span className={`font-black text-sm tracking-tight ${dark ? 'text-white' : 'text-slate-900'}`}>Pragati</span>
+          </Link>
+        </div>
 
-          {SidebarContent}
-        </aside>
-
-        {/* Main content */}
-        <main className="flex-1 overflow-auto min-w-0 relative">
-          {/* Dashboard hero backdrop — spans sidebar-edge to viewport-right
-              for both PM and IC without being trapped by the page-enter
-              transform on the inner content div. */}
+        {/* Page content */}
+        <main className="flex-1 overflow-auto relative">
           {pathname === '/' && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute top-0 left-0 right-0 h-[220px]"
+            <div aria-hidden
+              className="pointer-events-none absolute top-0 left-0 right-0 h-[200px]"
               style={{
                 zIndex: 0,
-                background: 'linear-gradient(180deg, rgba(21,101,192,0.09) 0%, rgba(21,101,192,0.05) 45%, rgba(21,101,192,0.01) 80%, transparent 100%)',
+                background: 'linear-gradient(180deg, rgba(21,101,192,0.09) 0%, rgba(21,101,192,0.04) 50%, transparent 100%)',
               }}
             />
           )}
@@ -473,7 +427,6 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
       {mustChangePw && (
         <ForcePasswordModal onDone={() => { setMustChangePw(false); router.refresh(); }} />
       )}
-
       <InviteLeadModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </div>
   );
