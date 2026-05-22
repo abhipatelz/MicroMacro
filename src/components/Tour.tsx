@@ -199,9 +199,9 @@ function Arrow({ dir, accent }: { dir: 'left' | 'right' | 'top' | null; accent: 
   return <div style={{ ...base, top: -11, left: '50%', transform: 'translateX(-50%)', borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderBottom: `11px solid ${accent}` }} />;
 }
 
-export function Tour({ role }: { role: 'employee' | 'pm' }) {
-  const steps      = role === 'pm' ? PM_STEPS : EMPLOYEE_STEPS;
-  const storageKey = role === 'pm' ? KEY_PM : KEY_EMP;
+export function Tour({ role }: { role: 'employee' | 'pm' | 'lead' }) {
+  const steps      = role === 'pm' || role === 'lead' ? PM_STEPS : EMPLOYEE_STEPS;
+  const storageKey = (role === 'pm' || role === 'lead') ? KEY_PM : KEY_EMP;
 
   const [active, setActive]         = useState(false);
   const [step, setStep]             = useState(0);
@@ -331,7 +331,7 @@ export function Tour({ role }: { role: 'employee' | 'pm' }) {
             className="px-4 pt-4 pb-3">
             <div className="flex items-center justify-between mb-2">
               <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: current.accent }}>
-                {current.tag || (role === 'pm' ? 'PM Tour' : 'Getting started')}
+                {current.tag || ((role === 'pm' || role === 'lead') ? 'Lead Tour' : 'Getting started')}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-400 font-mono">{step + 1} / {steps.length}</span>
@@ -390,10 +390,10 @@ export function Tour({ role }: { role: 'employee' | 'pm' }) {
   );
 }
 
-export function resetTour(role: 'employee' | 'pm') {
-  try { localStorage.removeItem(role === 'pm' ? KEY_PM : KEY_EMP); } catch {}
+export function resetTour(role: 'employee' | 'pm' | 'lead') {
+  try { localStorage.removeItem((role === 'pm' || role === 'lead') ? KEY_PM : KEY_EMP); } catch {}
 }
 
-export function completeTour(role: 'employee' | 'pm') {
-  try { localStorage.setItem(role === 'pm' ? KEY_PM : KEY_EMP, 'done'); } catch {}
+export function completeTour(role: 'employee' | 'pm' | 'lead') {
+  try { localStorage.setItem((role === 'pm' || role === 'lead') ? KEY_PM : KEY_EMP, 'done'); } catch {}
 }

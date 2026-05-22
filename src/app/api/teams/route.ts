@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { error, user } = await requireRole(req, 'pm');
+    const { error, user } = await requireRole(req, 'pm', 'lead');
     if (error) return error;
     await connectDB();
     const body = await readBody(req, Create);

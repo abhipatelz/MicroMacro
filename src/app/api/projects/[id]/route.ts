@@ -87,7 +87,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireRole(req, 'pm');
+    const { error, user } = await requireRole(req, 'pm', 'lead');
     if (error) return error;
     await connectDB();
 

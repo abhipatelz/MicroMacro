@@ -20,7 +20,7 @@ const Body = z.object({
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user: caller } = await requireRole(req, 'pm');
+    const { error, user: caller } = await requireRole(req, 'pm', 'lead');
     if (error) return error;
     await connectDB();
     const body = await readBody(req, Body);
@@ -30,10 +30,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     if (body.role === 'employee') {
-      const pmCount = await User.countDocuments({ role: 'pm' });
+      const leadCount = await User.countDocuments({ role: { $in: ['pm', 'lead'] } });
       const target = await User.findById(params.id, 'role').lean();
-      if (target?.role === 'pm' && pmCount <= 1) {
-        return NextResponse.json({ error: 'Cannot demote the last PM. Promote another user first.' }, { status: 409 });
+      if (target && (target.role === 'pm' || target.role === 'lead') && leadCount <= 1) {
+        return NextResponse.json({ error: 'Cannot demote the last lead. Promote another user first.' }, { status: 409 });
       }
     }
 
@@ -47,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user: caller } = await requireRole(req, 'pm');
+    const { error, user: caller } = await requireRole(req, 'pm', 'lead');
     if (error) return error;
     await connectDB();
 
@@ -58,10 +58,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const target = await User.findById(params.id, 'role name').lean();
     if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    if (target.role === 'pm') {
-      const pmCount = await User.countDocuments({ role: 'pm' });
-      if (pmCount <= 1) {
-        return NextResponse.json({ error: 'Cannot remove the last PM.' }, { status: 409 });
+    if (target.role === 'pm' || target.role === 'lead') {
+      const leadCount = await User.countDocuments({ role: { $in: ['pm', 'lead'] } });
+      if (leadCount <= 1) {
+        return NextResponse.json({ error: 'Cannot remove the last lead.' }, { status: 409 });
       }
     }
 

@@ -633,7 +633,7 @@ export default function ProjectDetailPage() {
             <Download size={14} />
             All deadlines → .ics
           </a>
-          {me?.role === 'pm' && (
+          {(me?.role === 'pm' || me?.role === 'lead') && (
             <button
               onClick={() => setDeleteOpen(true)}
               className="flex items-center gap-1.5 text-xs w-48 justify-center px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"

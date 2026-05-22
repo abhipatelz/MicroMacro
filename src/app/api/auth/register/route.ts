@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       email: body.email.toLowerCase(),
       name: body.name,
       passwordHash: bcrypt.hashSync(body.password, 10),
-      role: 'pm',
+      role: 'lead',
       title: body.title || ''
     });
     const token = signToken({

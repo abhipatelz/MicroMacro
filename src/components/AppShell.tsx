@@ -8,17 +8,17 @@ import { CommandPalette } from './CommandPalette';
 import { Tour } from './Tour';
 import { api } from '@/lib/client/api';
 import {
-  LayoutDashboard, FolderKanban, Users, Calendar,
-  PieChart, Lightbulb, LogOut, UserCog, Menu, X,
+  LayoutDashboard, FolderKanban, Calendar,
+  LogOut, Menu, X,
   Bell, Lock, User, ChevronUp, Moon, Sun, AlertTriangle,
-  Search, CheckSquare, Bot, Activity,
+  Search, CheckSquare,
 } from 'lucide-react';
 
 export interface CurrentUser {
   id: string;
   name: string;
   email: string;
-  role: 'employee' | 'pm';
+  role: 'employee' | 'pm' | 'lead';
   title?: string;
   mustChangePassword?: boolean;
 }
@@ -181,50 +181,25 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
       items: [
         { href: '/',         label: 'My Tasks', icon: LayoutDashboard, tour: 'nav-tasks',    iconColor: '#1565C0', iconBg: '#E3F2FD' },
         { href: '/projects', label: 'Projects', icon: FolderKanban,   tour: 'nav-projects', iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
-        { href: '/yearly',   label: 'My Year',  icon: Calendar,       tour: 'nav-yearly',   iconColor: '#00897B', iconBg: '#E0F2F1' },
-      ],
-    },
-    {
-      title: 'Assist',
-      items: [
-        { href: '/copilot', label: 'QA Copilot', icon: Bot, tour: 'nav-copilot', iconColor: '#5C6BC0', iconBg: '#E8EAF6' },
       ],
     },
   ];
 
+  // Phase 1: minimal sidebar for team leads — Dashboard + Projects only.
+  // Trends, Operations Hub, Task Triage, QA Copilot, Teams, People, Yearly view
+  // are intentionally hidden from nav; routes remain reachable by URL and
+  // will be reintroduced in later phases.
   const pmSections: NavSection[] = [
     {
       title: 'Plan',
       items: [
-        { href: '/',         label: 'Dashboard',    icon: LayoutDashboard, tour: 'nav-home',     iconColor: '#1565C0', iconBg: '#E3F2FD' },
-        { href: '/projects', label: 'Projects',     icon: FolderKanban,   tour: 'nav-projects', iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
-        { href: '/yearly',   label: 'Yearly view',  icon: Calendar,                             iconColor: '#00897B', iconBg: '#E0F2F1' },
-      ],
-    },
-    {
-      title: 'People',
-      items: [
-        { href: '/teams',  label: 'Teams',  icon: Users,   tour: 'nav-teams',  iconColor: '#2E7D32', iconBg: '#E8F5E9' },
-        { href: '/people', label: 'People', icon: UserCog, tour: 'nav-people', iconColor: '#0277BD', iconBg: '#E1F5FE' },
-      ],
-    },
-    {
-      title: 'Assist',
-      items: [
-        { href: '/copilot', label: 'QA Copilot', icon: Bot, iconColor: '#5C6BC0', iconBg: '#E8EAF6' },
-      ],
-    },
-    {
-      title: 'Steer',
-      items: [
-        { href: '/org',      label: 'Operations Hub', icon: PieChart,  tour: 'nav-org',      iconColor: '#E65100', iconBg: '#FBE9E7' },
-        { href: '/risk',     label: 'Task Triage',    icon: Activity,  tour: 'nav-risk',     iconColor: '#C62828', iconBg: '#FFEBEE' },
-        { href: '/insights', label: 'Trends',         icon: Lightbulb, badge: 'Live', tour: 'nav-insights', iconColor: '#F57F17', iconBg: '#FFF9C4' },
+        { href: '/',         label: 'Dashboard', icon: LayoutDashboard, tour: 'nav-home',     iconColor: '#1565C0', iconBg: '#E3F2FD' },
+        { href: '/projects', label: 'Projects',  icon: FolderKanban,    tour: 'nav-projects', iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
       ],
     },
   ];
 
-  const sections = user.role === 'pm' ? pmSections : employeeSections;
+  const sections = (user.role === 'pm' || user.role === 'lead') ? pmSections : employeeSections;
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname?.startsWith(href);
 
   async function logout() {
@@ -315,7 +290,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
                   {user.name}
                 </div>
                 <div style={{ fontSize: 10 }} className={dark ? 'text-white/35 truncate' : 'text-slate-400 truncate'}>
-                  {user.role === 'pm' ? 'PM' : 'Individual Contributor'}
+                  {(user.role === 'pm' || user.role === 'lead') ? 'Lead' : 'Individual Contributor'}
                 </div>
               </div>
             </div>
@@ -400,7 +375,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
           <div className="flex-1 min-w-0">
             <div className={`text-xs font-semibold truncate ${dark ? 'text-white/80' : 'text-slate-700'}`}>{user.name}</div>
             <div style={{ fontSize: 10 }} className={dark ? 'text-white/30 truncate' : 'text-slate-400 truncate'}>
-              {user.title || (user.role === 'pm' ? 'PM' : 'Individual Contributor')}
+              {user.title || ((user.role === 'pm' || user.role === 'lead') ? 'Lead' : 'Individual Contributor')}
             </div>
           </div>
           <ChevronUp size={11} className={`shrink-0 transition-transform duration-150 ${dark ? 'text-white/20' : 'text-slate-300'} ${profileOpen ? '' : 'rotate-180'}`} />
@@ -413,7 +388,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
     <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
 
       {/* Command palette */}
-      <CommandPalette isPM={user.role === 'pm'} />
+      <CommandPalette isPM={user.role === 'pm' || user.role === 'lead'} />
 
       {/* ── Top header (always visible — Alembic Academy style) ────────── */}
       <header
@@ -598,10 +573,10 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
 
         {/* Main content */}
         <main className="flex-1 overflow-auto min-w-0 relative">
-          {/* Dashboard hero backdrop (IC only) — placed in <main> so it spans
-              the full content area (from sidebar edge to viewport right).
-              PM keeps its in-page gradient which fits its wider layout. */}
-          {pathname === '/' && user.role !== 'pm' && (
+          {/* Dashboard hero backdrop — spans sidebar-edge to viewport-right
+              for both PM and IC without being trapped by the page-enter
+              transform on the inner content div. */}
+          {pathname === '/' && (
             <div
               aria-hidden
               className="pointer-events-none absolute top-0 left-0 right-0 h-[220px]"

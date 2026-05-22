@@ -5,7 +5,9 @@ const UserSchema = new Schema(
     email:        { type: String, required: true, unique: true, lowercase: true },
     name:         { type: String, required: true },
     passwordHash: { type: String, required: true },
-    role:         { type: String, enum: ['employee', 'pm'], default: 'employee' },
+    // 'pm' kept in the enum for backwards compat with existing records;
+    // new lead promotions use 'lead'. See src/lib/auth.ts → isLead().
+    role:         { type: String, enum: ['employee', 'pm', 'lead'], default: 'employee' },
 
     // ── Identity fields ─────────────────────────────────────────────────
     // These can be set manually or overwritten by LDAP sync.

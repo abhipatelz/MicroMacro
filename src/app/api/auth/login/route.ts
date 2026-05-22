@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { signToken, setAuthCookie } from '@/lib/auth';
+import { signToken, setAuthCookie, isLead } from '@/lib/auth';
 import { readBody, handleError } from '@/lib/http';
 import { u } from '@/lib/serialize';
 
@@ -19,6 +19,15 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     const ok = bcrypt.compareSync(body.password, user.passwordHash);
     if (!ok) return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+
+    // Phase 1: Pragati is restricted to team leads. Employees remain in the
+    // database as assignable records but cannot sign in.
+    if (!isLead(user.role)) {
+      return NextResponse.json(
+        { error: 'Access restricted to team leads. Contact your administrator.' },
+        { status: 403 }
+      );
+    }
 
     const token = signToken({
       sub: String(user._id),

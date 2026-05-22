@@ -17,7 +17,7 @@ export async function devSeed() {
 
   // ── Users ──────────────────────────────────────────────────────────────────
   const people = [
-    { email: 'satya@qi.local',       name: 'Satya Rajendran',   role: 'pm',       title: 'DGM – Quality Informatics',   pw: 'satya123' },
+    { email: 'satya@qi.local',       name: 'Satya Rajendran',   role: 'lead',     title: 'DGM – Quality Informatics',   pw: 'satya123' },
     { email: 'bhoomika@qi.local',     name: 'Bhoomika',          role: 'employee', title: 'UI/UX Designer',              pw: 'bhoomika123' },
     { email: 'yash@qi.local',         name: 'Yash Patel',        role: 'employee', title: 'UI/UX Designer',              pw: 'yash123' },
     { email: 'jimil@qi.local',        name: 'Jimil',             role: 'employee', title: 'UI/UX Designer',              pw: 'jimil123' },

@@ -86,7 +86,7 @@ export function CommandPalette({ isPM }: { isPM: boolean }) {
   const peopleItems: PaletteItem[] = people.map(u => ({
     id:     `u-${u.id}`,
     label:  u.name,
-    sub:    u.title || (u.role === 'pm' ? 'PM' : 'Individual Contributor'),
+    sub:    u.title || (u.role === 'pm' || u.role === 'lead' ? 'Lead' : 'Individual Contributor'),
     icon:   UserIcon,
     group:  'People',
     action: () => go('/people'),

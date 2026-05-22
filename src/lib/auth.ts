@@ -4,13 +4,27 @@ import { cookies } from 'next/headers';
 import { connectDB } from './db';
 import { User } from '@/models/User';
 
+// Roles:
+//   'employee' — legacy role; can still be assigned tasks but cannot sign in.
+//   'pm'       — legacy lead role, retained for backwards compat with existing
+//                records and JWTs issued before the rename.
+//   'lead'     — current name for the team-lead role. Phase-1 login is
+//                restricted to this role (plus legacy 'pm').
+export type Role = 'employee' | 'pm' | 'lead';
+
 export interface JwtPayload {
   sub: string;
   email: string;
-  role: 'employee' | 'pm';
+  role: Role;
   name: string;
   title?: string;
   mustChangePassword?: boolean;
+}
+
+// True for both the new 'lead' role and the legacy 'pm' role so callers don't
+// need to repeat the dual check at every guard.
+export function isLead(role?: string | null): boolean {
+  return role === 'lead' || role === 'pm';
 }
 
 const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';

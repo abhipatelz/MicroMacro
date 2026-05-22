@@ -26,7 +26,7 @@ function healthLabel(score: number): 'healthy' | 'at_risk' | 'critical' {
 
 export async function GET(req: NextRequest) {
   try {
-    const { error } = await requireRole(req, 'pm');
+    const { error } = await requireRole(req, 'pm', 'lead');
     if (error) return error;
     await connectDB();
 

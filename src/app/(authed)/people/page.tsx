@@ -341,9 +341,9 @@ export default function PeoplePage() {
     load();
   }
 
-  const pms = users.filter((u) => u.role === 'pm');
-  const ics  = users.filter((u) => u.role !== 'pm');
-  const isPM = me?.role === 'pm';
+  const pms = users.filter((u) => u.role === 'pm' || u.role === 'lead');
+  const ics  = users.filter((u) => u.role !== 'pm' && u.role !== 'lead');
+  const isPM = (me?.role === 'pm' || me?.role === 'lead');
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -417,9 +417,9 @@ export default function PeoplePage() {
                 <Avatar name={u.name} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-slate-800 text-sm leading-tight">{u.name}</div>
-                  <div className="text-xs text-slate-400 mt-0.5">{u.title || 'Project Manager'} · {u.email}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{u.title || 'Team Lead'} · {u.email}</div>
                 </div>
-                <span className={`tag border text-xs font-semibold ${ROLE_COLOR.pm}`}>PM</span>
+                <span className={`tag border text-xs font-semibold ${ROLE_COLOR.pm}`}>Lead</span>
                 {isPM && (
                   <button
                     className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"

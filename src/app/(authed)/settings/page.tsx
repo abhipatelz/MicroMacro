@@ -152,7 +152,7 @@ export default function SettingsPage() {
     });
   }, []);
 
-  const isPM = user?.role === 'pm';
+  const isPM = (user?.role === 'pm' || user?.role === 'lead');
 
   async function saveIdentity(e?: React.FormEvent) {
     e?.preventDefault();
@@ -216,7 +216,7 @@ export default function SettingsPage() {
               background: isPM ? '#E3F2FD' : '#E8F5E9',
               color: isPM ? '#1565C0' : '#2E7D32',
             }}>
-              {isPM ? 'PM' : 'Individual Contributor'}
+              {isPM ? 'Lead' : 'Individual Contributor'}
             </span>
           </div>
           <div className="mt-1 text-sm text-slate-500">{COMPANY_NAME}</div>

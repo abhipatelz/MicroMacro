@@ -12,7 +12,7 @@ const Body = z.object({ userId: z.string() });
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireRole(req, 'pm');
+    const { error } = await requireRole(req, 'pm', 'lead');
     if (error) return error;
     await connectDB();
     const body = await readBody(req, Body);
