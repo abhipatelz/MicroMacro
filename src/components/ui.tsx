@@ -280,11 +280,13 @@ export function StatusSelect({
   onChange,
   options = TASK_STATUS_OPTIONS as unknown as string[],
   size = 'md',
+  pending = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   options?: readonly string[] | string[];
   size?: 'sm' | 'md';
+  pending?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -305,19 +307,26 @@ export function StatusSelect({
     <div ref={ref} className="relative inline-block">
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
-        className={`inline-flex items-center gap-1.5 rounded-lg border bg-white transition-all font-semibold text-slate-700 ${
+        onClick={() => !pending && setOpen(o => !o)}
+        disabled={pending}
+        className={`inline-flex items-center gap-1.5 rounded-lg border bg-white transition-all font-semibold text-slate-700 disabled:opacity-70 ${
           open
             ? 'border-blue-300 ring-2 ring-blue-100'
             : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
         } ${size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1.5 text-xs'}`}
       >
-        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dot }} />
+        {pending ? (
+          <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin opacity-60 shrink-0" />
+        ) : (
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dot }} />
+        )}
         {label}
-        <svg width="9" height="9" viewBox="0 0 10 10" fill="none"
-          className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}>
-          <path d="M2.5 3.5L5 6.5L7.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
+        {!pending && (
+          <svg width="9" height="9" viewBox="0 0 10 10" fill="none"
+            className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}>
+            <path d="M2.5 3.5L5 6.5L7.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
       </button>
 
       {open && (
@@ -348,6 +357,39 @@ export function StatusSelect({
       )}
     </div>
   );
+}
+
+// ── useToast — simple ephemeral notification ──────────────────────────────────
+export function useToast() {
+  const [toast, setToastState] = useState<{ msg: string; kind: 'ok' | 'err' } | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showToast(msg: string, kind: 'ok' | 'err' = 'ok') {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setToastState({ msg, kind });
+    timerRef.current = setTimeout(() => setToastState(null), 3000);
+  }
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const ToastEl = toast ? (
+    <div
+      role="status"
+      className={`fixed bottom-5 right-5 z-[9999] flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg border text-sm font-semibold fade-in-soft`}
+      style={{
+        background: toast.kind === 'ok' ? '#f0fdf4' : '#fef2f2',
+        borderColor: toast.kind === 'ok' ? '#bbf7d0' : '#fecaca',
+        color: toast.kind === 'ok' ? '#15803d' : '#dc2626',
+      }}
+    >
+      {toast.kind === 'ok'
+        ? <span className="text-green-500">✓</span>
+        : <span className="text-red-500">!</span>}
+      {toast.msg}
+    </div>
+  ) : null;
+
+  return { showToast, ToastEl };
 }
 
 // ── Links ─────────────────────────────────────────────────────────────────────

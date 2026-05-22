@@ -3,10 +3,18 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
-import { Card, PriorityTag, StatusTag, StatusSelect, formatDate, Avatar } from '@/components/ui';
+import { Card, PriorityTag, StatusTag, formatDate, Avatar, useToast } from '@/components/ui';
 import { ChevronRight, Shield, FileText, Building2, GitBranch, MessageSquare, Timer, Activity } from 'lucide-react';
 
-const STATUSES  = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
+const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
+
+const STATUS_META: Record<string, { label: string; dot: string; ring: string }> = {
+  todo:        { label: 'To do',       dot: '#94a3b8', ring: '#e2e8f0' },
+  in_progress: { label: 'In progress', dot: '#3b82f6', ring: '#bfdbfe' },
+  review:      { label: 'Review',      dot: '#f59e0b', ring: '#fde68a' },
+  blocked:     { label: 'Blocked',     dot: '#ef4444', ring: '#fecaca' },
+  done:        { label: 'Done',        dot: '#22c55e', ring: '#bbf7d0' },
+};
 const TASK_TYPES = ['task','review','approval','test','issue','corrective_action','finding','data_review'] as const;
 const TASK_TYPE_LABELS: Record<string, string> = {
   task: 'Task', review: 'Review', approval: 'Approval', test: 'Test',
@@ -70,6 +78,8 @@ export default function TaskDetailPage() {
   const [comment, setComment] = useState('');
   const [newSub, setNewSub] = useState('');
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const { showToast, ToastEl } = useToast();
 
   async function load() {
     try {
@@ -145,9 +155,30 @@ export default function TaskDetailPage() {
     );
   }
 
-  async function update(patch: any) {
-    await api(`/tasks/${id}`, { method: 'PATCH', body: patch });
-    load();
+  async function update(patch: any, opts?: { optimistic?: any }) {
+    if (opts?.optimistic) setTask((t: any) => ({ ...t, ...opts.optimistic }));
+    try {
+      await api(`/tasks/${id}`, { method: 'PATCH', body: patch });
+      load();
+    } catch (e: any) {
+      showToast(e.message || 'Save failed', 'err');
+      load(); // revert
+    }
+  }
+
+  async function updateStatus(newStatus: string) {
+    setSavingStatus(true);
+    setTask((t: any) => ({ ...t, status: newStatus }));
+    try {
+      await api(`/tasks/${id}`, { method: 'PATCH', body: { status: newStatus } });
+      if (newStatus === 'done') showToast('Task marked done ✓');
+      load();
+    } catch (e: any) {
+      showToast(e.message || 'Failed to update status', 'err');
+      load();
+    } finally {
+      setSavingStatus(false);
+    }
   }
   async function addSubtask() {
     if (!newSub.trim()) return;
@@ -170,6 +201,7 @@ export default function TaskDetailPage() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
+      {ToastEl}
 
       {/* ── Left: main content ─────────────────────────────────────────── */}
       <div className="lg:col-span-2 space-y-4">
@@ -382,12 +414,41 @@ export default function TaskDetailPage() {
       <div className="space-y-4">
         <Card title="Properties">
           <div className="space-y-3 text-sm">
+            {/* Status — visual button flow */}
             <div>
               <label className="label">Status</label>
-              <StatusSelect
-                value={task.status}
-                onChange={(v) => update({ status: v })}
-              />
+              <div className="flex flex-col gap-1 mt-1">
+                {STATUSES.map(s => {
+                  const meta  = STATUS_META[s];
+                  const active = task.status === s;
+                  return (
+                    <button key={s} type="button"
+                      disabled={savingStatus}
+                      onClick={() => updateStatus(s)}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                        active
+                          ? 'border-transparent font-bold'
+                          : 'border-transparent hover:bg-slate-50 text-slate-500 hover:text-slate-700'
+                      }`}
+                      style={active ? {
+                        background: `${meta.ring}55`,
+                        border: `1px solid ${meta.ring}`,
+                        color: s === 'done' ? '#15803d' : s === 'blocked' ? '#dc2626' : s === 'in_progress' ? '#1565C0' : s === 'review' ? '#92400e' : '#475569',
+                      } : {}}
+                    >
+                      <span className={`w-2 h-2 rounded-full shrink-0 transition-all ${active ? 'scale-125' : ''}`}
+                        style={{ background: meta.dot }} />
+                      {meta.label}
+                      {active && savingStatus && (
+                        <span className="ml-auto w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin opacity-60" />
+                      )}
+                      {active && !savingStatus && (
+                        <span className="ml-auto text-[10px] font-bold opacity-60">✓</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div>
               <label className="label">Assignee</label>

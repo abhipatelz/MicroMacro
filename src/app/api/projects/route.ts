@@ -9,17 +9,22 @@ import { handleError, readBody } from '@/lib/http';
 import { project as projectS } from '@/lib/serialize';
 import { LIFECYCLES, LifecycleKey } from '@/lib/lifecycles';
 import { ProjectCreateSchema } from '@/lib/validations';
+import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import mongoose from 'mongoose';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
+
+    const scope = await getLeadScope(user!.sub);
+    const visibilityFilter = projectsVisibleFilter(scope);
+
     const { searchParams } = req.nextUrl;
-    const q: any = {};
+    const q: any = { ...visibilityFilter };
     const teamId = searchParams.get('teamId');
     if (teamId) q.teamId = teamId;
     const statuses = searchParams.getAll('status');
@@ -29,11 +34,15 @@ export async function GET(req: NextRequest) {
     if (lifecycle) q.lifecycle = lifecycle;
     const term = searchParams.get('q');
     if (term) {
-      q.$or = [
-        { name: { $regex: term, $options: 'i' } },
-        { code: { $regex: term, $options: 'i' } },
-        { description: { $regex: term, $options: 'i' } }
+      q.$and = [
+        visibilityFilter,
+        { $or: [
+          { name: { $regex: term, $options: 'i' } },
+          { code: { $regex: term, $options: 'i' } },
+          { description: { $regex: term, $options: 'i' } }
+        ] }
       ];
+      delete q.$or;
     }
     const projects = await Project.find(q).sort({ createdAt: -1 }).lean();
     const teams = await Team.find({ _id: { $in: projects.map((p) => p.teamId).filter(Boolean) } }).lean();

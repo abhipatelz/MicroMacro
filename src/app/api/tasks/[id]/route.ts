@@ -7,14 +7,25 @@ import { requireUser } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
 import { TaskUpdateSchema } from '@/lib/validations';
+import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 
 export const runtime = 'nodejs';
 
+async function assertTaskInScope(taskId: string, userId: string) {
+  const t = await Task.findById(taskId).select('projectId').lean();
+  if (!t) return { t: null, forbidden: false };
+  const scope = await getLeadScope(userId);
+  const proj = await Project.findOne({ _id: t.projectId, ...projectsVisibleFilter(scope) }).select('_id').lean();
+  return { t, forbidden: !proj };
+}
+
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
+    const { forbidden } = await assertTaskInScope(params.id, user!.sub);
+    if (forbidden) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const t = await Task.findById(params.id).lean();
     if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const [project, assignee, qa, commentUsers] = await Promise.all([
@@ -47,9 +58,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
+    const { forbidden } = await assertTaskInScope(params.id, user!.sub);
+    if (forbidden) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const body = await readBody(req, TaskUpdateSchema);
     const current = await Task.findById(params.id).select('status').lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -72,9 +85,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
+    const { t, forbidden } = await assertTaskInScope(params.id, user!.sub);
+    if (!t || forbidden) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     await Task.deleteOne({ _id: params.id });
     return NextResponse.json({ ok: true });
   } catch (e) {

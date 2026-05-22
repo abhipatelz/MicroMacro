@@ -7,39 +7,55 @@ import { Team } from '@/models/Team';
 import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { project as projectS, task as taskS } from '@/lib/serialize';
-import mongoose from 'mongoose';
+import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 
 export const runtime = 'nodejs';
 
 const STATUS_ORDER: Record<string, number> = { in_progress: 0, review: 1, blocked: 2, todo: 3, done: 4 };
 
-// Single endpoint that backs the entire lead dashboard. Replaces three
-// separate calls (/api/dashboard + /api/insights + /api/projects) with one
-// round trip and one cached Mongoose connect.
+// Single endpoint that backs the entire lead dashboard.
 //
-// Response shape is the union of what the three panels need:
-//   { user, projects[], tasks[], people[] }
-// Each task is pre-bucketed by due window so the client can render without
-// re-walking the list.
+// Visibility is strict per lead:
+//   • projects   — owned by the lead OR assigned to a team the lead leads.
+//   • tasks      — assigned to the lead.
+//   • people     — members of the team(s) the lead leads, including the
+//                  lead themselves.
+//
+// Other leads' projects, tasks, and team members never appear in the
+// payload, regardless of the lead's role.
 export async function GET(req: NextRequest) {
   try {
     const { user: jwtUser, error } = await requireUser(req);
     if (error) return error;
     await connectDB();
 
-    const now      = new Date();
-    const weekAgo  = new Date(now.getTime() - 7  * 86400000);
-    const oid      = new mongoose.Types.ObjectId(jwtUser.sub);
+    const now     = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 86400000);
 
-    // Every query runs in parallel — total wall time ≈ slowest single query
-    const [projects, myTasks, teams, owners, projectTaskAgg, perUserAgg, users] = await Promise.all([
-      Project.find({}).sort({ createdAt: -1 }).lean(),
-      Task.find({ assigneeId: oid }).sort({ status: 1, dueDate: 1 }).lean(),
-      Team.find({}).lean(),
-      User.find({}, '_id name').lean(),
+    const scope = await getLeadScope(jwtUser.sub);
+    const projFilter = projectsVisibleFilter(scope);
 
-      // Per-project rollup: total / done / open / overdue / lastCompletedAt
+    // Pull the lead's visible projects first — we then scope every other
+    // query by these project IDs so nothing leaks across teams.
+    const projects = await Project.find(projFilter).sort({ createdAt: -1 }).lean();
+    const visibleProjectIds = projects.map(p => p._id);
+
+    // Now everything else in parallel
+    const [myTasks, teamTasksRaw, teams, owners, projectTaskAgg, perUserAgg, users] = await Promise.all([
+      Task.find({ assigneeId: scope.userOid }).sort({ status: 1, dueDate: 1 }).lean(),
+
+      // All non-done tasks across visible projects for the Tasks table (limit 60)
+      Task.find({
+        projectId: { $in: visibleProjectIds },
+        status: { $ne: 'done' },
+      }).sort({ dueDate: 1 }).limit(60).lean(),
+
+      Team.find({ _id: { $in: scope.teamOids } }).lean(),
+      User.find({ _id: { $in: projects.map(p => p.ownerId).filter(Boolean) } }, '_id name').lean(),
+
+      // Per-project rollup, restricted to the lead's visible projects
       Task.aggregate([
+        { $match: { projectId: { $in: visibleProjectIds } } },
         {
           $group: {
             _id: '$projectId',
@@ -57,27 +73,42 @@ export async function GET(req: NextRequest) {
         },
       ]),
 
-      // Per-assignee workload — single facet replaces three group queries
+      // Per-assignee workload — restricted to the lead's team members AND
+      // the lead's visible projects, so we never count tasks on other
+      // teams' projects even if a member happens to be assigned there.
       Task.aggregate([
+        { $match: {
+          projectId:  { $in: visibleProjectIds },
+          assigneeId: { $in: scope.memberOids },
+        } },
         {
           $facet: {
             open: [
-              { $match: { status: { $ne: 'done' }, assigneeId: { $ne: null } } },
+              { $match: { status: { $ne: 'done' } } },
               { $group: { _id: '$assigneeId', c: { $sum: 1 } } },
             ],
             overdue: [
-              { $match: { status: { $ne: 'done' }, dueDate: { $ne: null, $lt: now }, assigneeId: { $ne: null } } },
+              { $match: { status: { $ne: 'done' }, dueDate: { $ne: null, $lt: now } } },
               { $group: { _id: '$assigneeId', c: { $sum: 1 } } },
             ],
             doneWeek: [
-              { $match: { status: 'done', completedAt: { $gte: weekAgo }, assigneeId: { $ne: null } } },
+              { $match: { status: 'done', completedAt: { $gte: weekAgo } } },
               { $group: { _id: '$assigneeId', c: { $sum: 1 } } },
             ],
           },
         },
       ]),
-      User.find({}).lean(),
+
+      // Only the lead and their team members appear in the workload table
+      User.find({ _id: { $in: scope.memberOids } }).lean(),
     ]);
+
+    // Build assignee lookup for team tasks
+    const assigneeIds = [...new Set(teamTasksRaw.map(t => t.assigneeId).filter(Boolean).map(String))];
+    const assigneeUsers = assigneeIds.length
+      ? await User.find({ _id: { $in: assigneeIds } }, '_id name').lean()
+      : [];
+    const assigneeMap = new Map(assigneeUsers.map(u => [String(u._id), u.name]));
 
     // ── Lookups ──────────────────────────────────────────────────────────
     const teamName  = new Map(teams.map(t => [String(t._id), t.name]));
@@ -93,9 +124,6 @@ export async function GET(req: NextRequest) {
         : open > 0 ? 999 : 0;
       const daysUntilDue = p.dueDate ? Math.floor((new Date(p.dueDate).getTime() - now.getTime()) / 86400000) : null;
 
-      // Rule-based health: critical if overdue or past-due project; at-risk
-      // if anything overdue or stagnant; healthy otherwise. Same shape as
-      // the old /api/insights so the client doesn't need a second branch.
       let health: 'healthy' | 'at_risk' | 'critical' = 'healthy';
       if (s.overdue >= 3 || (daysUntilDue !== null && daysUntilDue < 0 && open > 0)) health = 'critical';
       else if (s.overdue > 0 || stagnantDays >= 7 || (daysUntilDue !== null && daysUntilDue <= 5 && open > 0)) health = 'at_risk';
@@ -126,7 +154,28 @@ export async function GET(req: NextRequest) {
       return taskS(t, { projectCode: p?.code, projectName: p?.name, lifecycle: p?.lifecycle });
     });
 
-    // ── People workload ──────────────────────────────────────────────────
+    // ── Team tasks (all non-done across visible projects) ────────────────
+    const teamTasks = teamTasksRaw.map(t => {
+      const p = projMap.get(String(t.projectId));
+      return {
+        id:           String(t._id),
+        title:        t.title,
+        status:       t.status,
+        priority:     t.priority,
+        dueDate:      t.dueDate ?? null,
+        ccTcd:        (t as any).ccTcd ?? null,
+        projectId:    String(t.projectId),
+        projectCode:  p?.code ?? '',
+        projectName:  p?.name ?? '',
+        assigneeId:   t.assigneeId ? String(t.assigneeId) : null,
+        assigneeName: t.assigneeId ? (assigneeMap.get(String(t.assigneeId)) ?? null) : null,
+        subtaskCount: ((t as any).subtasks || []).length,
+        subtasksDone: ((t as any).subtasks || []).filter((s: any) => s.status === 'done').length,
+        gxpCritical:  !!(t as any).gxpCritical,
+      };
+    });
+
+    // ── People workload (lead + team members only) ───────────────────────
     const f       = perUserAgg[0];
     const openMap = new Map((f.open     as any[]).map(r => [String(r._id), r.c]));
     const ovMap   = new Map((f.overdue  as any[]).map(r => [String(r._id), r.c]));
@@ -152,9 +201,6 @@ export async function GET(req: NextRequest) {
       };
     }).sort((a, b) => b.loadScore - a.loadScore);
 
-    // Cache the payload briefly: instant render on back/forward and quick
-    // page-refresh cycles, but never long enough for a status change to feel
-    // stale. private — never cache on a shared CDN since it's per-user data.
     return NextResponse.json(
       {
         user: {
@@ -163,8 +209,9 @@ export async function GET(req: NextRequest) {
           email: jwtUser.email,
           role:  jwtUser.role,
         },
-        projects: projectList,
-        tasks:    taskList,
+        projects:  projectList,
+        tasks:     taskList,
+        teamTasks,
         people,
       },
       {

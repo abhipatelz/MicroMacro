@@ -9,16 +9,18 @@ import { handleError, readBody } from '@/lib/http';
 import { project as projectS, task as taskS } from '@/lib/serialize';
 import { LIFECYCLES } from '@/lib/lifecycles';
 import { ProjectUpdateSchema, DeleteProjectSchema } from '@/lib/validations';
+import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import bcrypt from 'bcryptjs';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
-    const p = await Project.findById(params.id).lean();
+    const scope = await getLeadScope(user!.sub);
+    const p = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).lean();
     if (!p) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const [team, owner, tasks] = await Promise.all([
       p.teamId ? Team.findById(p.teamId).lean() : Promise.resolve(null),
@@ -57,12 +59,25 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
+    const scope = await getLeadScope(user!.sub);
     const body = await readBody(req, ProjectUpdateSchema);
-    const current = await Project.findById(params.id).select('status').lean();
+    const current = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).select('status').lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    // Block marking completed when open tasks remain
+    if (body.status === 'completed') {
+      const openCount = await Task.countDocuments({ projectId: params.id, status: { $ne: 'done' } });
+      if (openCount > 0) {
+        return NextResponse.json(
+          { error: `${openCount} task${openCount === 1 ? '' : 's'} still open — mark them done first` },
+          { status: 422 },
+        );
+      }
+    }
+
     const patch: any = {};
     for (const [k, v] of Object.entries(body)) {
       if (v === undefined) continue;
@@ -90,6 +105,10 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const { error, user } = await requireRole(req, 'pm', 'lead');
     if (error) return error;
     await connectDB();
+
+    const scope = await getLeadScope(user.sub);
+    const existing = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).select('_id').lean();
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const body = await readBody(req, DeleteProjectSchema);
     const pmUser = await User.findById(user.sub).select('passwordHash').lean();
