@@ -129,17 +129,17 @@ export default function DashboardClient({
     <div className="pb-12 max-w-[1440px]">
 
       {/* ── Greeting hero ───────────────────────────────────────────────── */}
-      <div className="mb-6">
+      <div className="brand-mesh mb-6 rounded-3xl border border-slate-200/70 px-6 py-5 overflow-hidden relative">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles size={14} className="text-blue-500" />
-          <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700/90">
             {dateLabel}
           </span>
         </div>
-        <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-tight">
-          {greeting()}, {firstName}.
+        <h1 className="text-3xl font-black tracking-tight leading-tight">
+          <span className="brand-shimmer-text">{greeting()}, {firstName}.</span>
         </h1>
-        <p className="text-sm text-slate-500 mt-1 max-w-xl leading-relaxed">
+        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
           Here's your bird's-eye view — projects on the move, what needs your attention,
           and how your team is doing today.
         </p>

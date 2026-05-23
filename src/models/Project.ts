@@ -45,13 +45,23 @@ const ProjectSchema = new Schema(
     completedAt: { type: Date },
     gxpImpact: { type: String, enum: ['none', 'low', 'medium', 'high'], default: 'none' },
     regulatoryRefs: { type: String, default: '' },
-    phases: { type: [PhaseSchema], default: [] }
+    phases: { type: [PhaseSchema], default: [] },
+
+    // ── Archive state ───────────────────────────────────────────────────
+    // Archiving keeps the record (and its tasks) so historical reports
+    // and audit trails remain intact — only the default project list
+    // and dashboard hide it. Toggleable from the project header by
+    // lead/admin. archivedAt also stamps the moment for the audit log.
+    archived:   { type: Boolean, default: false },
+    archivedAt: { type: Date,    default: null   },
+    archivedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }
 );
 
 ProjectSchema.index({ teamId: 1 });
 ProjectSchema.index({ status: 1 });
+ProjectSchema.index({ archived: 1 });
 
 export type ProjectDoc = InferSchemaType<typeof ProjectSchema> & { _id: mongoose.Types.ObjectId };
 

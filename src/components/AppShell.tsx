@@ -14,7 +14,7 @@ const InviteLeadModal = dynamic(
   { ssr: false, loading: () => null },
 );
 import {
-  LayoutDashboard, FolderKanban, Users,
+  LayoutDashboard, FolderKanban, Users, UsersRound,
   LogOut, Menu, X,
   Bell, Lock, User, ChevronUp, Moon, Sun, AlertTriangle, UserPlus,
 } from 'lucide-react';
@@ -151,6 +151,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
     { href: '/',         label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects',  icon: FolderKanban,    iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams',    label: 'Team',      icon: Users,           iconColor: '#2E7D32', iconBg: '#E8F5E9' },
+    { href: '/people',   label: 'People',    icon: UsersRound,      iconColor: '#00897B', iconBg: '#E0F2F1' },
   ];
 
   const employeeNav: NavItem[] = [

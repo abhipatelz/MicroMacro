@@ -25,6 +25,14 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = req.nextUrl;
     const q: any = { ...visibilityFilter };
+
+    // Archived projects are hidden by default — pass ?includeArchived=1
+    // to retrieve them, or ?archived=1 to fetch *only* the archive bin.
+    const includeArchived = searchParams.get('includeArchived') === '1';
+    const archivedOnly    = searchParams.get('archived') === '1';
+    if (archivedOnly)             q.archived = true;
+    else if (!includeArchived)    q.archived = { $ne: true };
+
     const teamId = searchParams.get('teamId');
     if (teamId) q.teamId = teamId;
     const statuses = searchParams.getAll('status');
