@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
+import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { Project } from '@/models/Project';
 import { requireRole } from '@/lib/auth';
-import { handleError } from '@/lib/http';
+import { handleError, readBody } from '@/lib/http';
 import { project as projectS } from '@/lib/serialize';
 
 export const runtime = 'nodejs';
+
+const Body = z.object({ archived: z.boolean() });
 
 // Toggle a project's archived state. Archiving is reversible — the
 // document and its tasks stay in the database for audit purposes, only
@@ -17,20 +21,30 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   try {
     const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
     if (error) return error;
+
+    // Guard against a CastError 500 on malformed IDs (anything not a
+    // 24-char hex string would otherwise crash the route).
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Invalid project id' }, { status: 400 });
+    }
+
+    const { archived } = await readBody(req, Body);
     await connectDB();
 
-    const body = await req.json().catch(() => ({}));
-    const archived = body?.archived === true;
+    const updated = await Project.findByIdAndUpdate(
+      params.id,
+      {
+        $set: {
+          archived,
+          archivedAt: archived ? new Date() : null,
+          archivedBy: archived ? user!.sub : null,
+        },
+      },
+      { new: true },
+    );
+    if (!updated) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
-    const project = await Project.findById(params.id);
-    if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-
-    project.archived   = archived;
-    project.archivedAt = archived ? new Date() : null;
-    (project as any).archivedBy = archived ? (user!.sub as any) : null;
-    await project.save();
-
-    return NextResponse.json({ ok: true, project: projectS(project) });
+    return NextResponse.json({ ok: true, project: projectS(updated) });
   } catch (e) {
     return handleError(e);
   }

@@ -1,20 +1,40 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
 import { streamCopilotReply, type ChatMsg, type StreamMeta } from '@/lib/ai/copilotLLM';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
+const Body = z.object({
+  messages: z.array(z.object({
+    role:    z.enum(['user', 'assistant']),
+    // Cap per-message length so a single request can't blow the LLM
+    // context (and the bill) with megabytes of text.
+    content: z.string().min(1).max(8_000),
+  })).min(1).max(40),
+});
+
 export async function POST(req: NextRequest) {
-  const { error } = await requireUser(req);
+  const { error, user } = await requireUser(req);
   if (error) return error;
+
+  // Per-user throttle — the LLM call costs real money and is the most
+  // abuse-prone endpoint in the app.
+  if (!rateLimit(`copilot:${user!.sub}`, 30, 60_000)) {
+    return Response.json({ error: 'Slow down — too many copilot messages per minute.' }, { status: 429 });
+  }
 
   let body: any;
   try { body = await req.json(); } catch {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const messages: ChatMsg[] = body.messages ?? [];
-  if (!messages.length) return Response.json({ error: 'No messages' }, { status: 400 });
+  const parsed = Body.safeParse(body);
+  if (!parsed.success) {
+    return Response.json({ error: 'Invalid request', issues: parsed.error.flatten() }, { status: 400 });
+  }
+  const messages: ChatMsg[] = parsed.data.messages;
 
   const firstUser = messages.find(m => m.role === 'user')?.content ?? '';
   const hasTaskContext = /^i'?m working on (?:a|an) [a-z ]+:/i.test(firstUser);

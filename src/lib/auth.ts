@@ -65,44 +65,57 @@ export function isConfiguredAdminEmail(email?: string | null): boolean {
   return !!target && email.trim().toLowerCase() === target;
 }
 
-// JWT_SECRET is REQUIRED in production. Without it any deployment would sign
-// tokens with a publicly-known constant; every cookie issued would also be
-// invalidated on the next restart since the secret would differ across
-// instances. We check at first-use (signToken / verifyToken) rather than at
-// module load so `next build` (which sets NODE_ENV=production) can still
-// produce an artifact on a CI box that doesn't have the secret available.
-const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+// JWT_SECRET is REQUIRED in production. The dev fallback below is only used
+// when NODE_ENV !== 'production' AND the env var is unset — anything else
+// (preview deploys included) refuses to sign or verify a token. We check at
+// first-use rather than at module load so `next build` can still produce an
+// artifact on a CI box that doesn't have the secret available.
+const DEV_SECRET_FALLBACK = 'dev-secret-change-me';
 
-function assertSecretConfigured() {
-  if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[SECURITY] JWT_SECRET env var is not set in production. Refusing to sign/verify auth tokens with the insecure dev fallback.',
-    );
-  }
+function getSecret(): string {
+  const env = process.env.JWT_SECRET;
+  if (env && env.length >= 16) return env;
+  if (process.env.NODE_ENV !== 'production') return DEV_SECRET_FALLBACK;
+  throw new Error(
+    '[SECURITY] JWT_SECRET is not set (or shorter than 16 chars) in production. ' +
+    'Refusing to sign/verify auth tokens with an insecure value.',
+  );
 }
+
 const COOKIE = 'pragati_token';
 
 export function signToken(payload: JwtPayload): string {
-  assertSecretConfigured();
-  return jwt.sign(payload, SECRET, { expiresIn: '7d' });
+  return jwt.sign(payload, getSecret(), { expiresIn: '7d' });
 }
 
 export function verifyToken(token: string): JwtPayload {
-  assertSecretConfigured();
-  return jwt.verify(token, SECRET) as JwtPayload;
+  return jwt.verify(token, getSecret()) as JwtPayload;
 }
+
+const COOKIE_BASE = {
+  httpOnly: true,
+  // 'secure' is mandatory in production: the cookie carries the session JWT
+  // and would otherwise be sent over plain HTTP if a misconfigured proxy
+  // ever served the app without TLS.
+  secure: process.env.NODE_ENV === 'production',
+  // 'lax' lets top-level navigations carry the cookie (so signing in via a
+  // link still works) while blocking cross-site POST/fetch with credentials.
+  // That's enough CSRF protection for cookie-only auth — every state-changing
+  // route is POST/PATCH/DELETE, which sameSite=lax refuses to attach the
+  // cookie to from a foreign origin.
+  sameSite: 'lax' as const,
+  path: '/',
+};
 
 export function setAuthCookie(response: NextResponse, token: string) {
   response.cookies.set(COOKIE, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7
+    ...COOKIE_BASE,
+    maxAge: 60 * 60 * 24 * 7,
   });
 }
 
 export function clearAuthCookie(response: NextResponse) {
-  response.cookies.set(COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
+  response.cookies.set(COOKIE, '', { ...COOKIE_BASE, maxAge: 0 });
 }
 
 export function getTokenFromRequest(req: NextRequest): string | null {
