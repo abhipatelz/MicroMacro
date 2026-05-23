@@ -41,12 +41,28 @@ export function canMutate(role?: string | null): boolean {
   return isAdmin(role) || isLead(role);
 }
 
-// The single configured admin email (lower-cased). When this address logs in
-// or registers we promote them to role:'admin' automatically. Set the
-// ADMIN_EMAIL env var in the production environment; unset everywhere else.
+// Workspace owner's email — hard-coded so the auto-promote works even when
+// the ADMIN_EMAIL env var isn't set on the hosting environment. The env var
+// still takes precedence if both are present, but this constant is the
+// guaranteed-to-work fallback for the founder account.
+const HARDCODED_ADMIN_EMAIL = 'abhipatel33360@gmail.com';
+
+// The configured admin email (lower-cased). When this address logs in or
+// registers we promote them to role:'admin' automatically.
 export function configuredAdminEmail(): string | null {
-  const e = process.env.ADMIN_EMAIL;
-  return e ? e.trim().toLowerCase() : null;
+  const env = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (env) return env;
+  return HARDCODED_ADMIN_EMAIL.toLowerCase();
+}
+
+// True for any email that should be treated as admin. Today there's only
+// one (the workspace owner), but the helper exists so the login + register
+// routes don't repeat the comparison logic and so the hard-coded fallback
+// stays in a single auditable place.
+export function isConfiguredAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const target = configuredAdminEmail();
+  return !!target && email.trim().toLowerCase() === target;
 }
 
 // JWT_SECRET is REQUIRED in production. Without it any deployment would sign
