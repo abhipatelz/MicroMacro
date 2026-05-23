@@ -158,7 +158,8 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
     { href: '/projects', label: 'Projects', icon: FolderKanban,    iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
   ];
 
-  const nav = (user.role === 'pm' || user.role === 'lead') ? pmNav : employeeNav;
+  const isLeadOrAdmin = user.role === 'pm' || user.role === 'lead' || user.role === 'admin';
+  const nav = isLeadOrAdmin ? pmNav : employeeNav;
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname?.startsWith(href);
 
   async function logout() {
@@ -250,7 +251,9 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
                   {user.name}
                 </div>
                 <div style={{ fontSize: 10 }} className={dark ? 'text-white/35 truncate' : 'text-slate-400 truncate'}>
-                  {(user.role === 'pm' || user.role === 'lead') ? 'Team Lead' : 'Individual Contributor'}
+                  {user.role === 'admin'
+                    ? 'Workspace Admin'
+                    : (user.role === 'pm' || user.role === 'lead') ? 'Team Lead' : 'Individual Contributor'}
                 </div>
               </div>
             </div>
@@ -267,7 +270,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
                   <Icon size={12} className="shrink-0" /> {label}
                 </Link>
               ))}
-              {(user.role === 'pm' || user.role === 'lead') && (
+              {isLeadOrAdmin && (
                 <button type="button"
                   onClick={() => { setInviteOpen(true); setProfileOpen(false); }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors ${
@@ -339,7 +342,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
           <div className="flex-1 min-w-0">
             <div className={`text-xs font-semibold truncate ${dark ? 'text-white/80' : 'text-slate-700'}`}>{user.name}</div>
             <div style={{ fontSize: 10 }} className={dark ? 'text-white/30 truncate' : 'text-slate-400 truncate'}>
-              {user.title || ((user.role === 'pm' || user.role === 'lead') ? 'Team Lead' : 'Contributor')}
+              {user.title || (user.role === 'admin' ? 'Workspace Admin' : (user.role === 'pm' || user.role === 'lead') ? 'Team Lead' : 'Contributor')}
             </div>
           </div>
           <ChevronUp size={11} className={`shrink-0 transition-transform duration-150 ${dark ? 'text-white/20' : 'text-slate-300'} ${profileOpen ? '' : 'rotate-180'}`} />

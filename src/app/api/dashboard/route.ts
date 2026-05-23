@@ -44,8 +44,8 @@ export async function GET(req: NextRequest) {
         { $match: { assigneeId: oid } },
         { $group: { _id: '$status', c: { $sum: 1 } } }
       ]),
-      // Lead org stats — only for leads (or legacy 'pm'); otherwise skip
-      (jwtUser.role === 'pm' || jwtUser.role === 'lead')
+      // Lead org stats — anyone with workspace-management access (lead/pm/admin)
+      (jwtUser.role === 'pm' || jwtUser.role === 'lead' || jwtUser.role === 'admin')
         ? Task.aggregate([
             { $facet: {
                 open:          [{ $match: { status: { $ne: 'done' } } }, { $count: 'n' }],

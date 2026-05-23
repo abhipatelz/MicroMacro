@@ -21,10 +21,11 @@ export interface JwtPayload {
   mustChangePassword?: boolean;
 }
 
-// True for both the current 'lead' role and the legacy 'pm' role so callers
-// don't need to repeat the dual check at every guard.
+// True for the lead/pm/admin roles — anyone who can lead a team or manage the
+// workspace satisfies this gate. Use `isAdmin()` when you specifically want
+// to surface admin-only affordances.
 export function isLead(role?: string | null): boolean {
-  return role === 'lead' || role === 'pm';
+  return role === 'lead' || role === 'pm' || role === 'admin';
 }
 
 // The 'admin' role is a single super-user with full visibility across every
@@ -40,12 +41,28 @@ export function canMutate(role?: string | null): boolean {
   return isAdmin(role) || isLead(role);
 }
 
-// The single configured admin email (lower-cased). When this address logs in
-// or registers we promote them to role:'admin' automatically. Set the
-// ADMIN_EMAIL env var in the production environment; unset everywhere else.
+// Workspace owner's email — hard-coded so the auto-promote works even when
+// the ADMIN_EMAIL env var isn't set on the hosting environment. The env var
+// still takes precedence if both are present, but this constant is the
+// guaranteed-to-work fallback for the founder account.
+const HARDCODED_ADMIN_EMAIL = 'abhipatel33360@gmail.com';
+
+// The configured admin email (lower-cased). When this address logs in or
+// registers we promote them to role:'admin' automatically.
 export function configuredAdminEmail(): string | null {
-  const e = process.env.ADMIN_EMAIL;
-  return e ? e.trim().toLowerCase() : null;
+  const env = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (env) return env;
+  return HARDCODED_ADMIN_EMAIL.toLowerCase();
+}
+
+// True for any email that should be treated as admin. Today there's only
+// one (the workspace owner), but the helper exists so the login + register
+// routes don't repeat the comparison logic and so the hard-coded fallback
+// stays in a single auditable place.
+export function isConfiguredAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const target = configuredAdminEmail();
+  return !!target && email.trim().toLowerCase() === target;
 }
 
 // JWT_SECRET is REQUIRED in production. Without it any deployment would sign

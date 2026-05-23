@@ -152,7 +152,7 @@ export default function SettingsPage() {
     });
   }, []);
 
-  const isPM = (user?.role === 'pm' || user?.role === 'lead');
+  const isPM = (user?.role === 'pm' || user?.role === 'lead' || user?.role === 'admin');
 
   async function saveIdentity(e?: React.FormEvent) {
     e?.preventDefault();

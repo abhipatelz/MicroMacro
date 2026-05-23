@@ -212,7 +212,7 @@ export default function TaskDetailPage() {
   }
   async function signoff() { await api(`/tasks/${id}/signoff`, { method: 'POST' }); load(); }
 
-  const canSignoff = task.requiresQaSignoff && !task.qaSignoffAt && (me?.role === 'pm' || me?.role === 'lead');
+  const canSignoff = task.requiresQaSignoff && !task.qaSignoffAt && (me?.role === 'pm' || me?.role === 'lead' || me?.role === 'admin');
   const hasReferenceData = task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
 
   return (

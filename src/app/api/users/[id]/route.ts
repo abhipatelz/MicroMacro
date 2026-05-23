@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.role === 'employee') {
       const leadCount = await User.countDocuments({ role: { $in: ['pm', 'lead'] } });
       const target = await User.findById(params.id, 'role').lean();
-      if (target && (target.role === 'pm' || target.role === 'lead') && leadCount <= 1) {
+      if (target && (target.role === 'pm' || target.role === 'lead' || target.role === 'admin') && leadCount <= 1) {
         return NextResponse.json({ error: 'Cannot demote the last lead. Promote another user first.' }, { status: 409 });
       }
     }
@@ -58,7 +58,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const target = await User.findById(params.id, 'role name').lean();
     if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    if (target.role === 'pm' || target.role === 'lead') {
+    if (target.role === 'pm' || target.role === 'lead' || target.role === 'admin') {
       const leadCount = await User.countDocuments({ role: { $in: ['pm', 'lead'] } });
       if (leadCount <= 1) {
         return NextResponse.json({ error: 'Cannot remove the last lead.' }, { status: 409 });

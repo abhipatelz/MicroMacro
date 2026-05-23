@@ -582,7 +582,7 @@ export default function ProjectDetailPage() {
             className="btn-secondary flex items-center gap-1.5 text-xs w-44 justify-center">
             <Download size={13} /> Export to Excel
           </button>
-          {(me?.role === 'pm' || me?.role === 'lead') && (
+          {(me?.role === 'pm' || me?.role === 'lead' || me?.role === 'admin') && (
             <button onClick={() => setDeleteOpen(true)}
               className="flex items-center gap-1.5 text-xs w-44 justify-center px-3 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
               <Trash2 size={13} /> Delete project

@@ -61,7 +61,7 @@ export default function TeamsPage() {
     api<any>('/auth/me').then((d) => setMe(d.user));
   }, []);
 
-  const canManage = (me?.role === 'pm' || me?.role === 'lead');
+  const canManage = (me?.role === 'pm' || me?.role === 'lead' || me?.role === 'admin');
   const uMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
 
   const filtered = teams.filter((t) => {
@@ -389,7 +389,7 @@ function TeamFormModal({
               <select className="select" value={leadId} onChange={(e) => setLeadId(e.target.value)}>
                 <option value="">— No lead —</option>
                 {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}{(u.role === 'pm' || u.role === 'lead') ? ' (Lead)' : ''}</option>
+                  <option key={u.id} value={u.id}>{u.name}{(u.role === 'pm' || u.role === 'lead' || u.role === 'admin') ? ' (Lead)' : ''}</option>
                 ))}
               </select>
             </div>
