@@ -4,16 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { Card, Avatar, LifecycleTag, formatDate } from '@/components/ui';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer
-} from 'recharts';
+import { SimpleBarChart } from '@/components/SimpleBarChart';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -130,20 +121,15 @@ export default function YearlyView({ targetUserId }: { targetUserId?: string }) 
           </div>
 
           <Card title={`Monthly activity — ${year}`}>
-            <div className="h-72">
-              <ResponsiveContainer>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="completed" name="Completed" fill="#1565C0" />
-                  <Bar dataKey="big" name="Big deliveries" fill="#0D47A1" />
-                  <Bar dataKey="early" name="Early (extra effort)" fill="#43A047" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <SimpleBarChart
+              height={288}
+              data={chartData.map((d: any) => ({ label: d.name, ...d }))}
+              series={[
+                { key: 'completed', name: 'Completed',             color: '#1565C0' },
+                { key: 'big',       name: 'Big deliveries',        color: '#0D47A1' },
+                { key: 'early',     name: 'Early (extra effort)',  color: '#43A047' },
+              ]}
+            />
           </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
