@@ -336,6 +336,21 @@ export default function PeoplePage() {
     } finally { setRemoving(false); }
   }
 
+  // Clear a brute-force lock without rotating the password — useful
+  // when the lock came from typos, not a forgotten password.
+  async function unlockAccount(user: any) {
+    if (!confirm(`Unlock ${user.name}'s account?\nTheir existing password still works; the failed-attempt counter is reset to zero.`)) return;
+    setSaving(user.id);
+    try {
+      await api(`/users/${user.id}/unlock`, { method: 'POST' });
+      await load();
+    } catch (e: any) {
+      setRoleErr(e.message || 'Failed to unlock account.');
+    } finally {
+      setSaving(null);
+    }
+  }
+
   // Admin-driven password reset. Avoids the SMTP round-trip entirely:
   // we generate a temp password server-side and surface it through the
   // same CredentialsModal used after creating a new user.
@@ -442,11 +457,26 @@ export default function PeoplePage() {
                 <span className={`tag border text-xs font-semibold ${u.role === 'admin' ? ROLE_COLOR.admin : ROLE_COLOR.pm}`}>
                   {u.role === 'admin' ? 'Admin' : 'Lead'}
                 </span>
+                {u.lockedAt && (
+                  <span className="tag border text-xs font-semibold border-rose-200 bg-rose-50 text-rose-700"
+                        title={`Locked at ${new Date(u.lockedAt).toLocaleString()} after too many failed sign-ins`}>
+                    Locked
+                  </span>
+                )}
                 {isPM && (
                   <button
                     className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                     onClick={() => setEditUser(u)} title="Edit profile">
                     <Pencil size={13} />
+                  </button>
+                )}
+                {isPM && u.lockedAt && (
+                  <button
+                    className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-rose-50 transition-colors border border-rose-200"
+                    onClick={() => unlockAccount(u)}
+                    disabled={saving === u.id}
+                    title="Clear the failed-login counter so this user can sign in again">
+                    Unlock
                   </button>
                 )}
                 {isPM && (

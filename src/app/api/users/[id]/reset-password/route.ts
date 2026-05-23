@@ -37,8 +37,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const tempPassword = generateTempPassword();
-    target.passwordHash       = bcrypt.hashSync(tempPassword, 10);
-    target.mustChangePassword = true;
+    target.passwordHash        = bcrypt.hashSync(tempPassword, 10);
+    target.mustChangePassword  = true;
+    // Resetting the password implicitly lifts any brute-force lock —
+    // otherwise the user would still be locked out with the new temp
+    // password and admin would have to make two clicks.
+    target.failedLoginAttempts = 0;
+    target.lockedAt            = null;
     await target.save();
 
     return NextResponse.json({
