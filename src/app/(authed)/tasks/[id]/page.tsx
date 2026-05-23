@@ -546,17 +546,26 @@ export default function TaskDetailPage() {
           </div>
         </Card>
 
-        {/* ── Schedule meeting + Log effort ───────────────────────────── */}
-        <ScheduleEffortCard task={task} onChanged={load} />
-
-        {/* Reference summary */}
-        {(task.ccNo || task.documentNo || task.deployStage !== 'na') && (
-          <div className="card p-4 space-y-2">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Reference Summary</h4>
-            {task.ccNo && (
-              <div className="flex justify-between text-xs">
-                <span className="text-slate-400">Ref No.</span>
-                <span className="font-mono font-semibold text-slate-700">{task.ccNo}</span>
+        {/* ── Advanced (effort tracking, reference fields) ──────────────
+           Hidden by default. Pragati's day-to-day workflow only needs
+           title + assignee + status + due — these power-user fields stay
+           tucked away so the task page reads at a glance, Zerodha-Kite
+           minimal. Open when you actually need to log time or look up
+           a change-control number. */}
+        <details className="group">
+          <summary className="cursor-pointer select-none text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+            <span className="inline-block transition-transform group-open:rotate-90">▸</span>
+            Show effort log &amp; reference details
+          </summary>
+          <div className="mt-3 space-y-3">
+            <ScheduleEffortCard task={task} onChanged={load} />
+            {(task.ccNo || task.documentNo || task.deployStage !== 'na') && (
+              <div className="card p-4 space-y-2">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Reference Summary</h4>
+                {task.ccNo && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">Ref No.</span>
+                    <span className="font-mono font-semibold text-slate-700">{task.ccNo}</span>
               </div>
             )}
             {task.ccTcd && (
@@ -587,8 +596,10 @@ export default function TaskDetailPage() {
                 }`}>{task.deployStage.toUpperCase()}</span>
               </div>
             )}
+              </div>
+            )}
           </div>
-        )}
+        </details>
 
         {canSignoff && (
           <Card title="Formal Sign-off">

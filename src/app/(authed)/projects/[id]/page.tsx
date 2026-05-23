@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import {
   Card, LifecycleTag, PriorityTag, ProgressBar,
-  StatusSelect, PROJECT_STATUS_OPTIONS,
+  StatusSelect, StatusPillRow, PROJECT_STATUS_OPTIONS,
   TaskLink, formatDate, useToast,
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
@@ -88,8 +88,45 @@ function KanbanBoard({ tasks, onMove }: { tasks: any[]; onMove: (taskId: string,
     onMove(taskId, toStatus);
   }
 
+  // ── Top scrollbar — mirrors the bottom one so a Kanban with many
+  // columns can be panned from either end of the board.
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const syncingRef   = useRef<'top' | 'bottom' | null>(null);
+  useEffect(() => {
+    const top    = topScrollRef.current;
+    const bottom = scrollRef.current;
+    if (!top || !bottom) return;
+    const sync = (from: 'top' | 'bottom') => () => {
+      if (syncingRef.current && syncingRef.current !== from) return;
+      syncingRef.current = from;
+      if (from === 'top')    bottom.scrollLeft = top.scrollLeft;
+      else                   top.scrollLeft    = bottom.scrollLeft;
+      // Let the next event re-arm
+      requestAnimationFrame(() => { syncingRef.current = null; });
+    };
+    const onTop    = sync('top');
+    const onBottom = sync('bottom');
+    top.addEventListener('scroll',    onTop,    { passive: true });
+    bottom.addEventListener('scroll', onBottom, { passive: true });
+    return () => {
+      top.removeEventListener('scroll',    onTop);
+      bottom.removeEventListener('scroll', onBottom);
+    };
+  }, []);
+  const totalWidth = COLUMN_WIDTH * STATUSES.length + 12 * (STATUSES.length - 1);
+
   return (
     <div className="relative">
+      {/* Top scrollbar — proxies its scrollLeft to the bottom scroller below */}
+      <div
+        ref={topScrollRef}
+        className="overflow-x-auto kanban-scroll mb-1"
+        style={{ height: 12 }}
+        aria-hidden="true"
+      >
+        <div style={{ width: totalWidth, height: 1 }} />
+      </div>
+
       {/* Left arrow */}
       <button
         type="button"
@@ -571,7 +608,7 @@ export default function ProjectDetailPage() {
               <span className="text-[10px] text-amber-600 font-semibold">{openTaskCount} open</span>
             )}
             {isLead ? (
-              <StatusSelect
+              <StatusPillRow
                 value={project.status}
                 onChange={updateStatus}
                 options={PROJECT_STATUS_OPTIONS}

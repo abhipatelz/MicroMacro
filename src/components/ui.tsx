@@ -359,6 +359,56 @@ export function StatusSelect({
   );
 }
 
+// ── StatusPillRow ───────────────────────────────────────────────────────────
+// Inline pill-row replacement for the StatusSelect dropdown. Used on
+// detail pages (task / project) where there's room to show every status
+// at once; the click target is the pill itself, so changing status is one
+// tap instead of two (open dropdown + pick). Mirrors Kite's direct-action
+// philosophy — no extra modal, no extra confirmation step.
+export function StatusPillRow({
+  value,
+  onChange,
+  options = TASK_STATUS_OPTIONS as unknown as string[],
+  pending = false,
+  className = '',
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options?: readonly string[] | string[];
+  pending?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={`inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/70 p-1 ${className}`}>
+      {(options as string[]).map((opt) => {
+        const active   = opt === value;
+        const optDot   = STATUS_DOT[opt]   ?? '#94a3b8';
+        const optLabel = STATUS_LABEL[opt] ?? opt.replace(/_/g, ' ');
+        return (
+          <button
+            key={opt}
+            type="button"
+            disabled={pending}
+            onClick={() => !active && onChange(opt)}
+            aria-pressed={active}
+            className={`relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+              active
+                ? 'bg-white text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.06),0_0_0_1px_rgba(21,101,192,0.18)]'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'
+            } disabled:opacity-50`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: optDot }} />
+            {optLabel}
+          </button>
+        );
+      })}
+      {pending && (
+        <span className="ml-1 w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin opacity-60 text-slate-400" />
+      )}
+    </div>
+  );
+}
+
 // ── useToast — simple ephemeral notification ──────────────────────────────────
 export function useToast() {
   const [toast, setToastState] = useState<{ msg: string; kind: 'ok' | 'err' } | null>(null);
