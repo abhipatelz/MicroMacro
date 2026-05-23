@@ -28,15 +28,20 @@ export interface CurrentUser {
   mustChangePassword?: boolean;
 }
 
-/* ── Dark-mode hook ─────────────────────────────────────────────── */
-function useDarkMode(): [boolean, () => void] {
-  const [dark, setDark] = useState(false);
-  useEffect(() => { setDark(localStorage.getItem('theme') === 'dark'); }, []);
+/* ── Dark-mode hook ─────────────────────────────────────────────────
+   The initial value is read from the `theme` cookie that's painted onto
+   <html class="dark"> server-side (see (authed)/layout.tsx). That kills
+   the FOUC: previously we mounted with light, then a useEffect flipped
+   to dark, causing a visible flash + a full re-paint of the shell. */
+function useDarkMode(initialDark: boolean): [boolean, () => void] {
+  const [dark, setDark] = useState(initialDark);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('theme', dark ? 'dark' : 'light');
+    // Persist via cookie so the next SSR render starts in the right
+    // mode. 365 d, sameSite=lax so it travels with normal navigation.
+    document.cookie = `theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`;
   }, [dark]);
-  return [dark, () => setDark(d => !d)];
+  return [dark, () => setDark((d) => !d)];
 }
 
 /* ── Force password change modal ─────────────────────────────────── */
@@ -128,7 +133,7 @@ function ForcePasswordModal({ onDone }: { onDone: () => void }) {
 }
 
 /* ── Main shell ─────────────────────────────────────────────────────── */
-export default function AppShell({ user, children }: { user: CurrentUser; children: React.ReactNode }) {
+export default function AppShell({ user, initialDark, children }: { user: CurrentUser; initialDark: boolean; children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
 
@@ -136,7 +141,7 @@ export default function AppShell({ user, children }: { user: CurrentUser; childr
   const [profileOpen, setProfileOpen] = useState(false);
   const [inviteOpen,  setInviteOpen]  = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [dark, toggleDark]            = useDarkMode();
+  const [dark, toggleDark]            = useDarkMode(initialDark);
   const [mustChangePw, setMustChangePw] = useState(!!user.mustChangePassword);
 
   useEffect(() => { setOpen(false); }, [pathname]);

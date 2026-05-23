@@ -17,11 +17,11 @@
   --brand-gradient-soft:  linear-gradient(135deg, rgba(21,101,192,0.10) 0%, rgba(46,125,50,0.10) 100%);
   --brand-gradient-hover: linear-gradient(135deg, #1256B0 0%, #1565C0 45%, #257026 100%);
   --radius: 10px;
-  /* Faint blue→mint wash so the canvas itself echoes the brand instead
-     of sitting on dead grey. Stays light enough for body text contrast. */
-  --bg-page: radial-gradient(1200px 600px at 8% -10%, #E3F2FD 0%, transparent 60%),
-             radial-gradient(900px 500px at 100% 100%, #E8F5E9 0%, transparent 60%),
-             #F4F7FB;
+  /* Flat page canvas. The brand colour shows up on the dashboard hero card
+     (.brand-mesh) instead of on the body itself — painting two radial
+     gradients across the full viewport hurt FCP and triggered repaints
+     on every scroll. */
+  --bg-page: #F4F7FB;
   --bg-card: #ffffff;
   --bg-subtle: #f8fafc;
   --border-card: rgba(210,218,228,0.8);
