@@ -39,6 +39,15 @@ const UserSchema = new Schema(
     // ── First-login flag ────────────────────────────────────────────────
     mustChangePassword: { type: Boolean, default: false },
 
+    // ── Brute-force protection ──────────────────────────────────────────
+    // After MAX_FAILED_LOGINS consecutive wrong passwords the account is
+    // locked until an admin/lead clears it (via /api/users/[id]/unlock
+    // or by resetting the password). lockedAt is the timestamp the lock
+    // was applied — surfaced on the People page so admin can see *why*
+    // a lead can't sign in.
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockedAt:            { type: Date,   default: null },
+
     // ── Onboarding tour ─────────────────────────────────────────────────
     // Defaults to true so existing users don't see the tour on first
     // login after this change. The register + invite paths explicitly

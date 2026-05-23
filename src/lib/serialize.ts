@@ -16,7 +16,11 @@ export function u(user: any) {
     email: user.email,
     name: user.name,
     role: user.role,
-    title: user.title
+    title: user.title,
+    // Lock state — surfaced on the People page so admin/lead can see
+    // who can't sign in and click Unlock. Not credential data.
+    lockedAt: user.lockedAt || null,
+    failedLoginAttempts: user.failedLoginAttempts || 0,
   };
 }
 
