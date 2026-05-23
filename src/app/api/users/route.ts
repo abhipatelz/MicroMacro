@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
+import { Team } from '@/models/Team';
 import { requireUser, requireRole } from '@/lib/auth';
 import { u } from '@/lib/serialize';
 import { handleError, readBody } from '@/lib/http';
@@ -15,7 +16,23 @@ export async function GET(req: NextRequest) {
     const { user, error } = await requireUser(req);
     if (error) return error;
     await connectDB();
-    const list = await User.find({}).sort({ name: 1 }).lean();
+
+    // Optional ?teamId=... narrows the listing to members + lead of that
+    // single team. Used by the project task-assignee dropdown so leads
+    // only see people who actually belong to the project's team.
+    const teamId = req.nextUrl.searchParams.get('teamId');
+    let filter: any = {};
+    if (teamId) {
+      const team = await Team.findById(teamId).select('leadId memberIds').lean();
+      if (team) {
+        const ids = [team.leadId, ...(team.memberIds || [])].filter(Boolean);
+        filter = { _id: { $in: ids } };
+      } else {
+        return NextResponse.json([]);
+      }
+    }
+
+    const list = await User.find(filter).sort({ name: 1 }).lean();
     return NextResponse.json(list.map(u));
   } catch (e) {
     return handleError(e);

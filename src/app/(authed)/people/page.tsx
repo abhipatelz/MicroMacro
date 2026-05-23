@@ -335,6 +335,25 @@ export default function PeoplePage() {
     } finally { setRemoving(false); }
   }
 
+  // Admin-driven password reset. Avoids the SMTP round-trip entirely:
+  // we generate a temp password server-side and surface it through the
+  // same CredentialsModal used after creating a new user.
+  async function resetPassword(user: any) {
+    if (!confirm(`Generate a new temporary password for ${user.name}?\nThey'll be forced to change it on next sign-in.`)) return;
+    setSaving(user.id);
+    try {
+      const res = await api<{ tempPassword: string; user: { name: string; email: string } }>(
+        `/users/${user.id}/reset-password`,
+        { method: 'POST' },
+      );
+      setCreds({ name: res.user.name, email: res.user.email, tempPassword: res.tempPassword });
+    } catch (e: any) {
+      setRoleErr(e.message || 'Failed to reset password.');
+    } finally {
+      setSaving(null);
+    }
+  }
+
   function handleCreated(name: string, email: string, tempPassword: string) {
     setShowAdd(false);
     setCreds({ name, email, tempPassword });
@@ -425,6 +444,15 @@ export default function PeoplePage() {
                     className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                     onClick={() => setEditUser(u)} title="Edit profile">
                     <Pencil size={13} />
+                  </button>
+                )}
+                {isPM && (
+                  <button
+                    className="text-xs text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
+                    onClick={() => resetPassword(u)}
+                    disabled={saving === u.id}
+                    title="Generate a temporary password for this lead">
+                    Reset password
                   </button>
                 )}
                 {isPM && me?.id !== u.id && (

@@ -94,14 +94,23 @@ export default function TaskDetailPage() {
   }
 
   useEffect(() => {
-    load();
-    Promise.all([
-      api<any[]>('/users'),
-      api<any>('/auth/me'),
-    ]).then(([u, m]) => {
-      setUsers(u);
-      setMe(m.user);
-    }).catch(() => {});
+    // Load the task first so we know its project; then pull the assignee
+    // list scoped to that project's team so the dropdown shows only the
+    // people who actually work on this project.
+    (async () => {
+      try {
+        const t = await api<any>(`/tasks/${id}`);
+        setTask(t);
+        const m = await api<any>('/auth/me');
+        setMe(m.user);
+        const proj = t.projectId ? await api<any>(`/projects/${t.projectId}`).catch(() => null) : null;
+        const teamId = proj?.teamId;
+        const u = await api<any[]>(`/users${teamId ? `?teamId=${teamId}` : ''}`);
+        setUsers(u);
+      } catch (e: any) {
+        setLoadErr(e?.message || 'Could not load this task.');
+      }
+    })();
   }, [id]);
 
   if (loadErr) {
@@ -514,18 +523,26 @@ export default function TaskDetailPage() {
                   onChange={(e) => update({ actualHours: e.target.value===''?null:Number(e.target.value) })} />
               </div>
             </div>
-            <div className="flex gap-4 pt-1 text-xs">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={!!task.gxpCritical}
-                  onChange={(e) => update({ gxpCritical: e.target.checked })} />
-                Compliance critical
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={!!task.requiresQaSignoff}
-                  onChange={(e) => update({ requiresQaSignoff: e.target.checked })} />
-                Requires sign-off
-              </label>
-            </div>
+            {/* Compliance toggles live behind a disclosure so the default
+                view stays simple. Schema-side these fields remain explicit
+                per the GxP requirements in CLAUDE.md. */}
+            <details className="pt-1 group">
+              <summary className="text-[11px] font-semibold text-slate-400 cursor-pointer select-none hover:text-slate-600 transition-colors">
+                Advanced — compliance flags
+              </summary>
+              <div className="flex gap-4 pt-2 text-xs">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={!!task.gxpCritical}
+                    onChange={(e) => update({ gxpCritical: e.target.checked })} />
+                  Compliance critical
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={!!task.requiresQaSignoff}
+                    onChange={(e) => update({ requiresQaSignoff: e.target.checked })} />
+                  Requires sign-off
+                </label>
+              </div>
+            </details>
           </div>
         </Card>
 

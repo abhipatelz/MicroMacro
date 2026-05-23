@@ -57,9 +57,15 @@ export default function ForgotPasswordPage() {
         ) : (
           <div className="page-enter">
             <h2 className="text-2xl font-black text-slate-900 mb-1">Forgot password?</h2>
-            <p className="text-sm text-slate-500 mb-8">
-              Enter your email and we&rsquo;ll send you a reset link.
+            <p className="text-sm text-slate-500 mb-5">
+              Ask any teammate with lead access to open <strong>People</strong> →
+              click your name → <strong>Reset password</strong>. They&rsquo;ll get
+              a temporary password to share with you, no email needed.
             </p>
+            <div className="mb-7 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500 leading-relaxed">
+              Email-based reset is also available below if your administrator
+              has configured SMTP for this workspace.
+            </div>
 
             <form onSubmit={submit} className="space-y-4">
               <div>

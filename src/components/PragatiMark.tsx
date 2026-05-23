@@ -1,12 +1,12 @@
 /** Pragati's brand mark — CSS / SVG only, no image asset.
  *
- *  A rounded square in the brand blue-to-forest gradient, with a stylised
- *  "P" built from a vertical stem, an outer arc, and an inner forward-motion
- *  accent. The accent is what makes it feel like "pragati" (progress) — it
- *  reads as a forward-moving wedge inside the loop of the P.
+ *  Two rising chevrons stacked inside a rounded-square gradient tile. Reads
+ *  as forward / upward motion — the literal meaning of "pragati" (progress).
+ *  Pairs cleanly with the wordmark "Pragati" rendered alongside it; the mark
+ *  is symbolic, not a literal P.
  *
  *  Use this everywhere the app needs a logo (login, signup, forgot-password,
- *  sidebar, loading state). No external assets, no corporate logo.
+ *  sidebar, loading state, favicon). No external assets, no corporate logo.
  */
 export function PragatiMark({
   size      = 96,
@@ -43,28 +43,27 @@ export function PragatiMark({
         style={{
           inset: Math.max(2, size * 0.04),
           borderRadius: radius * 0.86,
-          background: 'linear-gradient(155deg, rgba(255,255,255,0.10) 0%, transparent 55%)',
+          background:
+            'linear-gradient(155deg, rgba(255,255,255,0.14) 0%, transparent 55%)',
         }}
       />
 
-      {/* Stylised P — vertical stem with a bowl that sits in the UPPER half
-         only (bowl from y=12 to y=30 of a 64-tall canvas; stem extends to
-         y=52). That's what makes it read as "P" rather than "d". A smaller
-         green accent inside the bowl suggests forward motion / progress. */}
-      <svg width={size * 0.58} height={size * 0.58} viewBox="0 0 64 64" className="relative">
-        {/* Stem + bowl outline drawn as a single stroked group */}
-        <g stroke="#ffffff" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none">
-          {/* Vertical stem */}
-          <path d="M18 12 V52" />
-          {/* Bowl — upper half only */}
-          <path d="M18 12 H32 a9 9 0 0 1 0 18 H18" />
-        </g>
-        {/* Forward-motion accent inside the bowl */}
-        <path
-          d="M25 18 H30 a3.5 3.5 0 0 1 0 7 H25"
-          stroke="#A7E3B2" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          fill="none" opacity="0.9"
-        />
+      {/* Two stacked rising chevrons — reads as "progress / forward motion".
+         The lower chevron is the same white as the wordmark; the upper one
+         carries a soft forest tint to echo the brand gradient. */}
+      <svg
+        width={size * 0.58}
+        height={size * 0.58}
+        viewBox="0 0 64 64"
+        className="relative"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M14 40 L32 22 L50 40"
+          stroke="#ffffff" strokeWidth="7" />
+        <path d="M18 52 L32 38 L46 52"
+          stroke="#B7E4C2" strokeWidth="5" opacity="0.92" />
       </svg>
     </div>
   );

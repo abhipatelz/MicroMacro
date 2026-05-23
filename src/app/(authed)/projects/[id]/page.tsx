@@ -386,7 +386,11 @@ export default function ProjectDetailPage() {
 
   async function load() {
     try {
-      const [p, u] = await Promise.all([api<any>(`/projects/${id}`), api<any[]>('/users')]);
+      // Fetch the project first so we know its team — then pull only that
+      // team's roster for the assignee dropdown. Falls back to all users
+      // when a project hasn't been assigned to a team yet.
+      const p = await api<any>(`/projects/${id}`);
+      const u = await api<any[]>(`/users${p.teamId ? `?teamId=${p.teamId}` : ''}`);
       setProject(p); setUsers(u); setLoadErr(null);
     } catch (e: any) { setLoadErr(e?.message || 'Could not load this project.'); }
   }
