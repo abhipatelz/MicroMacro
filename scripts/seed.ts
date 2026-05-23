@@ -36,8 +36,8 @@ async function main() {
 
   console.log('[seed] creating users...');
   const people = [
-    { email: 'admin@pragati.local', name: 'Admin', role: 'admin', title: 'Admin', pw: 'admin123' },
-    { email: 'priya@pragati.local', name: 'Priya Shah', role: 'manager', title: 'Head of Quality Informatics', pw: 'priya123' },
+    { email: 'admin@pragati.local', name: 'Admin', role: 'lead', title: 'Workspace admin', pw: 'admin123' },
+    { email: 'priya@pragati.local', name: 'Priya Shah', role: 'lead', title: 'Head of Quality Informatics', pw: 'priya123' },
     { email: 'rahul@pragati.local', name: 'Rahul Mehta', role: 'lead', title: 'CSV Lead', pw: 'rahul123' },
     { email: 'ananya@pragati.local', name: 'Ananya Iyer', role: 'lead', title: 'Data Integrity Lead', pw: 'ananya123' },
     { email: 'dhruv@pragati.local', name: 'Dhruv Kapoor', role: 'lead', title: 'Pharmacovigilance Lead', pw: 'dhruv123' },

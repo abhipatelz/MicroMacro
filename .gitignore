@@ -14,3 +14,6 @@ coverage
 .mongo-data
 .mongo-logs
 tsconfig.tsbuildinfo
+test-results/
+playwright-report/
+playwright/.cache/
