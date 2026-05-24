@@ -5,19 +5,20 @@
  *
  * Behaviour for non-OK responses:
  *
- * - 401 / 403 → on any *authenticated* request, treat the session as
- *   expired and bounce back to /login. This is the right reflex for
- *   internal pages (e.g. someone left a tab open overnight).
+ * - 401 (Unauthenticated) on a non-auth route → the session is missing or
+ *   expired; bounce to /login. Correct reflex for a tab left open overnight.
  *
- * - 401 / 403 → on the auth endpoints themselves (/auth/login,
- *   /auth/register, /auth/signup, /auth/first-password) we do NOT
- *   redirect — the caller is *trying* to log in, so a wrong-password
- *   401 should bubble up as a normal error and render below the form.
- *   This is what the user actually expects: "Invalid email or password"
- *   visible below the field, not a silent page reload.
+ * - 403 (Forbidden) → the user IS authenticated but lacks permission for
+ *   this action (e.g. a contributor hitting a lead-only route). We do NOT
+ *   redirect — that would look like a spurious logout. The error bubbles
+ *   to the caller to render inline.
  *
- * - All other non-OK responses throw an Error with the server's
- *   message; callers display it via setErr() or a toast.
+ * - 401 / 403 on the auth endpoints themselves (/auth/login, …) never
+ *   redirect: the caller is trying to authenticate, so a wrong-password
+ *   401 should render below the form, not reload the page.
+ *
+ * - All other non-OK responses throw an Error with the server's message;
+ *   callers display it via setErr() or a toast.
  */
 
 const AUTH_ENDPOINTS = [
@@ -55,11 +56,11 @@ export async function api<T = any>(
       /* response wasn't JSON — fall back to the HTTP-X label */
     }
 
-    // Session-expired bounce — only on authenticated routes. Login /
-    // register routes propagate the 401/403 to the caller so the form
-    // can render a useful message instead of reloading itself.
-    if ((res.status === 401 || res.status === 403) && !isAuthEndpoint(path)) {
-      if (typeof window !== 'undefined') window.location.replace('/login');
+    // Unauthenticated → session bounce. ONLY 401 (not 403): a 403 means
+    // the user is signed in but not permitted, and redirecting them to
+    // /login would masquerade as a logout. 403 falls through to throw.
+    if (res.status === 401 && !isAuthEndpoint(path) && typeof window !== 'undefined') {
+      window.location.replace('/login');
       throw new Error('Session expired — please log in again');
     }
 

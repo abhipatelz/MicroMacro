@@ -10,13 +10,12 @@ import { rateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
-// Self-service-style password reset: any logged-in lead can reset another
-// user's password and get back a temporary password to share verbally /
-// over chat. Avoids the SMTP round-trip entirely so leads aren't blocked
-// when email isn't configured.
+// Admin-only password reset: the workspace admin resets another user's
+// password and gets back a temporary password to share verbally / over
+// chat. No SMTP round-trip.
 //
 // Flow:
-//   1. Lead opens /people, clicks "Reset password" on a row.
+//   1. Admin opens /people, clicks "Reset password" on a row.
 //   2. UI calls POST /api/users/[id]/reset-password.
 //   3. Endpoint returns { tempPassword: "Pragati-..." } and flips the
 //      target's mustChangePassword flag so they're forced to set a new
@@ -31,7 +30,7 @@ function generateTempPassword(): string {
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user } = await requireRole(req, 'admin');
     if (error) return error;
 
     // Throttle per actor — even a logged-in lead shouldn't be able to

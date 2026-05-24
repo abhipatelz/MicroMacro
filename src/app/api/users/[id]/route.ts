@@ -24,7 +24,7 @@ const Body = z.object({
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user: caller } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user: caller } = await requireRole(req, 'admin');
     if (error) return error;
     if (!mongoose.isValidObjectId(params.id)) {
       return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user: caller } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user: caller } = await requireRole(req, 'admin');
     if (error) return error;
     if (!mongoose.isValidObjectId(params.id)) {
       return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });

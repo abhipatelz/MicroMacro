@@ -275,7 +275,7 @@ export default function LoginPage() {
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  {mode === 'login' ? 'Corporate username' : 'Email'}
+                  {mode === 'login' ? 'Username' : 'Email'}
                 </label>
                 <input
                   className="input"

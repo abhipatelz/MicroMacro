@@ -7,7 +7,7 @@ import {
   LIFECYCLE_LABELS, STATUS_COLORS,
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
-import { useIsLead } from '@/components/CurrentUserContext';
+import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
   ChevronDown, TrendingUp, Clock, Sparkles, ArrowRight, UserPlus, Plus,
@@ -138,16 +138,35 @@ export default function DashboardClient({
       <div className="brand-mesh mb-6 rounded-3xl border border-slate-200/70 px-6 py-5 overflow-hidden relative">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles size={14} className="text-blue-500" />
-          <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700/90">
+          {/* Date + greeting are intentionally client-local (browser TZ) and
+             will differ from the UTC server render near a day boundary —
+             suppressHydrationWarning lets React patch to the client value
+             without logging a mismatch. */}
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700/90" suppressHydrationWarning>
             {dateLabel}
           </span>
         </div>
         <h1 className="text-3xl font-black tracking-tight leading-tight">
-          <span className="brand-shimmer-text">{greeting()}, {firstName}.</span>
+          <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}, {firstName}.</span>
         </h1>
-        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
-          Here's your bird's-eye view — projects on the move, what needs your attention,
-          and how your team is doing today.
+        {/* At-a-glance status line — replaces the old generic tagline with
+           the numbers a lead actually wants the moment they land. */}
+        <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
+          {ongoingProjects.length === 0 ? (
+            <>No active projects yet — your board fills in as you create them.</>
+          ) : (
+            <>
+              <span className="font-semibold text-slate-800">{ongoingProjects.length}</span>
+              {' '}active {ongoingProjects.length === 1 ? 'project' : 'projects'} ·{' '}
+              <span className="font-semibold text-slate-800">{totalOpen}</span>
+              {' '}open {totalOpen === 1 ? 'task' : 'tasks'}
+              {totalOverdue > 0 ? (
+                <> · <span className="font-semibold text-red-600">{totalOverdue} overdue</span> need attention.</>
+              ) : (
+                <> · <span className="font-semibold text-emerald-600">nothing overdue.</span></>
+              )}
+            </>
+          )}
         </p>
       </div>
 
@@ -297,14 +316,18 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
 function ProjectsColumn({
   projects, tasksByProject,
 }: { projects: DashProject[]; tasksByProject: Map<string, TeamTask[]> }) {
-  const isLead = useIsLead();
+  const isAdmin = useIsAdmin();
+  const isLead  = useIsLead();
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <FolderKanban size={14} className="text-slate-400" />
+          {/* Never "Projects you lead" — a lead's team can own projects
+             created by someone else. "Your team's projects" is accurate;
+             admin sees the whole workspace. */}
           <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-            {isLead ? 'Projects you lead' : 'Your team’s projects'}
+            {isAdmin ? 'All projects' : 'Your team’s projects'}
           </h2>
           <span className="text-[10px] text-slate-300 font-semibold">{projects.length}</span>
         </div>
