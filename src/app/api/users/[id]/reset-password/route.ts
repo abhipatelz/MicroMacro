@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { requireRole } from '@/lib/auth';
 import { handleError } from '@/lib/http';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -31,6 +33,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   try {
     const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
     if (error) return error;
+
+    // Throttle per actor — even a logged-in lead shouldn't be able to
+    // mass-rotate every account in the workspace within a minute.
+    if (!rateLimit(`reset:${user!.sub}`, 30, 60_000)) {
+      return NextResponse.json({ error: 'Too many resets — wait a minute.' }, { status: 429 });
+    }
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
+    }
     await connectDB();
 
     const target = await User.findById(params.id);

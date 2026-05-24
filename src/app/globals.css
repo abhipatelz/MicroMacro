@@ -4,12 +4,24 @@
 
 :root {
   color-scheme: light;
-  --brand: #1565C0;
-  --brand-dark: #0D47A1;
-  --brand-light: #E3F2FD;
-  --forest: #2B8C29;
+  --brand:           #1565C0;
+  --brand-dark:      #0D47A1;
+  --brand-light:     #E3F2FD;
+  --forest:          #2E7D32;
+  --forest-light:    #E8F5E9;
+  --teal:            #00897B;
+  --mint:            #B7E4C2;
+  /* Two-stop brand gradient — used on primary CTAs, active sidebar item,
+     header chips, and the focus ring. Same hues as the logo mark. */
+  --brand-gradient:       linear-gradient(135deg, #1565C0 0%, #1976D2 45%, #2E7D32 100%);
+  --brand-gradient-soft:  linear-gradient(135deg, rgba(21,101,192,0.10) 0%, rgba(46,125,50,0.10) 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #1256B0 0%, #1565C0 45%, #257026 100%);
   --radius: 10px;
-  --bg-page: #F0F3F8;
+  /* Flat page canvas. The brand colour shows up on the dashboard hero card
+     (.brand-mesh) instead of on the body itself — painting two radial
+     gradients across the full viewport hurt FCP and triggered repaints
+     on every scroll. */
+  --bg-page: #F4F7FB;
   --bg-card: #ffffff;
   --bg-subtle: #f8fafc;
   --border-card: rgba(210,218,228,0.8);
@@ -58,13 +70,13 @@ body {
   }
 
   .btn-primary {
-    @apply btn text-white disabled:opacity-50;
-    background: linear-gradient(135deg, #1565C0 0%, #1769C8 100%);
-    box-shadow: 0 1px 3px rgba(21,101,192,0.3), 0 1px 2px rgba(0,0,0,0.08);
+    @apply btn text-white disabled:opacity-50 relative overflow-hidden;
+    background: var(--brand-gradient);
+    box-shadow: 0 1px 3px rgba(21,101,192,0.30), 0 1px 2px rgba(46,125,50,0.18), 0 0 0 0 transparent;
   }
   .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #1256B0 0%, #1565C0 100%);
-    box-shadow: 0 3px 8px rgba(21,101,192,0.35), 0 1px 2px rgba(0,0,0,0.1);
+    background: var(--brand-gradient-hover);
+    box-shadow: 0 4px 14px rgba(21,101,192,0.30), 0 2px 6px rgba(46,125,50,0.22);
     transform: translateY(-0.5px);
   }
   .btn-primary:active:not(:disabled) { transform: translateY(0) scale(0.97); }
@@ -102,6 +114,60 @@ body {
   }
 
   /* ════════════════════════════════════════════════════════════════════
+     FLUID — gradient surfaces + hover lift used across the app
+  ════════════════════════════════════════════════════════════════════ */
+  /* Mesh of two soft brand blobs — drop into a hero/header to give it
+     life without a heavy image. Combine with .grain or a wordmark. */
+  .brand-mesh {
+    position: relative;
+    background:
+      radial-gradient(800px 380px at 0% 0%, rgba(21,101,192,0.18), transparent 55%),
+      radial-gradient(700px 360px at 100% 100%, rgba(46,125,50,0.18), transparent 60%),
+      linear-gradient(135deg, #F4F7FB 0%, #EFF6FB 50%, #EEF7EE 100%);
+  }
+  .brand-mesh-strong {
+    background:
+      radial-gradient(900px 420px at -5% 0%, rgba(21,101,192,0.32), transparent 55%),
+      radial-gradient(700px 360px at 105% 100%, rgba(46,125,50,0.28), transparent 60%),
+      linear-gradient(135deg, #0D47A1 0%, #1565C0 45%, #2E7D32 100%);
+    color: #ffffff;
+  }
+  /* Soft animated sheen — useful on hero text-strips */
+  @keyframes brand-shimmer {
+    0%   { background-position:   0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position:   0% 50%; }
+  }
+  .brand-shimmer-text {
+    background: linear-gradient(90deg, #1565C0, #1976D2, #2E7D32, #1976D2, #1565C0);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    animation: brand-shimmer 8s ease-in-out infinite;
+  }
+  /* Card lift — minimal travel, just enough motion to feel responsive. */
+  .fluid-card {
+    transition: transform 200ms cubic-bezier(.2,.7,.2,1),
+                box-shadow 200ms cubic-bezier(.2,.7,.2,1),
+                border-color 200ms ease;
+  }
+  .fluid-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 12px 28px rgba(21,101,192,0.10),
+      0 6px 14px rgba(46,125,50,0.08);
+    border-color: rgba(21,101,192,0.25);
+  }
+  /* Active sidebar pill */
+  .nav-active {
+    background: var(--brand-gradient-soft);
+    color: #0D47A1;
+    border: 1px solid rgba(21,101,192,0.18);
+    box-shadow: inset 0 0 0 1px rgba(46,125,50,0.10);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
      INPUTS
   ════════════════════════════════════════════════════════════════════ */
   .input, .select, .textarea {
@@ -112,7 +178,10 @@ body {
   }
   .input:focus, .select:focus, .textarea:focus {
     border-color: #1769C8;
-    box-shadow: 0 0 0 3px rgba(21,101,192,0.12), 0 1px 2px rgba(0,0,0,0.04);
+    box-shadow:
+      0 0 0 3px rgba(21,101,192,0.14),
+      0 0 0 4px rgba(46,125,50,0.08),
+      0 1px 2px rgba(0,0,0,0.04);
   }
   .input:hover:not(:focus), .select:hover:not(:focus), .textarea:hover:not(:focus) {
     border-color: #c5cdd8;

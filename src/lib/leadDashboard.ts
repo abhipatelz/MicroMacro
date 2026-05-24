@@ -28,7 +28,9 @@ export async function getLeadDashboardData(
   const weekAgo = new Date(now.getTime() - 7 * 86400000);
 
   const scope = await getLeadScope(jwtUser.sub, jwtUser.role);
-  const projFilter = projectsVisibleFilter(scope);
+  // Archived projects stay in the DB for the audit trail but are hidden
+  // from the dashboard — operators never want them clouding "what's on".
+  const projFilter = { ...projectsVisibleFilter(scope), archived: { $ne: true } };
 
   const projects = await Project.find(projFilter).sort({ createdAt: -1 }).lean();
   const visibleProjectIds = projects.map(p => p._id);

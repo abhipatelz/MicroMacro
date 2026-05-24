@@ -14,6 +14,7 @@ export function u(user: any) {
   return {
     id: id(user._id),
     email: user.email,
+    username: user.username || null,
     name: user.name,
     role: user.role,
     title: user.title,
@@ -59,6 +60,9 @@ export function project(p: any, extras: Any = {}) {
       name: ph.name,
       position: ph.position
     })),
+    archived:   !!p.archived,
+    archivedAt: p.archivedAt || null,
+    archivedBy: id(p.archivedBy),
     createdAt: p.createdAt,
     ...extras
   };

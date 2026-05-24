@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { requireUser } from '@/lib/auth';
+import { getTaskAccess, canActOnOwnTask } from '@/lib/taskAccess';
 import { handleError, readBody } from '@/lib/http';
 import { subtask as subS } from '@/lib/serialize';
 
 export const runtime = 'nodejs';
 
 const Patch = z.object({
-  title: z.string().optional(),
+  title: z.string().max(300).optional(),
   status: z.enum(['todo', 'in_progress', 'done']).optional(),
   assigneeId: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional()
@@ -20,10 +22,29 @@ export async function PATCH(
   { params }: { params: { id: string; subId: string } }
 ) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Invalid task id' }, { status: 400 });
+    }
     await connectDB();
     const body = await readBody(req, Patch);
+
+    const access = await getTaskAccess(params.id, user.sub, user.role);
+    if (!access.task || !access.visible) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    // Toggling a subtask's status is an assignee-level action; retitling or
+    // reassigning a subtask is structural → lead-only.
+    const onlyStatus = body.title === undefined && body.assigneeId === undefined && body.dueDate === undefined;
+    const allowed = access.isLead || (canActOnOwnTask(access) && onlyStatus);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'You can only tick off subtasks on a task assigned to you.' },
+        { status: 403 },
+      );
+    }
+
     const t = await Task.findById(params.id);
     if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const sub = (t as any).subtasks.id(params.subId);
@@ -49,9 +70,21 @@ export async function DELETE(
   { params }: { params: { id: string; subId: string } }
 ) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Invalid task id' }, { status: 400 });
+    }
     await connectDB();
+
+    const access = await getTaskAccess(params.id, user.sub, user.role);
+    if (!access.task || !access.visible) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    if (!access.isLead) {
+      return NextResponse.json({ error: 'Only leads can delete subtasks.' }, { status: 403 });
+    }
+
     const t = await Task.findById(params.id);
     if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     (t as any).subtasks = (t as any).subtasks.filter((s: any) => String(s._id) !== params.subId);

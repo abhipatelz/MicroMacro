@@ -41,10 +41,20 @@ export async function connectDB(): Promise<typeof mongoose> {
         connectTimeoutMS: 8000,
         socketTimeoutMS: 30000,
         heartbeatFrequencyMS: 10000,
-      })
+      }),
     );
   }
-  cached.conn = await cached.promise;
+  try {
+    cached.conn = await cached.promise;
+  } catch (err) {
+    // Critical: a rejected promise must NOT stay cached, otherwise every
+    // subsequent request returns the same error forever (until the process
+    // recycles). Reset so the next call can retry against a refreshed URI
+    // / a recovered cluster.
+    cached.promise = null;
+    cached.conn    = null;
+    throw err;
+  }
 
   if (process.env.USE_IN_MEMORY_MONGO === 'true') {
     const { devSeed } = await import('@/lib/devSeed');

@@ -111,11 +111,30 @@ function colHdr(ws: ExcelJS.Worksheet, row: number, cols: string[]) {
   });
 }
 
+/**
+ * Sanitize string values before writing to a spreadsheet cell to prevent
+ * CSV / formula injection (CWE-1236). A title like `=cmd|'/c calc'!A1`
+ * would otherwise execute as a formula when the recipient opens the
+ * file in Excel / LibreOffice. Numbers, dates, and booleans pass through
+ * unchanged — only strings beginning with =, +, -, @, \t, or \r are
+ * defanged with a leading single quote.
+ */
+function safeCellValue(value: any): any {
+  if (typeof value !== 'string') return value;
+  if (value.length === 0) return value;
+  const first = value.charCodeAt(0);
+  if (first === 0x3D /* = */ || first === 0x2B /* + */ || first === 0x2D /* - */ ||
+      first === 0x40 /* @ */ || first === 0x09 /* TAB */ || first === 0x0D /* CR */) {
+    return `'${value}`;
+  }
+  return value;
+}
+
 function setVal(ws: ExcelJS.Worksheet, row: number, col: number, value: any, opts: {
   bold?: boolean; color?: string; bg?: string; align?: ExcelJS.Alignment['horizontal']; size?: number; wrapText?: boolean;
 } = {}) {
   const cell = ws.getCell(row, col);
-  cell.value = value ?? '—';
+  cell.value = safeCellValue(value ?? '—');
   cell.font = { name: 'Calibri', size: opts.size ?? 10, bold: opts.bold, color: { argb: opts.color ?? C.subHeaderFg } };
   if (opts.bg) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: opts.bg } };
   cell.alignment = { vertical: 'middle', horizontal: opts.align ?? 'left', indent: opts.align === 'center' ? 0 : 1, wrapText: opts.wrapText };

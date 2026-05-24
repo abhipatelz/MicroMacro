@@ -65,7 +65,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (mode === 'login') {
-        await api('/auth/login', { method: 'POST', body: { email, password } });
+        // `identifier` accepts either a username or an email — backend
+        // routes the lookup based on whether it contains an "@".
+        await api('/auth/login', { method: 'POST', body: { identifier: email, password } });
       } else {
         await api('/auth/register', { method: 'POST', body: { email, password, name, title } });
       }
@@ -272,9 +274,32 @@ export default function LoginPage() {
               )}
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
-                <input className="input" type="email" placeholder="you@company.com" required
-                  autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} />
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  {mode === 'login' ? 'Corporate username' : 'Email'}
+                </label>
+                <input
+                  className="input"
+                  // `text` (not `email`) on the login mode so a plain
+                  // username doesn't trigger the browser's email validity
+                  // check. On the register mode we still want email
+                  // semantics for autocomplete + format hints.
+                  type={mode === 'login' ? 'text' : 'email'}
+                  placeholder={mode === 'login' ? 'priya.sharma' : 'you@company.com'}
+                  required
+                  autoComplete={mode === 'login' ? 'username' : 'email'}
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                {mode === 'login' && (
+                  <div className="text-[11px] text-slate-400 mt-1.5 leading-snug">
+                    The same handle your work email uses before the
+                    <span className="font-mono px-1">@</span> — e.g.
+                    <span className="font-mono"> priya.sharma</span> for
+                    <span className="font-mono"> priya.sharma@company.com</span>.
+                  </div>
+                )}
               </div>
 
               <div>
@@ -289,8 +314,13 @@ export default function LoginPage() {
               </div>
 
               {err && (
-                <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug">
-                  {err}
+                <div
+                  role="alert"
+                  aria-live="assertive"
+                  className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft"
+                >
+                  <span aria-hidden="true" className="font-bold leading-none mt-0.5">!</span>
+                  <span>{err}</span>
                 </div>
               )}
 

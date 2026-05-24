@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { requireUser } from '@/lib/auth';
+import { getTaskAccess, canActOnOwnTask } from '@/lib/taskAccess';
 import { handleError, readBody } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
 
@@ -15,14 +17,30 @@ const Body = z.object({
   source: z.enum(['manual', 'calendar']).optional().default('manual'),
 });
 
-/** POST /api/tasks/:id/effort — log effort against a task. */
+/** POST /api/tasks/:id/effort — log effort against a task. Lead/admin or the
+ *  task's own assignee (people log time on their own work). */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { error, user } = await requireUser(req);
     if (error) return error;
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Invalid task id' }, { status: 400 });
+    }
     await connectDB();
 
     const body = await readBody(req, Body);
+
+    const access = await getTaskAccess(params.id, user.sub, user.role);
+    if (!access.task || !access.visible) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    if (!canActOnOwnTask(access)) {
+      return NextResponse.json(
+        { error: 'You can only log effort on a task assigned to you.' },
+        { status: 403 },
+      );
+    }
+
     const t = await Task.findById(params.id);
     if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 

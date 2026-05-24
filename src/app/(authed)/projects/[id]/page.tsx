@@ -5,12 +5,12 @@ import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import {
   Card, LifecycleTag, PriorityTag, ProgressBar,
-  StatusSelect, PROJECT_STATUS_OPTIONS,
+  StatusSelect, StatusPillRow, PROJECT_STATUS_OPTIONS,
   TaskLink, formatDate, useToast,
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
 import { useIsLead } from '@/components/CurrentUserContext';
-import { Download, GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { chimeIfEnabled } from '@/lib/sound';
 
 const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
@@ -88,8 +88,45 @@ function KanbanBoard({ tasks, onMove }: { tasks: any[]; onMove: (taskId: string,
     onMove(taskId, toStatus);
   }
 
+  // ── Top scrollbar — mirrors the bottom one so a Kanban with many
+  // columns can be panned from either end of the board.
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const syncingRef   = useRef<'top' | 'bottom' | null>(null);
+  useEffect(() => {
+    const top    = topScrollRef.current;
+    const bottom = scrollRef.current;
+    if (!top || !bottom) return;
+    const sync = (from: 'top' | 'bottom') => () => {
+      if (syncingRef.current && syncingRef.current !== from) return;
+      syncingRef.current = from;
+      if (from === 'top')    bottom.scrollLeft = top.scrollLeft;
+      else                   top.scrollLeft    = bottom.scrollLeft;
+      // Let the next event re-arm
+      requestAnimationFrame(() => { syncingRef.current = null; });
+    };
+    const onTop    = sync('top');
+    const onBottom = sync('bottom');
+    top.addEventListener('scroll',    onTop,    { passive: true });
+    bottom.addEventListener('scroll', onBottom, { passive: true });
+    return () => {
+      top.removeEventListener('scroll',    onTop);
+      bottom.removeEventListener('scroll', onBottom);
+    };
+  }, []);
+  const totalWidth = COLUMN_WIDTH * STATUSES.length + 12 * (STATUSES.length - 1);
+
   return (
     <div className="relative">
+      {/* Top scrollbar — proxies its scrollLeft to the bottom scroller below */}
+      <div
+        ref={topScrollRef}
+        className="overflow-x-auto kanban-scroll mb-1"
+        style={{ height: 12 }}
+        aria-hidden="true"
+      >
+        <div style={{ width: totalWidth, height: 1 }} />
+      </div>
+
       {/* Left arrow */}
       <button
         type="button"
@@ -536,6 +573,12 @@ export default function ProjectDetailPage() {
           <div className="text-xs text-slate-400 font-mono">{project.code}</div>
           <h1 className="text-2xl font-bold mt-0.5">{project.name}</h1>
           <div className="flex flex-wrap gap-2 mt-2">
+            {project.archived && (
+              <span className="tag border border-amber-200 bg-amber-50 text-amber-800 font-semibold inline-flex items-center gap-1.5"
+                    title={project.archivedAt ? `Archived ${new Date(project.archivedAt).toLocaleString()}` : 'Archived'}>
+                <Archive size={11} /> Archived
+              </span>
+            )}
             <LifecycleTag lifecycle={project.lifecycle} />
             <PriorityTag priority={project.priority} />
             {project.gxpImpact && project.gxpImpact !== 'none' && (
@@ -565,7 +608,7 @@ export default function ProjectDetailPage() {
               <span className="text-[10px] text-amber-600 font-semibold">{openTaskCount} open</span>
             )}
             {isLead ? (
-              <StatusSelect
+              <StatusPillRow
                 value={project.status}
                 onChange={updateStatus}
                 options={PROJECT_STATUS_OPTIONS}
@@ -582,6 +625,25 @@ export default function ProjectDetailPage() {
             className="btn-secondary flex items-center gap-1.5 text-xs w-44 justify-center">
             <Download size={13} /> Export to Excel
           </button>
+          {(me?.role === 'pm' || me?.role === 'lead' || me?.role === 'admin') && (
+            <button
+              onClick={async () => {
+                const archiving = !project.archived;
+                const msg = archiving
+                  ? `Archive "${project.name}"?\nIt will be hidden from the dashboard and project list, but tasks and audit history remain.`
+                  : `Restore "${project.name}" from the archive?`;
+                if (!confirm(msg)) return;
+                await api(`/projects/${project.id}/archive`, { method: 'POST', body: { archived: archiving } });
+                load();
+              }}
+              className={`flex items-center gap-1.5 text-xs w-44 justify-center px-3 py-2 rounded-lg border transition-colors ${
+                project.archived
+                  ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                  : 'border-amber-200 text-amber-700 hover:bg-amber-50'
+              }`}>
+              <Archive size={13} /> {project.archived ? 'Restore from archive' : 'Archive project'}
+            </button>
+          )}
           {(me?.role === 'pm' || me?.role === 'lead' || me?.role === 'admin') && (
             <button onClick={() => setDeleteOpen(true)}
               className="flex items-center gap-1.5 text-xs w-44 justify-center px-3 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">

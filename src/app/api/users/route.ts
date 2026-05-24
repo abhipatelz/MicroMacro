@@ -7,7 +7,7 @@ import { Team } from '@/models/Team';
 import { requireUser, requireRole } from '@/lib/auth';
 import { u } from '@/lib/serialize';
 import { handleError, readBody } from '@/lib/http';
-import crypto from 'crypto';
+import { UsernameSchema } from '@/lib/validations';
 
 export const runtime = 'nodejs';
 
@@ -40,20 +40,29 @@ export async function GET(req: NextRequest) {
 }
 
 const CreateBody = z.object({
-  name:  z.string().min(1),
-  email: z.string().email(),
-  title: z.string().optional(),
-  // role is intentionally excluded — all new accounts are IC
-  // Promotion to PM requires a separate explicit PATCH action
+  // Display name; auto-derived from the username on the client but always
+  // sent so the password's first-name component is predictable.
+  name:       z.string().min(1).max(120),
+  // Corporate login handle (the part before @ in their work email).
+  username:   UsernameSchema,
+  // Company employee ID. Combined with the first name it forms the
+  // standard default password (see below) so contributors never need a
+  // password handed to them — their lead just tells them the convention.
+  employeeId: z.string().trim().min(1).max(40),
+  title:      z.string().max(120).optional(),
+  // role is intentionally excluded — all new accounts are contributors.
+  // Promotion to Lead requires a separate explicit PATCH action.
 });
 
-function generateTempPassword(): string {
-  // Format: Pragati-XXXXXX (8 random alphanumeric chars)
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  const rand = crypto.randomBytes(8);
-  let suffix = '';
-  for (let i = 0; i < 8; i++) suffix += chars[rand[i] % chars.length];
-  return `Pragati-${suffix}`;
+/**
+ * Standard default password for a contributor: lower-cased first name,
+ * "@", then the employee ID exactly as entered. Deterministic so a lead
+ * can tell a team member their credentials verbally without anything
+ * being displayed in the UI. e.g. "Priya Sharma" + "12345" → "priya@12345".
+ */
+function defaultContributorPassword(name: string, employeeId: string): string {
+  const firstName = name.trim().split(/\s+/)[0]?.toLowerCase() || 'user';
+  return `${firstName}@${employeeId.trim()}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -62,18 +71,33 @@ export async function POST(req: NextRequest) {
     if (error) return error;
     await connectDB();
     const body = await readBody(req, CreateBody);
-    const exists = await User.findOne({ email: body.email.toLowerCase() });
-    if (exists) return NextResponse.json({ error: 'Email already in use' }, { status: 409 });
-    const tempPassword = generateTempPassword();
+
+    const username   = body.username;             // already lowercased + trimmed
+    const employeeId = body.employeeId.trim();
+    // Internal placeholder address so legacy code referencing user.email
+    // keeps working; contributors sign in with their username, never email.
+    const email      = `${username}@pragati.local`;
+
+    const conflict = await User.findOne({ $or: [{ email }, { username }] }, '_id username').lean();
+    if (conflict) {
+      return NextResponse.json({ error: 'Username already in use' }, { status: 409 });
+    }
+
+    const password = defaultContributorPassword(body.name, employeeId);
     const user = await User.create({
-      email:              body.email.toLowerCase(),
+      email,
+      username,
+      employeeId,
       name:               body.name,
-      passwordHash:       bcrypt.hashSync(tempPassword, 10),
+      passwordHash:       bcrypt.hashSync(password, 10),
       role:               'employee',
       title:              body.title || '',
-      mustChangePassword: true,
+      // Contributors keep the standard default password — no forced reset,
+      // no credential handoff. The convention is communicated out-of-band.
+      mustChangePassword: false,
     });
-    return NextResponse.json({ user: u(user), tempPassword });
+    // Deliberately does NOT return the password — the UI never displays it.
+    return NextResponse.json({ user: u(user) });
   } catch (e) {
     return handleError(e);
   }

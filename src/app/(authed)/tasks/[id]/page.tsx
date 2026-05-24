@@ -215,6 +215,12 @@ export default function TaskDetailPage() {
   const canSignoff = task.requiresQaSignoff && !task.qaSignoffAt && (me?.role === 'pm' || me?.role === 'lead' || me?.role === 'admin');
   const hasReferenceData = task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
 
+  // Assignee-level actions: a lead/admin, OR the contributor this task is
+  // assigned to. Controls the status pills, subtask toggles, and the
+  // comment box. Everyone else with mere visibility sees them read-only.
+  const isAssignee  = !!(me && task.assigneeId && String(task.assigneeId) === String(me.id));
+  const canActOnTask = isLead || isAssignee;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
       {ToastEl}
@@ -374,10 +380,11 @@ export default function TaskDetailPage() {
             {task.subtasks.map((s: any) => (
               <div key={s.id} className="flex items-center gap-2.5 text-sm py-1 group">
                 <button
-                  onClick={() => toggleSub(s)}
+                  onClick={() => canActOnTask && toggleSub(s)}
+                  disabled={!canActOnTask}
                   className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${
                     s.status === 'done' ? 'border-green-500 bg-green-500' : 'border-slate-300 hover:border-blue-400'
-                  }`}
+                  } ${canActOnTask ? '' : 'opacity-60 cursor-default'}`}
                 >
                   {s.status === 'done' && <span className="text-white text-[8px] font-black">✓</span>}
                 </button>
@@ -417,12 +424,18 @@ export default function TaskDetailPage() {
               <div className="text-xs text-slate-400">No comments yet.</div>
             )}
           </div>
-          <div className="flex gap-2">
-            <input className="input text-sm" placeholder="Add a comment…"
-              value={comment} onChange={(e) => setComment(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addComment()} />
-            <button className="btn-primary text-sm" onClick={addComment}>Post</button>
-          </div>
+          {canActOnTask ? (
+            <div className="flex gap-2">
+              <input className="input text-sm" placeholder="Add a comment…"
+                value={comment} onChange={(e) => setComment(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addComment()} />
+              <button className="btn-primary text-sm" onClick={addComment}>Post</button>
+            </div>
+          ) : (
+            <div className="text-xs text-slate-400 italic">
+              Only the assignee and team leads can comment on this task.
+            </div>
+          )}
         </Card>
       </div>
 
@@ -546,17 +559,26 @@ export default function TaskDetailPage() {
           </div>
         </Card>
 
-        {/* ── Schedule meeting + Log effort ───────────────────────────── */}
-        <ScheduleEffortCard task={task} onChanged={load} />
-
-        {/* Reference summary */}
-        {(task.ccNo || task.documentNo || task.deployStage !== 'na') && (
-          <div className="card p-4 space-y-2">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Reference Summary</h4>
-            {task.ccNo && (
-              <div className="flex justify-between text-xs">
-                <span className="text-slate-400">Ref No.</span>
-                <span className="font-mono font-semibold text-slate-700">{task.ccNo}</span>
+        {/* ── Advanced (effort tracking, reference fields) ──────────────
+           Hidden by default. Pragati's day-to-day workflow only needs
+           title + assignee + status + due — these power-user fields stay
+           tucked away so the task page reads at a glance, Zerodha-Kite
+           minimal. Open when you actually need to log time or look up
+           a change-control number. */}
+        <details className="group">
+          <summary className="cursor-pointer select-none text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+            <span className="inline-block transition-transform group-open:rotate-90">▸</span>
+            Show effort log &amp; reference details
+          </summary>
+          <div className="mt-3 space-y-3">
+            <ScheduleEffortCard task={task} onChanged={load} />
+            {(task.ccNo || task.documentNo || task.deployStage !== 'na') && (
+              <div className="card p-4 space-y-2">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Reference Summary</h4>
+                {task.ccNo && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">Ref No.</span>
+                    <span className="font-mono font-semibold text-slate-700">{task.ccNo}</span>
               </div>
             )}
             {task.ccTcd && (
@@ -587,8 +609,10 @@ export default function TaskDetailPage() {
                 }`}>{task.deployStage.toUpperCase()}</span>
               </div>
             )}
+              </div>
+            )}
           </div>
-        )}
+        </details>
 
         {canSignoff && (
           <Card title="Formal Sign-off">

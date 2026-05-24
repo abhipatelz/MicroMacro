@@ -91,6 +91,19 @@ const nullableObjectId = z
   .nullable()
   .optional();
 
+/* ── Username ──────────────────────────────────────────────────────────────
+   Short Instagram-style handle. Lower-cased, 3-30 chars, ASCII letters /
+   digits / underscore / dot. The `.` lets people use "first.last" but the
+   first char must be a letter so we can't end up with leading-dot dotfiles
+   in any log line, and a trailing dot is rejected for the same reason. */
+export const UsernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3,  'Username must be at least 3 characters.')
+  .max(30, 'Username must be 30 characters or fewer.')
+  .regex(/^[a-z][a-z0-9_.]{1,28}[a-z0-9_]$/, 'Use letters, digits, underscores or dots. Must start with a letter.');
+
 /* ── Project schemas ─────────────────────────────────────────────────────── */
 
 export const ProjectCreateSchema = z.object({

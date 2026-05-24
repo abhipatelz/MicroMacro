@@ -16,17 +16,37 @@ const Body = z.object({
   title: z.string().optional(),
 });
 
-// First registered user is always PM — workspace owner.
-// All subsequent accounts must be created by an existing PM via POST /api/users.
+// Self-registration is INVITE-ONLY in production. There is no public sign-up.
+//
+// This endpoint is kept solely to provision the very first workspace owner
+// during a fresh deploy — and only when ALLOW_PUBLIC_REGISTRATION=true is
+// explicitly set in the hosting env. Without that flag, the route is dead
+// even when the user collection is empty (which is critical: the cleanup
+// scripts and /bootstrap endpoint can both wipe users, and we MUST NOT let
+// "0 users → self-register as anyone" become a reachable state).
+//
+// To onboard the founder on a brand-new database:
+//   1. Set ALLOW_PUBLIC_REGISTRATION=true in Vercel env, redeploy.
+//   2. Register your account. It auto-promotes to admin if email matches
+//      ADMIN_EMAIL (or the hard-coded workspace-owner email).
+//   3. Delete the env var, redeploy. Public registration is closed.
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
+
+    if (process.env.ALLOW_PUBLIC_REGISTRATION !== 'true') {
+      return NextResponse.json(
+        { error: 'Self-registration is disabled. Ask your administrator for an invite.' },
+        { status: 403 },
+      );
+    }
+
     const count = await User.countDocuments();
     if (count > 0) {
       return NextResponse.json(
-        { error: 'Self-registration is disabled. Ask your PM to create an account for you.' },
-        { status: 403 }
+        { error: 'Self-registration is disabled. Ask your administrator for an invite.' },
+        { status: 403 },
       );
     }
     const body = await readBody(req, Body);

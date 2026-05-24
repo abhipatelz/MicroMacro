@@ -10,7 +10,7 @@ import { DatePicker } from '@/components/DatePicker';
 import { useIsLead } from '@/components/CurrentUserContext';
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
-  ChevronDown, TrendingUp, Clock, Sparkles,
+  ChevronDown, TrendingUp, Clock, Sparkles, ArrowRight, UserPlus, Plus,
 } from 'lucide-react';
 
 // Lazy-loaded — only ships when the user actually sees the tour.
@@ -93,6 +93,12 @@ export default function DashboardClient({
   initialData, hasSeenTour,
 }: { initialData: DashResp; hasSeenTour: boolean }) {
   const dash = initialData;
+  const isLead = useIsLead();
+
+  // First-run: a lead/admin whose workspace has no projects yet. Show a
+  // guided setup path instead of a wall of empty panels — this is the
+  // first thing a brand-new admin sees, so it should point the way.
+  const isFirstRun = isLead && dash.projects.length === 0;
 
   const ongoingProjects = useMemo(() =>
     dash.projects.filter(p =>
@@ -129,45 +135,53 @@ export default function DashboardClient({
     <div className="pb-12 max-w-[1440px]">
 
       {/* ── Greeting hero ───────────────────────────────────────────────── */}
-      <div className="mb-6">
+      <div className="brand-mesh mb-6 rounded-3xl border border-slate-200/70 px-6 py-5 overflow-hidden relative">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles size={14} className="text-blue-500" />
-          <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700/90">
             {dateLabel}
           </span>
         </div>
-        <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-tight">
-          {greeting()}, {firstName}.
+        <h1 className="text-3xl font-black tracking-tight leading-tight">
+          <span className="brand-shimmer-text">{greeting()}, {firstName}.</span>
         </h1>
-        <p className="text-sm text-slate-500 mt-1 max-w-xl leading-relaxed">
+        <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
           Here's your bird's-eye view — projects on the move, what needs your attention,
           and how your team is doing today.
         </p>
       </div>
 
-      {/* ── Summary strip ──────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-2.5 mb-6">
-        <SummaryChip label="Ongoing projects" value={ongoingProjects.length} accent="blue" />
-        <SummaryChip label="Open tasks"       value={totalOpen}              accent="slate" />
-        <SummaryChip label="Overdue"          value={totalOverdue}           accent={totalOverdue > 0 ? 'red' : 'slate'} />
-        <SummaryChip label="Team"             value={dash.people.length}     accent="green" />
-      </div>
+      {isFirstRun ? (
+        <FirstRunGuide hasTeam={dash.people.length > 0} />
+      ) : (
+        <>
+          {/* ── Summary strip ──────────────────────────────────────────── */}
+          <div className="flex flex-wrap gap-2.5 mb-6">
+            <SummaryChip label="Ongoing projects" value={ongoingProjects.length} accent="blue" />
+            <SummaryChip label="Open tasks"       value={totalOpen}              accent="slate" />
+            <SummaryChip label="Overdue"          value={totalOverdue}           accent={totalOverdue > 0 ? 'red' : 'slate'} />
+            <SummaryChip label="Team"             value={dash.people.length}     accent="green" />
+          </div>
+        </>
+      )}
 
       {/* ── Main layout: 2/3 projects · 1/3 actions+contributors ──────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5 items-start">
+      {!isFirstRun && (
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5 items-start">
 
-        {/* Left column — Projects */}
-        <ProjectsColumn
-          projects={ongoingProjects}
-          tasksByProject={tasksByProject}
-        />
+          {/* Left column — Projects */}
+          <ProjectsColumn
+            projects={ongoingProjects}
+            tasksByProject={tasksByProject}
+          />
 
-        {/* Right column — Actions + Contributors */}
-        <div className="space-y-4 xl:sticky xl:top-4 xl:self-start xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto pr-1">
-          <ActionsPanel tasks={dash.teamTasks} />
-          <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />
+          {/* Right column — Actions + Contributors */}
+          <div className="space-y-4 xl:sticky xl:top-4 xl:self-start xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto pr-1">
+            <ActionsPanel tasks={dash.teamTasks} />
+            <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* First-time tour for new leads */}
       <FirstTimeTour alreadySeen={hasSeenTour} />
@@ -194,6 +208,89 @@ function SummaryChip({
   );
 }
 
+/* ── First-run guide ──────────────────────────────────────────────────────
+   Shown to a lead/admin whose workspace has no projects yet. A three-step
+   path — team → members → project — so a brand-new admin always knows the
+   next click instead of staring at empty panels. */
+function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
+  const steps = [
+    {
+      href: '/teams',
+      icon: UsersIcon,
+      tint: 'blue' as const,
+      title: 'Create your team',
+      body: 'Give your group a name. Every project rolls up to a team.',
+      done: hasTeam,
+    },
+    {
+      href: '/people',
+      icon: UserPlus,
+      tint: 'teal' as const,
+      title: 'Add your people',
+      body: 'Add members with their company username + employee ID. They become assignable instantly.',
+      done: hasTeam,
+    },
+    {
+      href: '/projects/new',
+      icon: Plus,
+      tint: 'green' as const,
+      title: 'Create your first project',
+      body: 'Pick a lifecycle, assign it to your team, and start adding tasks.',
+      done: false,
+    },
+  ];
+  const tints: Record<'blue' | 'teal' | 'green', string> = {
+    blue:  'bg-blue-50 text-blue-600',
+    teal:  'bg-teal-50 text-teal-600',
+    green: 'bg-emerald-50 text-emerald-600',
+  };
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles size={14} className="text-blue-500" />
+        <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+          Let’s get you set up
+        </h2>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {steps.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Link
+              key={s.href}
+              href={s.href}
+              className="fluid-card group bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col"
+              style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${tints[s.tint]}`}>
+                  <Icon size={17} />
+                </div>
+                {s.done ? (
+                  <CheckCircle2 size={18} className="text-emerald-500" />
+                ) : (
+                  <span className="text-[11px] font-bold text-slate-300">STEP {i + 1}</span>
+                )}
+              </div>
+              <div className="font-bold text-slate-800 text-sm mb-1 flex items-center gap-1">
+                {s.title}
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed flex-1">{s.body}</p>
+              <div className="mt-3 text-xs font-semibold text-blue-600 inline-flex items-center gap-1 group-hover:gap-1.5 transition-all">
+                {s.done ? 'Review' : 'Start'} <ArrowRight size={13} />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+      <p className="text-xs text-slate-400 mt-3 text-center">
+        Your dashboard fills in automatically as you create projects and assign tasks.
+      </p>
+    </div>
+  );
+}
+
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  PROJECTS COLUMN — left side, expandable project rows with tasks inside    */
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -207,7 +304,7 @@ function ProjectsColumn({
         <div className="flex items-center gap-2">
           <FolderKanban size={14} className="text-slate-400" />
           <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-            Projects you lead
+            {isLead ? 'Projects you lead' : 'Your team’s projects'}
           </h2>
           <span className="text-[10px] text-slate-300 font-semibold">{projects.length}</span>
         </div>

@@ -3,83 +3,145 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { signToken, setAuthCookie, isLead, isAdmin, configuredAdminEmail } from '@/lib/auth';
+import { signToken, setAuthCookie, configuredAdminEmail } from '@/lib/auth';
 import { readBody, handleError } from '@/lib/http';
 import { u } from '@/lib/serialize';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
-const Body = z.object({ email: z.string().email(), password: z.string().min(1) });
+/**
+ * Login body accepts either a `username` (Instagram-style handle) or an
+ * `email`. The form ships a single `identifier` field that can hold either;
+ * we resolve which database column to query based on whether the string
+ * contains an "@". Either is valid; ambiguous input (e.g. someone with a
+ * username that happens to look like an email) prefers the email column.
+ */
+const Body = z.object({
+  identifier: z.string().min(1).max(254),
+  password:   z.string().min(1).max(200),
+});
 
 // After this many consecutive wrong passwords the account is locked
-// until an admin/lead clears it. Kept low (5) because Pragati is a
-// small workspace where a real lockout is recoverable in <30 seconds
-// (admin clicks Unlock on the People page).
+// until an admin/lead clears it from the People page.
 const MAX_FAILED_LOGINS = 5;
+
+// Generic "wrong email or password" response. We never reveal which half
+// was wrong — even when the account is locked — so an attacker can't
+// enumerate valid emails by watching status codes or messages. Real
+// users get the helpful message in-product once they sign in successfully
+// (their admin tells them their account was locked).
+const GENERIC_INVALID = { status: 401, body: { error: 'Invalid email or password.' } } as const;
 
 export async function POST(req: NextRequest) {
   try {
+    // Per-IP brute-force throttle. The per-account lockout is the second
+    // line of defence; this one fires before we ever hit the database, so
+    // an attacker spraying a wordlist across many emails is contained
+    // without locking out legitimate users in the process.
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anon';
+    if (!rateLimit(`login:${ip}`, 20, 60_000)) {
+      return NextResponse.json(
+        { error: 'Too many sign-in attempts. Wait a minute and try again.' },
+        { status: 429 },
+      );
+    }
+
+    // Validate the body BEFORE touching the database, so malformed input
+    // fails fast with a 400 regardless of DB health.
+    const body  = await readBody(req, Body);
     await connectDB();
-    const body = await readBody(req, Body);
-    const user = await User.findOne({ email: body.email.toLowerCase() });
-    if (!user) return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    const ident = body.identifier.toLowerCase().trim();
+    // Look up by email if the string looks like an address, otherwise by
+    // username. Treat either column as the canonical identifier — they're
+    // both unique and case-insensitive at the schema level.
+    const user  = ident.includes('@')
+      ? await User.findOne({ email: ident })
+      : await User.findOne({ username: ident });
 
-    // Refuse upfront if the account is already locked — don't even check
-    // the password, otherwise the counter would keep climbing forever
-    // and a real user trying to log in after a lock would see the
-    // generic "Invalid credentials" message instead of being told why.
+    // Unified "invalid" path for missing user, locked user, and wrong
+    // password. We still do the bcrypt comparison against a dummy hash
+    // even when no user matched, so the response time doesn't reveal
+    // whether the email exists in the database.
+    const DUMMY_HASH = '$2a$10$CwTycUXWue0Thq9StjUM0uJ8ZQAYPwLqL.qZdW7HtLZqL2lF6f7Pi';
+    const passwordOk = bcrypt.compareSync(body.password, user?.passwordHash || DUMMY_HASH);
+
+    if (!user) {
+      return NextResponse.json(GENERIC_INVALID.body, { status: GENERIC_INVALID.status });
+    }
+
     if (user.lockedAt) {
-      return NextResponse.json(
-        { error: 'Account locked after too many failed sign-in attempts. Ask your administrator to unlock it.' },
-        { status: 423 }, // Locked
-      );
+      // Don't reveal lock state through the error message — same opaque
+      // response as a wrong password. The admin sees the lock in the
+      // People page UI.
+      return NextResponse.json(GENERIC_INVALID.body, { status: GENERIC_INVALID.status });
     }
 
-    const ok = bcrypt.compareSync(body.password, user.passwordHash);
-    if (!ok) {
-      user.failedLoginAttempts = (user.failedLoginAttempts ?? 0) + 1;
-      let message = 'Invalid credentials';
-      if (user.failedLoginAttempts >= MAX_FAILED_LOGINS) {
-        user.lockedAt = new Date();
-        message = 'Account locked after 5 failed attempts. Ask your administrator to unlock it.';
-      }
-      await user.save();
-      return NextResponse.json(
-        { error: message, attemptsRemaining: Math.max(0, MAX_FAILED_LOGINS - user.failedLoginAttempts) },
-        { status: user.lockedAt ? 423 : 401 },
-      );
+    if (!passwordOk) {
+      // Atomic increment so two concurrent wrong-password requests can't
+      // both read N and both write N+1. The 5th miss flips lockedAt in
+      // the same round-trip; ifn the counter is already at the threshold
+      // we get the lockedAt timestamp back from the same operation.
+      const updated = await User.findOneAndUpdate(
+        { _id: user._id, lockedAt: null },
+        [
+          {
+            $set: {
+              failedLoginAttempts: { $add: ['$failedLoginAttempts', 1] },
+            },
+          },
+          {
+            $set: {
+              lockedAt: {
+                $cond: [
+                  { $gte: ['$failedLoginAttempts', MAX_FAILED_LOGINS] },
+                  new Date(),
+                  null,
+                ],
+              },
+            },
+          },
+        ] as any,
+        { new: true, projection: { lockedAt: 1, failedLoginAttempts: 1 } },
+      ).lean();
+
+      // (If `updated` is null, another request locked the row first —
+      // either way the user sees the same generic error.)
+      void updated;
+      return NextResponse.json(GENERIC_INVALID.body, { status: GENERIC_INVALID.status });
     }
 
-    // Successful auth — clear the failure counter so a previous burst
-    // of typos doesn't trigger a lock days later.
+    // ── Success path ─────────────────────────────────────────────────
+    // Reset the counter and promote to admin if this email matches the
+    // configured workspace owner. Single atomic save afterwards.
     if ((user.failedLoginAttempts ?? 0) > 0 || user.lockedAt) {
       user.failedLoginAttempts = 0;
-      user.lockedAt = null;
+      user.lockedAt            = null;
     }
-
-    // The configured ADMIN_EMAIL is auto-promoted on every successful login,
-    // so an existing lead account whose email matches becomes the admin
-    // without any manual SQL.
     const adminEmail = configuredAdminEmail();
     if (adminEmail && user.email === adminEmail && user.role !== 'admin') {
       user.role = 'admin' as any;
     }
     if (user.isModified()) await user.save();
 
-    // Pragati is leads + the single admin only. Contributors are tracked as
-    // assignable records but cannot sign in.
-    if (!isLead(user.role) && !isAdmin(user.role)) {
+    // Every provisioned account can sign in: leads + admin get full
+    // management, contributors (employee) get a read-only view of their
+    // team's board plus the ability to update the status / subtasks /
+    // comments of tasks assigned to them. Accounts with an unknown role
+    // are still refused.
+    const KNOWN_ROLES = ['employee', 'pm', 'lead', 'admin'];
+    if (!KNOWN_ROLES.includes(String(user.role))) {
       return NextResponse.json(
-        { error: 'This workspace is open to team leads only. Contact your administrator.' },
+        { error: 'Your account is not active. Contact your administrator.' },
         { status: 403 },
       );
     }
 
     const token = signToken({
-      sub: String(user._id),
+      sub:   String(user._id),
       email: user.email,
-      role: user.role as any,
-      name: user.name,
+      role:  user.role as any,
+      name:  user.name,
       title: user.title || '',
     });
 

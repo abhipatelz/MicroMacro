@@ -19,7 +19,9 @@
  *    second handoff happens that would justify forcing another rotation.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { Team } from '@/models/Team';
@@ -27,6 +29,7 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { Invite } from '@/models/Invite';
 import { handleError } from '@/lib/http';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -35,30 +38,58 @@ function configuredToken(): string | null {
   return t && t.length >= 16 ? t : null;
 }
 
+/** Timing-safe equality so the token can't be brute-forced by measuring
+ *  early-exit response latency byte-by-byte. */
+function tokensMatch(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
+const BootstrapSchema = z.object({
+  email:        z.string().email().max(254),
+  password:     z.string().min(8).max(200),
+  name:         z.string().trim().max(120).optional().default(''),
+  cleanupUsers: z.boolean().optional().default(false),
+  keepMesOnly:  z.boolean().optional().default(false),
+});
+
 export async function POST(req: NextRequest) {
   try {
     const token = configuredToken();
     if (!token) {
+      // 404 (not 401) so the existence of the endpoint isn't even
+      // confirmed when bootstrap is disabled.
       return NextResponse.json({ error: 'Bootstrap is disabled.' }, { status: 404 });
     }
+
+    // Token-guessing is bounded by the per-IP throttle, in addition to
+    // the timing-safe comparison below. Token must be >= 16 chars so a
+    // realistic guess would require 100M+ requests.
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anon';
+    if (!rateLimit(`bootstrap:${ip}`, 5, 60_000)) {
+      return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
+    }
+
     const supplied = req.headers.get('x-bootstrap-token') ?? '';
-    if (supplied !== token) {
+    if (!tokensMatch(supplied, token)) {
       return NextResponse.json({ error: 'Invalid bootstrap token.' }, { status: 401 });
     }
 
-    const body = await req.json().catch(() => ({}));
-    const email          = String(body.email ?? '').toLowerCase().trim();
-    const password       = String(body.password ?? '');
-    const name           = String(body.name ?? '').trim() || email.split('@')[0];
-    const cleanupUsers   = Boolean(body.cleanupUsers);
-    const keepMesOnly    = Boolean(body.keepMesOnly);
-
-    if (!/.+@.+\..+/.test(email)) {
-      return NextResponse.json({ error: 'A valid email is required.' }, { status: 400 });
+    const json = await req.json().catch(() => ({}));
+    const parsed = BootstrapSchema.safeParse(json);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request', issues: parsed.error.flatten() },
+        { status: 400 },
+      );
     }
-    if (password.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
-    }
+    const email        = parsed.data.email.toLowerCase().trim();
+    const password     = parsed.data.password;
+    const name         = (parsed.data.name || email.split('@')[0]).trim();
+    const cleanupUsers = parsed.data.cleanupUsers;
+    const keepMesOnly  = parsed.data.keepMesOnly;
 
     await connectDB();
 

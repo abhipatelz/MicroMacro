@@ -13,6 +13,8 @@
     "keep-mes-only": "tsx scripts/keep-mes-only.ts",
     "set-admin": "tsx scripts/set-admin.ts",
     "set-password": "tsx scripts/set-password.ts",
+    "backfill-usernames": "tsx scripts/backfill-usernames.ts",
+    "smoke-prod": "tsx scripts/smoke-prod.ts",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
@@ -33,7 +35,6 @@
     "next": "14.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "recharts": "^2.15.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {

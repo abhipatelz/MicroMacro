@@ -3,6 +3,12 @@ import mongoose, { Schema, Model, InferSchemaType } from 'mongoose';
 const UserSchema = new Schema(
   {
     email:        { type: String, required: true, unique: true, lowercase: true },
+    // Short login handle, à la Instagram. Required + unique for new accounts;
+    // `sparse` allows the column to be added to a database that already has
+    // documents without a username, so we can backfill at our leisure
+    // (scripts/backfill-usernames.ts). Stored lower-cased and validated by
+    // Zod in /lib/validations.ts so it stays case-insensitive and ASCII-safe.
+    username:     { type: String, unique: true, sparse: true, lowercase: true, trim: true },
     name:         { type: String, required: true },
     passwordHash: { type: String, required: true },
     // 'pm' kept in the enum for backwards compat with existing records;
