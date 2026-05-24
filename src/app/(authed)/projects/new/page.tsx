@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
+import { useIsLead } from '@/components/CurrentUserContext';
 import { Plus, X, GripVertical, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
@@ -155,6 +156,15 @@ function PhaseRow({
 ════════════════════════════════════════════════════════════════════════════ */
 export default function NewProjectPage() {
   const router = useRouter();
+  const isLead = useIsLead();
+
+  // Creating projects is a lead/admin action. The "+ New project" button is
+  // already hidden for contributors, but the route is still reachable by
+  // direct URL — guard it so a contributor sees the dashboard instead of a
+  // form that would 403 on submit.
+  useEffect(() => {
+    if (isLead === false) router.replace('/');
+  }, [isLead, router]);
 
   const [form, setForm] = useState({
     name: '', description: '', lifecycle: 'generic',
