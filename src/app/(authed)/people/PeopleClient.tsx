@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { api } from '@/lib/client/api';
 import { Avatar } from '@/components/ui';
-import { UserPlus, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
+import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 
 /* ── role display helpers ─────────────────────────────────────────────── */
 const ROLE_COLOR: Record<string, string> = {
@@ -202,6 +202,127 @@ function AddMemberModal({ onClose, onCreated }: {
   );
 }
 
+/* ── Bulk import modal ─────────────────────────────────────────────────────
+   Paste a roster (one person per line: username, employee ID, name) and
+   create contributor accounts in one shot. Built for onboarding a big team
+   without adding people one at a time. */
+interface ParsedRow { username: string; employeeId: string; name: string; bad?: string; }
+
+function parseRoster(text: string): ParsedRow[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      // comma- or tab-separated (so a paste straight from Excel works)
+      const parts = line.split(/[,\t]/).map((p) => p.trim());
+      const username   = (parts[0] || '').toLowerCase();
+      const employeeId = parts[1] || '';
+      const name       = parts[2] || '';
+      let bad: string | undefined;
+      if (!/^[a-z][a-z0-9_.]{1,28}[a-z0-9_]$/.test(username)) bad = 'invalid username';
+      else if (!employeeId) bad = 'missing employee ID';
+      return { username, employeeId, name, bad };
+    });
+}
+
+function ImportMembersModal({ onClose, onDone }: { onClose: () => void; onDone: (n: number) => void }) {
+  const [text, setText]     = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState('');
+  const [result, setResult] = useState<{ createdCount: number; skippedCount: number; skipped: Array<{ username: string; reason: string }> } | null>(null);
+
+  const rows      = parseRoster(text);
+  const validRows = rows.filter((r) => !r.bad);
+  const badRows   = rows.filter((r) => r.bad);
+
+  async function submit() {
+    if (validRows.length === 0) { setErr('Add at least one valid row.'); return; }
+    setErr(''); setSaving(true);
+    try {
+      const res = await api<{ createdCount: number; skippedCount: number; skipped: any[] }>('/users/bulk', {
+        method: 'POST',
+        body: { rows: validRows.map((r) => ({ username: r.username, employeeId: r.employeeId, name: r.name || undefined })) },
+      });
+      setResult(res);
+      onDone(res.createdCount);
+    } catch (e: any) {
+      setErr(e.message || 'Import failed.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[520px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="text-base font-bold text-slate-900">Import contributors</div>
+            <div className="text-sm text-slate-400 mt-0.5">
+              One person per line: <span className="font-mono">username, employee ID, name</span>{' '}
+              (name optional). Up to 100 at a time.
+            </div>
+          </div>
+          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5"><X size={18} /></button>
+        </div>
+
+        {result ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+              <strong>{result.createdCount}</strong> contributor{result.createdCount === 1 ? '' : 's'} added.
+              {result.skippedCount > 0 && <> {result.skippedCount} skipped.</>}
+            </div>
+            {result.skipped.length > 0 && (
+              <div className="text-xs text-slate-500 max-h-40 overflow-auto border border-slate-100 rounded-lg p-3">
+                {result.skipped.map((s) => (
+                  <div key={s.username}><span className="font-mono">@{s.username}</span> — {s.reason}</div>
+                ))}
+              </div>
+            )}
+            <button onClick={onClose} className="btn-primary w-full justify-center">Done</button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <textarea
+              className="textarea text-sm font-mono min-h-[180px]"
+              placeholder={'priya.sharma, 100245, Priya Sharma\narjun.mehta, 100312\nneha.r, 100410, Neha Rao'}
+              value={text}
+              onChange={(e) => { setText(e.target.value); setErr(''); }}
+              spellCheck={false}
+              autoCapitalize="none"
+            />
+
+            {rows.length > 0 && (
+              <div className="text-xs text-slate-500">
+                <span className="font-semibold text-emerald-600">{validRows.length} ready</span>
+                {badRows.length > 0 && <span className="text-rose-600 font-semibold"> · {badRows.length} need fixing</span>}
+                {badRows.slice(0, 4).map((r, i) => (
+                  <div key={i} className="text-rose-500 mt-0.5">
+                    line “{r.username || '(empty)'}” — {r.bad}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {err && (
+              <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">{err}</div>
+            )}
+
+            <button onClick={submit} disabled={saving || validRows.length === 0}
+              className="btn-primary w-full justify-center">
+              {saving ? 'Importing…' : `Import ${validRows.length || ''} contributor${validRows.length === 1 ? '' : 's'}`}
+            </button>
+            <p className="text-[11px] text-slate-400 text-center">
+              Each gets the standard default password (first name @ employee ID). Nothing is emailed.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Role-change confirmation dialog ──────────────────────────────────── */
 function RoleConfirmDialog({ user, targetRole, onConfirm, onCancel, saving }: {
   user: any; targetRole: 'lead' | 'employee'; onConfirm: () => void; onCancel: () => void; saving: boolean;
@@ -357,6 +478,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
   const [users, setUsers] = useState<any[]>(initialUsers);
   const [saving, setSaving] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const [creds, setCreds] = useState<{ name: string; email: string; tempPassword: string } | null>(null);
   const [roleConfirm, setRoleConfirm] = useState<{ user: any; targetRole: 'lead' | 'employee' } | null>(null);
@@ -458,6 +580,12 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
       )}
       {/* Modals */}
       {showAdd && <AddMemberModal onClose={() => setShowAdd(false)} onCreated={handleCreated} />}
+      {showImport && (
+        <ImportMembersModal
+          onClose={() => setShowImport(false)}
+          onDone={(n) => { if (n > 0) { setJustAdded(`${n} contributor${n === 1 ? '' : 's'}`); setTimeout(() => setJustAdded(null), 4000); } load(); }}
+        />
+      )}
       {creds && <CredentialsModal {...creds} onClose={() => setCreds(null)} />}
       {editUser && <EditUserModal user={editUser} onClose={() => setEditUser(null)} onSaved={load} />}
       {removeConfirm && (
@@ -486,9 +614,14 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
             Workspace user management — add people, promote contributors to leads, reset passwords, and unlock accounts.
           </p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="btn-primary shrink-0 gap-2">
-          <UserPlus size={14} /> Add member
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={() => setShowImport(true)} className="btn-secondary gap-2">
+            <Upload size={14} /> Import
+          </button>
+          <button onClick={() => setShowAdd(true)} className="btn-primary gap-2">
+            <UserPlus size={14} /> Add member
+          </button>
+        </div>
       </div>
 
       {/* Role info banner */}
