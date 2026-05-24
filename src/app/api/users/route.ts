@@ -67,7 +67,7 @@ function defaultContributorPassword(name: string, employeeId: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { error } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error } = await requireRole(req, 'admin');
     if (error) return error;
     await connectDB();
     const body = await readBody(req, CreateBody);

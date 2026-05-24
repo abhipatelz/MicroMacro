@@ -11,11 +11,12 @@ export const runtime = 'nodejs';
 // and the user still knows their real password — saves the awkward
 // "here's a temp password" handoff.
 //
-// Gated to pm/lead/admin since lifting a lockout is an audit-bearing
-// action: it directly affects the system's brute-force protection.
+// Admin-only: lifting a lockout is an audit-bearing action that affects
+// the system's brute-force protection, and user management is reserved
+// for the single workspace admin.
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error } = await requireRole(req, 'admin');
     if (error) return error;
     await connectDB();
 

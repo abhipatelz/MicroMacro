@@ -17,7 +17,7 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 // Returns active + consumed + revoked (audit trail), sorted newest first.
 export async function GET(req: NextRequest) {
   try {
-    const { error } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error } = await requireRole(req, 'admin');
     if (error) return error;
     await connectDB();
 
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 // POST /api/invites — create a single-use invite for the given email.
 export async function POST(req: NextRequest) {
   try {
-    const { error, user: caller } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user: caller } = await requireRole(req, 'admin');
     if (error) return error;
     await connectDB();
     const body = await readBody(req, Body);
