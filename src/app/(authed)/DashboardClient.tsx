@@ -138,12 +138,16 @@ export default function DashboardClient({
       <div className="brand-mesh mb-6 rounded-3xl border border-slate-200/70 px-6 py-5 overflow-hidden relative">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles size={14} className="text-blue-500" />
-          <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700/90">
+          {/* Date + greeting are intentionally client-local (browser TZ) and
+             will differ from the UTC server render near a day boundary —
+             suppressHydrationWarning lets React patch to the client value
+             without logging a mismatch. */}
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700/90" suppressHydrationWarning>
             {dateLabel}
           </span>
         </div>
         <h1 className="text-3xl font-black tracking-tight leading-tight">
-          <span className="brand-shimmer-text">{greeting()}, {firstName}.</span>
+          <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}, {firstName}.</span>
         </h1>
         <p className="text-sm text-slate-600 mt-1 max-w-xl leading-relaxed">
           Here's your bird's-eye view — projects on the move, what needs your attention,
