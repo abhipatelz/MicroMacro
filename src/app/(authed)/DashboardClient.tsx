@@ -64,6 +64,7 @@ interface DashResp {
   tasks: any[];
   teamTasks: TeamTask[];
   people: DashPerson[];
+  teamCount: number;
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
@@ -179,7 +180,7 @@ export default function DashboardClient({
             <SummaryChip label="Ongoing projects" value={ongoingProjects.length} accent="blue"  href="/projects" />
             <SummaryChip label="Open tasks"       value={totalOpen}              accent="slate" href="/projects" />
             <SummaryChip label="Overdue"          value={totalOverdue}           accent={totalOverdue > 0 ? 'red' : 'slate'} href="/projects" />
-            <SummaryChip label="Team"             value={dash.people.length}     accent="green" href="/teams" />
+            <SummaryChip label={dash.teamCount === 1 ? 'Team' : 'Teams'} value={dash.teamCount} accent="green" href="/teams" />
           </div>
         </>
       )}

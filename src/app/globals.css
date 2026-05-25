@@ -305,7 +305,12 @@ body {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.page-enter { animation: page-enter 0.18s cubic-bezier(0.22,1,0.36,1) both; }
+/* `backwards` (not `both`): keep the entrance slide, but DON'T retain
+   transform:translateY(0) after it ends — a lingering transform turns this
+   wrapper into the containing block for position:fixed, which made modals
+   (e.g. "Can't mark completed") center relative to the scrolled page
+   instead of the viewport. */
+.page-enter { animation: page-enter 0.18s cubic-bezier(0.22,1,0.36,1) backwards; }
 
 /* ── Stat-card stagger ───────────────────────────────────────────────────── */
 @keyframes fade-up-stagger {

@@ -220,9 +220,9 @@ function TeamCard({
         <p className="mt-3 text-sm text-slate-600 line-clamp-2">{team.description}</p>
       )}
 
-      {/* Lead */}
+      {/* Team owner */}
       <div className="mt-3 text-[11px] text-slate-400">
-        <span className="font-semibold uppercase tracking-wider text-slate-400">Lead · </span>
+        <span className="font-semibold uppercase tracking-wider text-slate-400">Team leader · </span>
         <span className="text-slate-600 font-medium">{lead?.name || 'Unassigned'}</span>
       </div>
 
@@ -454,7 +454,7 @@ function TeamFormModal({
                         <div className="text-sm font-medium text-slate-800 truncate">
                           {u.name}
                           {isLead && (
-                            <span className="ml-2 text-[10px] font-bold text-brand-600 uppercase tracking-wider">Lead</span>
+                            <span className="ml-2 text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Team Leader</span>
                           )}
                         </div>
                         <div className="text-[11px] text-slate-400 truncate">

@@ -29,7 +29,7 @@ function timeAgo(iso: string): string {
  * goes UP, it chimes (respecting the user's sound mute). Clicking an item
  * marks it read and deep-links to the task.
  */
-export function NotificationBell({ dark = false }: { dark?: boolean }) {
+export function NotificationBell({ dark = false, openUp = false }: { dark?: boolean; openUp?: boolean }) {
   const router = useRouter();
   const [items, setItems]   = useState<Notif[]>([]);
   const [unread, setUnread] = useState(0);
@@ -101,7 +101,9 @@ export function NotificationBell({ dark = false }: { dark?: boolean }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] z-50 bg-white rounded-xl border border-slate-200 overflow-hidden"
+        <div className={`absolute left-0 w-80 max-w-[calc(100vw-2rem)] z-50 bg-white rounded-xl border border-slate-200 overflow-hidden ${
+               openUp ? 'bottom-full mb-2' : 'right-0 left-auto mt-2'
+             }`}
              style={{ boxShadow: '0 8px 30px rgba(15,23,42,0.16)' }}>
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
             <span className="text-sm font-bold text-slate-800">Notifications</span>

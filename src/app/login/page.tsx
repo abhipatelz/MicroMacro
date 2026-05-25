@@ -5,6 +5,39 @@ import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
+/* Quiet, rotating wisdom on the brand panel — fades between lines every
+   few seconds. Deliberately unattributed. */
+const QUOTES = [
+  'The most important skill is learning how to learn.',
+  'You make progress by being specific about what you want.',
+  'A clear mind is a productive mind.',
+  'Do the thing you’ve been avoiding. That’s usually the right one.',
+  'Inspiration is perishable — act on it immediately.',
+  'Focus on being productive instead of busy.',
+  'Done is better than perfect, every single day.',
+  'Small steps, taken daily, compound into everything.',
+];
+
+function RotatingQuote() {
+  const [i, setI] = useState(0);
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    const t = setInterval(() => {
+      setShow(false);
+      setTimeout(() => { setI((n) => (n + 1) % QUOTES.length); setShow(true); }, 400);
+    }, 6000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div
+      style={{ fontSize: 12, fontStyle: 'italic', transition: 'opacity 0.4s ease', opacity: show ? 1 : 0, minHeight: 18 }}
+      className="text-white/40 tracking-wide max-w-[300px] mx-auto leading-snug"
+    >
+      “{QUOTES[i]}”
+    </div>
+  );
+}
+
 function StrengthMeter({ password }: { password: string }) {
   const checks = [
     { label: '8+ chars', ok: password.length >= 8 },
@@ -103,14 +136,10 @@ export default function LoginPage() {
           0%   { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
         }
-        @keyframes orbit-a {
-          from { transform: rotate(0deg)   translateX(170px) rotate(0deg); }
-          to   { transform: rotate(360deg) translateX(170px) rotate(-360deg); }
-        }
-        @keyframes orbit-b {
-          from { transform: rotate(0deg)   translateX(220px) rotate(0deg); }
-          to   { transform: rotate(-360deg) translateX(220px) rotate(360deg); }
-        }
+        /* Spin the orbit ring around the logo's centre — the dot sits on
+           the ring's edge, so it circles the mark closely. */
+        @keyframes orbit-a { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes orbit-b { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
         .logo-float    { animation: logo-float 5.5s ease-in-out infinite; }
         .fade-up       { animation: fade-up 0.55s ease-out forwards; }
         .fade-up-1     { animation: fade-up 0.55s 0.10s ease-out both; }
@@ -124,8 +153,8 @@ export default function LoginPage() {
           background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
           animation: shimmer-line 2.6s ease-in-out infinite;
         }
-        .orbit-a { animation: orbit-a 22s linear infinite; }
-        .orbit-b { animation: orbit-b 30s linear infinite; }
+        .orbit-a { animation: orbit-a 14s linear infinite; transform-origin: 50% 50%; }
+        .orbit-b { animation: orbit-b 18s linear infinite; transform-origin: 50% 50%; }
         @media (prefers-reduced-motion: reduce) {
           .logo-float, .orbit-a, .orbit-b, .shimmer-line::after { animation: none !important; }
           .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-in-soft, .form-swap { animation-duration: 0.01ms !important; }
@@ -158,32 +187,33 @@ export default function LoginPage() {
             background: 'radial-gradient(circle, rgba(43,160,71,0.18) 0%, transparent 70%)',
           }} />
 
-          {/* Orbiting accents */}
-          <div className="absolute pointer-events-none" style={{ top: '34%', left: '50%' }}>
-            <div className="orbit-a" style={{
-              width: 7, height: 7, borderRadius: '50%',
-              background: '#42A5F5', boxShadow: '0 0 14px rgba(66,165,245,0.85)',
-            }} />
-          </div>
-          <div className="absolute pointer-events-none" style={{ top: '34%', left: '50%' }}>
-            <div className="orbit-b" style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: '#67D376', boxShadow: '0 0 12px rgba(103,211,118,0.8)',
-            }} />
-          </div>
-
           <div className="relative flex flex-col flex-1 px-14 py-12">
             <div className="flex-1 flex flex-col justify-center">
 
-              {/* Custom Pragati mark — CSS-built, no image asset */}
-              <div className="flex justify-center mb-9 logo-float">
-                <PragatiMark size={96} />
+              {/* Custom Pragati mark with two dots orbiting close around it. */}
+              <div className="flex justify-center mb-10">
+                <div className="relative logo-float" style={{ width: 112, height: 112 }}>
+                  <PragatiMark size={112} />
+                  {/* Orbit ring — the dots ride the edge of this box */}
+                  <div className="absolute inset-0 orbit-a pointer-events-none">
+                    <span className="absolute left-1/2 -top-1.5 -translate-x-1/2" style={{
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: '#42A5F5', boxShadow: '0 0 12px rgba(66,165,245,0.9)',
+                    }} />
+                  </div>
+                  <div className="absolute inset-0 orbit-b pointer-events-none">
+                    <span className="absolute left-1/2 -bottom-1.5 -translate-x-1/2" style={{
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: '#67D376', boxShadow: '0 0 10px rgba(103,211,118,0.9)',
+                    }} />
+                  </div>
+                </div>
               </div>
 
               {/* Wordmark */}
               <h1
                 className="fade-up-1 text-center font-black text-white leading-none"
-                style={{ fontSize: 'clamp(56px, 5.6vw, 78px)', letterSpacing: '-0.035em' }}
+                style={{ fontSize: 'clamp(62px, 6.2vw, 88px)', letterSpacing: '-0.035em' }}
               >
                 Pragati
               </h1>
@@ -201,17 +231,10 @@ export default function LoginPage() {
                 <br />every action, every contributor.
               </p>
 
-              <div className="fade-up-3 flex justify-center mt-8 gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400/60" />
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400/30" />
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400/15" />
-              </div>
             </div>
 
             <div className="text-center pb-2 fade-up-3">
-              <div style={{ fontSize: 11, fontStyle: 'italic' }} className="text-white/30 tracking-wide">
-                Progress over perfection — every day.
-              </div>
+              <RotatingQuote />
             </div>
           </div>
         </div>
@@ -284,7 +307,7 @@ export default function LoginPage() {
                   // check. On the register mode we still want email
                   // semantics for autocomplete + format hints.
                   type={mode === 'login' ? 'text' : 'email'}
-                  placeholder={mode === 'login' ? 'priya.sharma' : 'you@company.com'}
+                  placeholder={mode === 'login' ? 'username or employee ID' : 'you@company.com'}
                   required
                   autoComplete={mode === 'login' ? 'username' : 'email'}
                   spellCheck={false}
@@ -294,10 +317,8 @@ export default function LoginPage() {
                 />
                 {mode === 'login' && (
                   <div className="text-[11px] text-slate-400 mt-1.5 leading-snug">
-                    The same handle your work email uses before the
-                    <span className="font-mono px-1">@</span> — e.g.
-                    <span className="font-mono"> priya.sharma</span> for
-                    <span className="font-mono"> priya.sharma@company.com</span>.
+                    You can sign in with your <span className="font-medium text-slate-500">username</span> or your{' '}
+                    <span className="font-medium text-slate-500">employee ID</span> — both work.
                   </div>
                 )}
               </div>

@@ -14,6 +14,7 @@ export interface LeadDashboardData {
   tasks:     any[];
   teamTasks: any[];
   people:    any[];
+  teamCount: number;
 }
 
 // Pure data fetcher — used by both the API route and the server-rendered
@@ -165,5 +166,7 @@ export async function getLeadDashboardData(
     tasks:    taskList,
     teamTasks,
     people,
+    // Number of teams the viewer belongs to (or all teams, for admin).
+    teamCount: scope.teamOids.length,
   };
 }
