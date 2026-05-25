@@ -106,11 +106,14 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
             Pragati
           </span>
         </Link>
-        {/* Close on mobile */}
-        <button className={`lg:hidden p-1 rounded-md ml-auto ${dark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'}`}
-          onClick={() => setOpen(false)}>
-          <X size={15} />
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          <NotificationBell dark={dark} />
+          {/* Close on mobile */}
+          <button className={`lg:hidden p-1 rounded-md ${dark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'}`}
+            onClick={() => setOpen(false)}>
+            <X size={15} />
+          </button>
+        </div>
       </div>
 
       {/* Nav items */}
