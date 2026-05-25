@@ -51,6 +51,12 @@ const ProjectSchema = new Schema(
     archived:   { type: Boolean, default: false },
     archivedAt: { type: Date,    default: null   },
     archivedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+
+    // ── Personal projects ───────────────────────────────────────────────
+    // A personal project is private to its owner — never surfaced to other
+    // users (including admins) anywhere in the app. Any authenticated user
+    // can create one; it carries no team.
+    personal: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

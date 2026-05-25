@@ -158,13 +158,13 @@ export default function NewProjectPage() {
   const router = useRouter();
   const isLead = useIsLead();
 
-  // Creating projects is a lead/admin action. The "+ New project" button is
-  // already hidden for contributors, but the route is still reachable by
-  // direct URL — guard it so a contributor sees the dashboard instead of a
-  // form that would 403 on submit.
+  // Contributors can only create PERSONAL projects (private to them). Leads
+  // and admins can create either kind, choosing via the toggle below. Once
+  // we know the viewer is a contributor, lock the form into personal mode.
+  const [personal, setPersonal] = useState(false);
   useEffect(() => {
-    if (isLead === false) router.replace('/');
-  }, [isLead, router]);
+    if (isLead === false) setPersonal(true);
+  }, [isLead]);
 
   const [form, setForm] = useState({
     name: '', description: '', lifecycle: 'generic',
@@ -228,7 +228,8 @@ export default function NewProjectPage() {
           lifecycle:   form.lifecycle,
           priority:    form.priority,
           gxpImpact:   form.gxpImpact,
-          teamId:      form.teamId || undefined,
+          personal,
+          teamId:      personal ? undefined : (form.teamId || undefined),
           startDate:   form.startDate || undefined,
           dueDate:     form.dueDate || undefined,
           useTemplate: false,
@@ -304,7 +305,33 @@ export default function NewProjectPage() {
                 <input type="date" className="input" value={form.dueDate} onChange={e => up('dueDate', e.target.value)} />
               </div>
             </div>
-            {teams.length > 0 && (
+            {/* Personal toggle — contributors are locked into personal mode;
+                leads can pick. A personal project is private to you and has
+                no team. */}
+            <div className="rounded-lg border border-slate-200 px-3 py-2.5 flex items-start gap-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={personal}
+                disabled={isLead === false}
+                onClick={() => isLead !== false && setPersonal(p => !p)}
+                className={`mt-0.5 relative w-9 h-5 rounded-full shrink-0 transition-colors ${
+                  personal ? 'bg-blue-600' : 'bg-slate-300'
+                } ${isLead === false ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${personal ? 'left-4' : 'left-0.5'}`} />
+              </button>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-slate-700">Personal project</div>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  {isLead === false
+                    ? 'Only visible to you. Contributors create personal projects.'
+                    : 'Only visible to you — no team, hidden from everyone else.'}
+                </div>
+              </div>
+            </div>
+
+            {!personal && teams.length > 0 && (
               <div>
                 <label className="label">Team</label>
                 <select className="select" value={form.teamId} onChange={e => up('teamId', e.target.value)}>

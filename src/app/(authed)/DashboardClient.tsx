@@ -136,8 +136,8 @@ export default function DashboardClient({
 
       {/* ── Greeting ────────────────────────────────────────────────────── */}
       <div className="mb-6 pt-1">
-        <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight text-slate-900">
-          <span suppressHydrationWarning>{greeting()}, {firstName}.</span>
+        <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight">
+          <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}, {firstName}.</span>
         </h1>
       </div>
 

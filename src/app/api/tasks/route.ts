@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
-import { requireUser, requireRole } from '@/lib/auth';
+import { requireUser, isLead } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
 import { TaskCreateSchema } from '@/lib/validations';
@@ -13,14 +13,22 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
     const body = await readBody(req, TaskCreateSchema);
 
     const scope = await getLeadScope(user!.sub, user!.role);
-    const project = await Project.findOne({ _id: body.projectId, ...projectsVisibleFilter(scope) }).select('_id').lean();
+    const project = await Project.findOne({ _id: body.projectId, ...projectsVisibleFilter(scope) }).select('_id ownerId').lean();
     if (!project) return NextResponse.json({ error: 'Project not found or not accessible' }, { status: 404 });
+    // Non-leads may only add tasks to a project they own (their personal project).
+    const ownsProject = String((project as any).ownerId || '') === String(user!.sub);
+    if (!isLead(user!.role) && !ownsProject) {
+      return NextResponse.json(
+        { error: 'You can only add tasks to projects you lead or own.' },
+        { status: 403 },
+      );
+    }
     const task = await Task.create({
       projectId: body.projectId,
       phaseId: body.phaseId,

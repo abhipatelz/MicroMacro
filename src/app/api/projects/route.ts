@@ -4,7 +4,7 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { Team } from '@/models/Team';
 import { User } from '@/models/User';
-import { requireUser, requireRole } from '@/lib/auth';
+import { requireUser, isLead } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { project as projectS } from '@/lib/serialize';
 import { LIFECYCLES, LifecycleKey } from '@/lib/lifecycles';
@@ -86,10 +86,20 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
+    // Any authenticated user can create a PERSONAL project. Creating a
+    // shared/team project remains a lead/admin action.
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
     const body = await readBody(req, ProjectCreateSchema);
+
+    const personal = !!body.personal;
+    if (!personal && !isLead(user!.role)) {
+      return NextResponse.json(
+        { error: 'Only team leads can create shared projects. Mark it personal to keep it private to you.' },
+        { status: 403 },
+      );
+    }
     const lc = LIFECYCLES[body.lifecycle as LifecycleKey] || LIFECYCLES.generic;
     const code =
       body.code ||
@@ -114,8 +124,10 @@ export async function POST(req: NextRequest) {
       description: body.description || '',
       lifecycle: body.lifecycle,
       priority: body.priority || 'medium',
-      teamId: body.teamId || undefined,
-      ownerId: body.ownerId || user.sub,
+      // Personal projects carry no team and are always owned by their creator.
+      teamId: personal ? undefined : (body.teamId || undefined),
+      ownerId: personal ? user!.sub : (body.ownerId || user!.sub),
+      personal,
       startDate: body.startDate ? new Date(body.startDate) : undefined,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
       gxpImpact: body.gxpImpact || 'none',

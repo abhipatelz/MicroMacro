@@ -114,6 +114,8 @@ export const ProjectCreateSchema = z.object({
   priority: PriorityEnum.optional(),
   teamId: optionalObjectId,
   ownerId: optionalObjectId,
+  // Personal project — private to the creator, carries no team.
+  personal: z.boolean().optional(),
   startDate: dateString.optional(),
   dueDate: dateString.optional(),
   // GxP impact is a regulatory classification — explicitly enumerated, never

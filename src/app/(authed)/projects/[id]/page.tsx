@@ -502,6 +502,11 @@ export default function ProjectDetailPage() {
   const overdue = tasks.filter((t: any) => t.dueDate && new Date(t.dueDate) < today && t.status !== 'done').length;
   const openTaskCount = tasks.filter((t: any) => t.status !== 'done').length;
 
+  // The owner of a project (e.g. the creator of a personal project) can
+  // manage it and its tasks even when they aren't a team lead.
+  const isOwner = !!(me && project.ownerId && String(project.ownerId) === String(me.id));
+  const canManage = isLead || isOwner;
+
   async function updateStatus(newStatus: string) {
     if (newStatus === 'completed' && openTaskCount > 0) {
       setBlockComplete(true);
@@ -610,6 +615,12 @@ export default function ProjectDetailPage() {
           <div className="text-xs text-slate-400 font-mono">{project.code}</div>
           <h1 className="text-2xl font-bold mt-0.5">{project.name}</h1>
           <div className="flex flex-wrap gap-2 mt-2">
+            {project.personal && (
+              <span className="tag border border-blue-200 bg-blue-50 text-blue-700 font-semibold"
+                    title="Personal project — only visible to you">
+                Personal
+              </span>
+            )}
             {project.archived && (
               <span className="tag border border-amber-200 bg-amber-50 text-amber-800 font-semibold inline-flex items-center gap-1.5"
                     title={project.archivedAt ? `Archived ${new Date(project.archivedAt).toLocaleString()}` : 'Archived'}>
@@ -623,7 +634,7 @@ export default function ProjectDetailPage() {
 
           {/* Status — directly under the description */}
           <div className="flex items-center gap-2 mt-3">
-            {isLead ? (
+            {canManage ? (
               <StatusPillRow
                 value={project.status}
                 onChange={updateStatus}
@@ -676,7 +687,7 @@ export default function ProjectDetailPage() {
                 <Archive size={13} /> {project.archived ? 'Restore' : 'Archive'}
               </button>
             )}
-            {isAdmin && (
+            {(isAdmin || (isOwner && project.personal)) && (
               <button onClick={() => setDeleteOpen(true)}
                 className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
                 <Trash2 size={13} /> Delete
@@ -745,11 +756,11 @@ export default function ProjectDetailPage() {
                 <ProgressBar value={pctP} className="mb-3" />
                 <div className="divide-y divide-slate-100">
                   {ts.map((t: any) => {
-                    const canEdit = isLead || (me && t.assigneeId === me.id);
+                    const canEdit = canManage || (me && t.assigneeId === me.id);
                     return (
                     <div key={t.id}
-                      onDragOver={isLead ? (e) => e.preventDefault() : undefined}
-                      onDrop={isLead ? () => { if (dragId) reorderDrop(ph.id, dragId, t.id); setDragId(null); } : undefined}
+                      onDragOver={canManage ? (e) => e.preventDefault() : undefined}
+                      onDrop={canManage ? () => { if (dragId) reorderDrop(ph.id, dragId, t.id); setDragId(null); } : undefined}
                       className={`py-2.5 flex items-center gap-2.5 text-sm group transition-colors ${
                         dragId === t.id ? 'opacity-40' : ''
                       }`}>
@@ -788,9 +799,9 @@ export default function ProjectDetailPage() {
                         {t.dueDate && (
                           <span className="text-xs text-slate-400 sm:w-16 text-right">{formatDate(t.dueDate)}</span>
                         )}
-                        {/* Drag handle — leads grab this to reshuffle the
-                           order of tasks within the phase. */}
-                        {isLead && (
+                        {/* Drag handle — leads (or the project owner) grab
+                           this to reshuffle tasks within the phase. */}
+                        {canManage && (
                           <span
                             draggable
                             onDragStart={() => setDragId(t.id)}
@@ -806,7 +817,7 @@ export default function ProjectDetailPage() {
                     );
                   })}
                 </div>
-                {isLead && (
+                {canManage && (
                   <QuickAddTask projectId={project.id} phaseId={ph.id} users={users} onAdded={load} />
                 )}
               </Card>
@@ -817,7 +828,7 @@ export default function ProjectDetailPage() {
           <Card title="Unphased tasks">
             <div className="divide-y divide-slate-100">
               {tasks.filter((t: any) => !t.phaseId).map((t: any) => {
-                const canEdit = isLead || (me && t.assigneeId === me.id);
+                const canEdit = canManage || (me && t.assigneeId === me.id);
                 return (
                 <div key={t.id} className="py-2.5 flex items-center gap-2.5 text-sm group">
                   {canEdit ? (
@@ -856,7 +867,7 @@ export default function ProjectDetailPage() {
                 <div className="text-xs text-slate-400 py-3">None</div>
               )}
             </div>
-            {isLead && (
+            {canManage && (
               <QuickAddTask projectId={project.id} users={users} onAdded={load} />
             )}
           </Card>

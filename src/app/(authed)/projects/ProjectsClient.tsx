@@ -77,11 +77,11 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Projects</h1>
           <p className="text-xs text-slate-400 mt-1">All quality projects across teams &amp; lifecycles.</p>
         </div>
-        {isLead && (
-          <Link href="/projects/new" className="btn-primary gap-2 shrink-0">
-            <Plus size={15} /> New project
-          </Link>
-        )}
+        {/* Leads can create any project; contributors can still create a
+            personal (private) one. */}
+        <Link href="/projects/new" className="btn-primary gap-2 shrink-0">
+          <Plus size={15} /> {isLead ? 'New project' : 'New personal project'}
+        </Link>
       </div>
 
       {/* Tabs */}
@@ -185,6 +185,11 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                     <span className="text-[10px] text-slate-400 font-mono tracking-wider uppercase">{p.code}</span>
                     <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: healthColor }}
                       title={overdueRatio > 0.3 ? 'Critical' : overdueRatio > 0 ? 'At risk' : 'Healthy'} />
+                    {p.personal && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
+                        Personal
+                      </span>
+                    )}
                   </div>
                   <div className="font-bold text-slate-900 truncate group-hover:text-blue-700 transition-colors leading-tight">
                     {p.name}
@@ -244,9 +249,9 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
           <div className="text-xs text-slate-400 mb-4">
             {q || team || lc || status ? 'No projects match those filters.' : 'Create your first project to get started.'}
           </div>
-          {isLead && !q && !team && !lc && !status && (
+          {!q && !team && !lc && !status && (
             <Link href="/projects/new" className="btn-primary text-sm gap-2 inline-flex">
-              <Plus size={14} /> New project
+              <Plus size={14} /> {isLead ? 'New project' : 'New personal project'}
             </Link>
           )}
         </div>

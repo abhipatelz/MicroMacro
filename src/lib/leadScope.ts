@@ -66,13 +66,25 @@ export async function getLeadScope(userId: string, role?: string | null): Promis
 
 // Mongo filter that returns true for every project the viewer can see.
 // Pass as the first arg to Project.find / countDocuments / aggregate $match.
-// Admin scopes return an empty filter (match everything).
+//
+// Personal projects are private to their owner and never leak to anyone
+// else — not even an admin. That carve-out applies in BOTH branches below.
 export function projectsVisibleFilter(scope: LeadScope) {
-  if (scope.unrestricted) return {};
+  if (scope.unrestricted) {
+    // Admin sees the whole workspace EXCEPT other users' personal projects.
+    return {
+      $or: [
+        { personal: { $ne: true } },
+        { ownerId: scope.userOid },
+      ],
+    };
+  }
   return {
     $or: [
+      // My own projects (personal or not).
       { ownerId: scope.userOid },
-      { teamId:  { $in: scope.teamOids } },
+      // Non-personal projects belonging to a team I lead or belong to.
+      { teamId: { $in: scope.teamOids }, personal: { $ne: true } },
     ],
   };
 }

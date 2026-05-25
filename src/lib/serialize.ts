@@ -64,6 +64,7 @@ export function project(p: any, extras: Any = {}) {
     archived:   !!p.archived,
     archivedAt: p.archivedAt || null,
     archivedBy: id(p.archivedBy),
+    personal:   !!p.personal,
     createdAt: p.createdAt,
     ...extras
   };

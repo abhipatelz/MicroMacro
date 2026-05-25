@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
-import { requireRole } from '@/lib/auth';
+import { requireUser, isLead } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 
@@ -22,19 +22,24 @@ const Body = z.object({
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user } = await requireUser(req);
     if (error) return error;
     if (!mongoose.isValidObjectId(params.id)) {
       return NextResponse.json({ error: 'Invalid project id' }, { status: 400 });
     }
     await connectDB();
 
-    const scope = await getLeadScope(user.sub, user.role);
+    const scope = await getLeadScope(user!.sub, user!.role);
     const project = await Project.findOne(
       { _id: params.id, ...projectsVisibleFilter(scope) },
-      '_id',
+      '_id ownerId',
     ).lean();
     if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    // Leads, or the owner of the project (e.g. a personal project), may reorder.
+    const ownsProject = String((project as any).ownerId || '') === String(user!.sub);
+    if (!isLead(user!.role) && !ownsProject) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
 
     const { orderedIds } = await readBody(req, Body);
     const valid = orderedIds.filter((x) => mongoose.isValidObjectId(x));

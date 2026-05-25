@@ -4,7 +4,7 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { Team } from '@/models/Team';
 import { User } from '@/models/User';
-import { requireUser, requireRole } from '@/lib/auth';
+import { requireUser, isLead, isAdmin } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { project as projectS, task as taskS } from '@/lib/serialize';
 import { LIFECYCLES } from '@/lib/lifecycles';
@@ -59,13 +59,18 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
     const scope = await getLeadScope(user!.sub, user!.role);
     const body = await readBody(req, ProjectUpdateSchema);
-    const current = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).select('status').lean();
+    const current = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).select('status ownerId').lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    // Leads, or the owner of the project (e.g. a personal project), may edit it.
+    const ownsProject = String((current as any).ownerId || '') === String(user!.sub);
+    if (!isLead(user!.role) && !ownsProject) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
 
     // Block marking completed when open tasks remain
     if (body.status === 'completed') {
@@ -102,17 +107,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Deleting a project is destructive + irreversible → admin only.
-    const { error, user } = await requireRole(req, 'admin');
+    // Deleting a project is destructive + irreversible. Team projects are
+    // admin-only; a personal project can be deleted by its own owner.
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
 
-    const scope = await getLeadScope(user.sub, user.role);
-    const existing = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).select('_id').lean();
+    const scope = await getLeadScope(user!.sub, user!.role);
+    const existing = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).select('_id ownerId personal').lean();
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+    const ownsPersonal = !!(existing as any).personal && String((existing as any).ownerId || '') === String(user!.sub);
+    if (!isAdmin(user!.role) && !ownsPersonal) {
+      return NextResponse.json({ error: 'Only an admin can delete this project.' }, { status: 403 });
+    }
+
     const body = await readBody(req, DeleteProjectSchema);
-    const pmUser = await User.findById(user.sub).select('passwordHash').lean();
+    const pmUser = await User.findById(user!.sub).select('passwordHash').lean();
     if (!pmUser || !bcrypt.compareSync(body.password, (pmUser as any).passwordHash)) {
       return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
     }
