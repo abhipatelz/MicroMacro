@@ -29,6 +29,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en" className={dark ? 'dark' : undefined}>
+      <head>
+        {/* General Sans — a distinctive, modern display face for the
+            Pragati wordmark + headings (Fontshare CDN, preconnected). */}
+        <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700,800&display=swap"
+        />
+      </head>
       <body>
         <ToastProvider>{children}</ToastProvider>
         {/* Vercel telemetry — already ships with defer; loading them at the

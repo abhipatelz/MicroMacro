@@ -71,7 +71,6 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
   // admin-only surface, appended via adminExtra below.
   const leadNav: NavItem[] = [
     { href: '/',         label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
-    { href: '/my-day',   label: 'My Day',    icon: NotebookPen,     iconColor: '#D97706', iconBg: '#FEF3C7' },
     { href: '/projects', label: 'Projects',  icon: FolderKanban,    iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams',    label: 'Team',      icon: Users,           iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
@@ -81,9 +80,12 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
 
   const employeeNav: NavItem[] = [
     { href: '/',         label: 'My Tasks', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
-    { href: '/my-day',   label: 'My Day',   icon: NotebookPen,     iconColor: '#D97706', iconBg: '#FEF3C7' },
     { href: '/projects', label: 'Projects', icon: FolderKanban,    iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
   ];
+
+  // "My Day" sits at the bottom of the nav, just above the profile — a
+  // personal space, slightly set apart from the team/project workspace.
+  const myDayItem: NavItem = { href: '/my-day', label: 'My Day', icon: NotebookPen, iconColor: '#D97706', iconBg: '#FEF3C7' };
 
   const nav = isAdmin
     ? [...leadNav, ...adminExtra]
@@ -96,6 +98,35 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
     router.refresh();
   }
 
+  function renderNavItem(n: NavItem) {
+    const Icon   = n.icon;
+    const active = isActive(n.href);
+    return (
+      <Link key={n.href} href={n.href} prefetch
+        className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+          active
+            ? 'text-brand-700 dark:text-[#faf9f5]'
+            : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white/90 hover:bg-slate-50 dark:hover:bg-white/5'
+        }`}
+        style={active ? {
+          background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
+          borderLeft: `3px solid ${n.iconColor}`,
+          paddingLeft: '9px',
+        } : {}}
+      >
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
+          style={{
+            background: active
+              ? (dark ? `${n.iconColor}30` : n.iconBg)
+              : (dark ? `${n.iconColor}18` : `${n.iconColor}14`),
+          }}>
+          <Icon size={14} style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }} />
+        </div>
+        <span className="flex-1 truncate">{n.label}</span>
+      </Link>
+    );
+  }
+
   /* ── Sidebar inner content ─────────────────────────────────────────── */
   const SidebarInner = (
     <>
@@ -104,50 +135,27 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
         style={{ borderColor: dark ? 'rgba(255,255,255,0.07)' : '#e8edf4' }}>
         <Link href="/" className="flex items-center gap-2.5 flex-1 min-w-0">
           <PragatiMark size={30} flat />
-          <span className={`font-black text-[20px] tracking-tight leading-none ${dark ? 'text-white' : 'text-slate-900'}`}>
+          <span className={`font-display font-bold text-[21px] leading-none ${dark ? 'text-white' : 'text-slate-900'}`}>
             Pragati
           </span>
         </Link>
-        <div className="ml-auto flex items-center gap-1">
-          <NotificationBell dark={dark} />
-          {/* Close on mobile */}
-          <button className={`lg:hidden p-1 rounded-md ${dark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'}`}
-            onClick={() => setOpen(false)}>
-            <X size={15} />
-          </button>
-        </div>
+        {/* Close on mobile */}
+        <button className={`lg:hidden p-1 rounded-md ml-auto ${dark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'}`}
+          onClick={() => setOpen(false)}>
+          <X size={15} />
+        </button>
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 px-3 py-4 overflow-auto space-y-0.5">
-        {nav.map(n => {
-          const Icon   = n.icon;
-          const active = isActive(n.href);
-          return (
-            <Link key={n.href} href={n.href} prefetch
-              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
-                active
-                  ? 'text-brand-700 dark:text-[#faf9f5]'
-                  : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white/90 hover:bg-slate-50 dark:hover:bg-white/5'
-              }`}
-              style={active ? {
-                background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
-                borderLeft: `3px solid ${n.iconColor}`,
-                paddingLeft: '9px',
-              } : {}}
-            >
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
-                style={{
-                  background: active
-                    ? (dark ? `${n.iconColor}30` : n.iconBg)
-                    : (dark ? `${n.iconColor}18` : `${n.iconColor}14`),
-                }}>
-                <Icon size={14} style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }} />
-              </div>
-              <span className="flex-1 truncate">{n.label}</span>
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4 overflow-auto flex flex-col">
+        <div className="space-y-0.5">
+          {nav.map(n => renderNavItem(n))}
+        </div>
+        {/* My Day — pinned to the bottom of the nav, just above the profile */}
+        <div className="mt-auto pt-2">
+          <div className={`mx-2 mb-1.5 h-px ${dark ? 'bg-white/8' : 'bg-slate-100'}`} />
+          {renderNavItem(myDayItem)}
+        </div>
       </nav>
 
       {/* User footer — avatar toggles theme · name opens profile · bell ·

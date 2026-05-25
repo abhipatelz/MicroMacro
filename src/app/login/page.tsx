@@ -6,20 +6,49 @@ import { PragatiMark } from '@/components/PragatiMark';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
 /* Quiet, rotating wisdom on the brand panel — fades between lines every
-   few seconds. Deliberately unattributed. */
+   few seconds. Deliberately unattributed. A randomised start so it isn't
+   the same line every visit. */
 const QUOTES = [
   'The most important skill is learning how to learn.',
   'You make progress by being specific about what you want.',
   'A clear mind is a productive mind.',
-  'Do the thing you’ve been avoiding. That’s usually the right one.',
   'Inspiration is perishable — act on it immediately.',
   'Focus on being productive instead of busy.',
   'Done is better than perfect, every single day.',
   'Small steps, taken daily, compound into everything.',
+  'Specific knowledge is found by pursuing your genuine curiosity.',
+  'Play long-term games with long-term people.',
+  'The most powerful skill is reading. Read what you love until you love to read.',
+  'Embrace accountability and take business risks under your own name.',
+  'Earn with your mind, not your time.',
+  'A calm mind, a fit body, a house full of love. These things cannot be bought.',
+  'Desire is a contract you make to be unhappy until you get what you want.',
+  'You’re not going to get rich renting out your time.',
+  'The internet enables any niche interest, as long as you’re the best at it.',
+  'Become the best in the world at what you do. Keep redefining what you do.',
+  'Apply specific knowledge with leverage and eventually you will get what you deserve.',
+  'If you can’t decide, the answer is no.',
+  'Free education is abundant. The scarce part is the desire to learn.',
+  'The deeper the work, the higher the leverage.',
+  'Money buys freedom: freedom from doing things you dislike.',
+  'Set up systems, not goals. Use your judgment to figure out the systems.',
+  'Reading is faster than listening. Doing is faster than watching.',
+  'Be present above all else.',
+  'It’s not 1,000 true fans. It’s a handful of people who really trust you.',
+  'Health, love, and your mission, in that order. Nothing else matters.',
+  'The closer you want to get, the more you have to give.',
+  'Learn to sell. Learn to build. If you can do both, you will be unstoppable.',
+  'All the returns in life come from compound interest — money, relationships, and learning.',
+  'You should be too busy to “grab coffee,” while still keeping an uncluttered calendar.',
+  'Clear thinker is a better compliment than smart.',
+  'Impatience with actions, patience with results.',
+  'Self-discipline is choosing what you want most over what you want now.',
+  'A fit body, a calm mind, a house full of love — earn them, they can’t be bought.',
+  'The three big decisions: where you live, who you’re with, and what you do.',
 ];
 
 function RotatingQuote() {
-  const [i, setI] = useState(0);
+  const [i, setI] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [show, setShow] = useState(true);
   useEffect(() => {
     const t = setInterval(() => {
@@ -194,15 +223,16 @@ export default function LoginPage() {
               <div className="flex justify-center mb-10">
                 <div className="relative logo-float" style={{ width: 112, height: 112 }}>
                   <PragatiMark size={112} />
-                  {/* Orbit ring — the dots ride the edge of this box */}
-                  <div className="absolute inset-0 orbit-a pointer-events-none">
-                    <span className="absolute left-1/2 -top-1.5 -translate-x-1/2" style={{
+                  {/* Orbit rings sit ~18px OUTSIDE the logo, so the dots
+                     float clearly around it with a gap (never touching). */}
+                  <div className="absolute orbit-a pointer-events-none" style={{ inset: -18 }}>
+                    <span className="absolute left-1/2 -top-1 -translate-x-1/2" style={{
                       width: 8, height: 8, borderRadius: '50%',
                       background: '#42A5F5', boxShadow: '0 0 12px rgba(66,165,245,0.9)',
                     }} />
                   </div>
-                  <div className="absolute inset-0 orbit-b pointer-events-none">
-                    <span className="absolute left-1/2 -bottom-1.5 -translate-x-1/2" style={{
+                  <div className="absolute orbit-b pointer-events-none" style={{ inset: -24 }}>
+                    <span className="absolute left-1/2 -bottom-1 -translate-x-1/2" style={{
                       width: 6, height: 6, borderRadius: '50%',
                       background: '#67D376', boxShadow: '0 0 10px rgba(103,211,118,0.9)',
                     }} />
@@ -212,8 +242,8 @@ export default function LoginPage() {
 
               {/* Wordmark */}
               <h1
-                className="fade-up-1 text-center font-black text-white leading-none"
-                style={{ fontSize: 'clamp(62px, 6.2vw, 88px)', letterSpacing: '-0.035em' }}
+                className="fade-up-1 font-display text-center font-bold text-white leading-none"
+                style={{ fontSize: 'clamp(62px, 6.2vw, 90px)', letterSpacing: '-0.045em' }}
               >
                 Pragati
               </h1>
@@ -240,16 +270,24 @@ export default function LoginPage() {
         </div>
 
         {/* ════ RIGHT — Form panel ═══════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col justify-center items-center bg-white px-6 py-12 relative">
+        <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 relative"
+          style={{
+            background:
+              'radial-gradient(900px 500px at 100% -10%, rgba(21,101,192,0.06), transparent 60%),' +
+              'radial-gradient(700px 420px at -10% 110%, rgba(46,125,50,0.06), transparent 60%),' +
+              '#ffffff',
+          }}>
           <div className="absolute top-0 left-0 right-0 h-[3px]"
             style={{ background: 'linear-gradient(90deg, #1565C0 0%, #1769C8 50%, #2B8C29 100%)' }} />
 
-          <div className="w-full max-w-[340px] fade-up">
+          {/* Glass form card */}
+          <div className="w-full max-w-[360px] fade-up rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 px-6 py-7"
+            style={{ boxShadow: '0 20px 60px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.04)' }}>
 
             {/* Mobile branding — same Pragati mark, no image */}
             <div className="flex flex-col items-center mb-8 lg:hidden">
               <PragatiMark size={56} />
-              <div className="text-2xl font-black text-slate-900 mt-3 tracking-tight">Pragati</div>
+              <div className="font-display text-2xl font-bold text-slate-900 mt-3">Pragati</div>
             </div>
 
             {/* First-run banner */}

@@ -70,7 +70,7 @@ export default function MyDayPage() {
           <Sparkles size={14} className="text-blue-500" />
           <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700/90">My Day</span>
         </div>
-        <h1 className="text-2xl font-black tracking-tight">
+        <h1 className="font-display text-2xl font-bold">
           <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}.</span>
         </h1>
         <p className="text-sm text-slate-600 mt-1 leading-relaxed">

@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Display face for the Pragati wordmark + hero headings. Falls back to the
+   system stack until General Sans loads. Tightened tracking for a premium,
+   modern feel. */
+.font-display {
+  font-family: 'General Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'ss01';
+}
+
 :root {
   color-scheme: light;
   --brand:           #1565C0;
