@@ -16,7 +16,7 @@ const ForcePasswordModal = dynamic(
   { ssr: false, loading: () => null },
 );
 import {
-  LayoutDashboard, FolderKanban, Users, UsersRound,
+  LayoutDashboard, FolderKanban, Users, UsersRound, NotebookPen,
   LogOut, Menu, X, Moon, Sun, AlertTriangle,
 } from 'lucide-react';
 
@@ -71,6 +71,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
   // admin-only surface, appended via adminExtra below.
   const leadNav: NavItem[] = [
     { href: '/',         label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/my-day',   label: 'My Day',    icon: NotebookPen,     iconColor: '#D97706', iconBg: '#FEF3C7' },
     { href: '/projects', label: 'Projects',  icon: FolderKanban,    iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams',    label: 'Team',      icon: Users,           iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
@@ -80,6 +81,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
 
   const employeeNav: NavItem[] = [
     { href: '/',         label: 'My Tasks', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/my-day',   label: 'My Day',   icon: NotebookPen,     iconColor: '#D97706', iconBg: '#FEF3C7' },
     { href: '/projects', label: 'Projects', icon: FolderKanban,    iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
   ];
 
