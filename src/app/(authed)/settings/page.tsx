@@ -224,7 +224,7 @@ export default function SettingsPage() {
               ? 'Your identity is set. Ask an admin if something needs to change.'
               : 'Set these once — they lock after you save. Choose carefully.'}>
             {locked ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <ReadonlyField label="Full name" value={user.name} />
                 <ReadonlyField label="Username" value={`@${user.username || user.email}`} />
                 <ReadonlyField label="Employee ID" value={user.employeeId || '—'} />
@@ -236,7 +236,7 @@ export default function SettingsPage() {
                   Heads up: your name, username and employee ID can be set <strong>once</strong>.
                   After you save, only an admin can change them.
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="Full name">
                     <input className="input" value={name} onChange={e => setName(e.target.value)} required />
                   </Field>

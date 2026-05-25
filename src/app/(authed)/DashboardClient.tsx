@@ -147,7 +147,7 @@ export default function DashboardClient({
             {dateLabel}
           </span>
         </div>
-        <h1 className="font-display text-3xl font-bold leading-tight">
+        <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight">
           <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}, {firstName}.</span>
         </h1>
         {/* At-a-glance status line — replaces the old generic tagline with

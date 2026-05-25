@@ -222,7 +222,8 @@ export default function TeamDetailPage() {
                 </div>
               </Card>
               <Card title="Per-member load">
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[460px]">
                   <thead className="text-xs text-slate-500 uppercase">
                     <tr>
                       <th className="text-left font-semibold py-2">Member</th>
@@ -258,6 +259,7 @@ export default function TeamDetailPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </Card>
             </>
           )}

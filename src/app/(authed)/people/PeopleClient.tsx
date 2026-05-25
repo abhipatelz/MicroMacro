@@ -628,12 +628,13 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         ) : (
           <div className="divide-y divide-slate-50">
             {pms.map((u) => (
-              <div key={u.id} className="flex items-center gap-3 px-5 py-4">
+              <div key={u.id} className="flex items-center gap-3 px-5 py-4 flex-wrap">
                 <Avatar name={u.name} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-slate-800 text-sm leading-tight">{u.name}</div>
                   <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
                 </div>
+                <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
                 <RoleBadge role={u.role} />
                 {u.lockedAt && (
                   <span className="tag border text-xs font-semibold border-rose-200 bg-rose-50 text-rose-700"
@@ -676,6 +677,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                     Make contributor
                   </button>
                 )}
+                </div>
               </div>
             ))}
           </div>
@@ -697,12 +699,13 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         ) : (
           <div className="divide-y divide-slate-50">
             {ics.map((u) => (
-              <div key={u.id} className="flex items-center gap-3 px-5 py-4">
+              <div key={u.id} className="flex items-center gap-3 px-5 py-4 flex-wrap">
                 <Avatar name={u.name} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-slate-800 text-sm leading-tight">{u.name}</div>
                   <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
                 </div>
+                <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
                 <RoleBadge role={u.role} />
                 {u.lockedAt && (
                   <span className="tag border text-xs font-semibold border-rose-200 bg-rose-50 text-rose-700"
@@ -742,6 +745,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   onClick={() => setRemoveConfirm(u)} title="Remove member">
                   <Trash2 size={13} />
                 </button>
+                </div>
               </div>
             ))}
           </div>

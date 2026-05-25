@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Sparkles, FolderKanban, Users, ListChecks, ArrowRight, X } from 'lucide-react';
+import { Sparkles, FolderKanban, Users, ListChecks, Kanban, Sun, ArrowRight, X } from 'lucide-react';
 
 // Authoritative state lives on the User record server-side (User.hasSeenTour),
 // so once dismissed the tour never reappears even on a new browser / device.
@@ -45,6 +45,20 @@ const STEPS: Step[] = [
     icon: Users,
     iconBg: 'linear-gradient(135deg, #DCFCE7 0%, #BBF7D0 100%)',
     iconColor: '#2E7D32',
+  },
+  {
+    title: 'Drag tasks across the board',
+    body:  'Open any project to its Kanban board. Drag a card between columns to move it through To do → In progress → Done, or grab the handle to reorder within a phase. The board saves instantly.',
+    icon: Kanban,
+    iconBg: 'linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%)',
+    iconColor: '#0369A1',
+  },
+  {
+    title: 'Start your day in My Day',
+    body:  'A private scratchpad for the loose thoughts a spreadsheet can’t hold — jot what is on your mind, then turn the keepers into real tasks. It’s only ever visible to you.',
+    icon: Sun,
+    iconBg: 'linear-gradient(135deg, #FEF9C3 0%, #FDE68A 100%)',
+    iconColor: '#A16207',
   },
 ];
 

@@ -769,9 +769,9 @@ export default function ProjectDetailPage() {
                           {t.subtaskCount > 0 && ` · ${t.subtasksDone}/${t.subtaskCount} subtasks`}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end max-w-[48%] sm:max-w-none">
                         {t.pendingWith && t.status !== 'done' && (
-                          <span className="tag bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1"
+                          <span className="tag bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1 max-w-[120px] truncate"
                                 title={`Waiting on ${t.pendingWith}`}>
                             ⏳ {t.pendingWith}
                           </span>
@@ -783,7 +783,7 @@ export default function ProjectDetailPage() {
                         )}
                         <PriorityTag priority={t.priority} />
                         {t.dueDate && (
-                          <span className="text-xs text-slate-400 w-16 text-right">{formatDate(t.dueDate)}</span>
+                          <span className="text-xs text-slate-400 sm:w-16 text-right">{formatDate(t.dueDate)}</span>
                         )}
                         {/* Drag handle — leads grab this to reshuffle the
                            order of tasks within the phase. */}
@@ -831,9 +831,9 @@ export default function ProjectDetailPage() {
                       {t.subtaskCount > 0 && ` · ${t.subtasksDone}/${t.subtaskCount} subtasks`}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end max-w-[48%] sm:max-w-none">
                     {t.pendingWith && t.status !== 'done' && (
-                      <span className="tag bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1"
+                      <span className="tag bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1 max-w-[120px] truncate"
                             title={`Waiting on ${t.pendingWith}`}>
                         ⏳ {t.pendingWith}
                       </span>
@@ -844,7 +844,7 @@ export default function ProjectDetailPage() {
                       : <span className="tag bg-purple-50 text-purple-700 border border-purple-200">Sign-off</span>
                     )}
                     <PriorityTag priority={t.priority} />
-                    <span className="text-xs text-slate-400 w-16 text-right">{formatDate(t.dueDate)}</span>
+                    <span className="text-xs text-slate-400 sm:w-16 text-right">{formatDate(t.dueDate)}</span>
                   </div>
                 </div>
                 );
