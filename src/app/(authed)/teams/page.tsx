@@ -280,9 +280,10 @@ function TeamFormModal({
   const [error, setError]             = useState('');
 
   const filteredUsers = users.filter((u) => {
+    if (u.role === 'admin') return false;   // admin is never a team member
     if (!memberQuery.trim()) return true;
     const q = memberQuery.toLowerCase();
-    return u.name.toLowerCase().includes(q) || (u.title || '').toLowerCase().includes(q);
+    return u.name.toLowerCase().includes(q);
   });
 
   function toggleMember(id: string) {

@@ -68,7 +68,9 @@ export async function getLeadDashboardData(
         },
       },
     ]),
-    User.find({ _id: { $in: scope.memberOids } }).lean(),
+    // Exclude the admin — they own the workspace, not assignable work, so
+    // they never belong in the contributor-workload list.
+    User.find({ _id: { $in: scope.memberOids }, role: { $ne: 'admin' } }).lean(),
   ]);
 
   const assigneeIds = [...new Set(teamTasksRaw.map(t => t.assigneeId).filter(Boolean).map(String))];

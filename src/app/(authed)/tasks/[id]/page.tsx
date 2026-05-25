@@ -59,7 +59,7 @@ export default function TaskDetailPage() {
         const proj = t.projectId ? await api<any>(`/projects/${t.projectId}`).catch(() => null) : null;
         const teamId = proj?.teamId;
         const u = await api<any[]>(`/users${teamId ? `?teamId=${teamId}` : ''}`);
-        setUsers(u);
+        setUsers(u.filter((x) => x.role !== 'admin'));   // admin is never assignable
       } catch (e: any) {
         setLoadErr(e?.message || 'Could not load this task.');
       }

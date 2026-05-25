@@ -88,7 +88,7 @@ export default function TeamDetailPage() {
     load();
   }
 
-  const availableUsers = users.filter((u) => !team.members.find((m: any) => m.id === u.id));
+  const availableUsers = users.filter((u) => u.role !== 'admin' && !team.members.find((m: any) => m.id === u.id));
 
   return (
     <div className="space-y-6">

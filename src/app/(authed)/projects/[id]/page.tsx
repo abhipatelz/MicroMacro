@@ -430,7 +430,9 @@ export default function ProjectDetailPage() {
       // when a project hasn't been assigned to a team yet.
       const p = await api<any>(`/projects/${id}`);
       const u = await api<any[]>(`/users${p.teamId ? `?teamId=${p.teamId}` : ''}`);
-      setProject(p); setUsers(u); setLoadErr(null);
+      // The admin is the workspace owner, never a task assignee — keep them
+      // out of every picker.
+      setProject(p); setUsers(u.filter((x) => x.role !== 'admin')); setLoadErr(null);
     } catch (e: any) { setLoadErr(e?.message || 'Could not load this project.'); }
   }
 
