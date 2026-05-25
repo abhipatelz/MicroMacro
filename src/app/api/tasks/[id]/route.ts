@@ -8,6 +8,7 @@ import { handleError, readBody } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
 import { TaskUpdateSchema } from '@/lib/validations';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
+import { notify } from '@/lib/notify';
 
 export const runtime = 'nodejs';
 
@@ -94,6 +95,38 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     set.lastActivityAt = new Date();
     await Task.updateOne({ _id: params.id }, { $set: set });
     const fresh = await Task.findById(params.id).lean();
+
+    // ── Notifications ────────────────────────────────────────────────
+    // Reassigned → tell the new assignee. Marked done by an assignee →
+    // tell the project owner their work landed.
+    const reassigned = body.assigneeId !== undefined
+      && String(body.assigneeId || '') !== String(current.assigneeId || '');
+    if (reassigned && body.assigneeId) {
+      await notify({
+        userId:    String(body.assigneeId),
+        actorId:   user!.sub,
+        type:      'task_assigned',
+        title:     'New task assigned to you',
+        body:      (fresh as any)?.title || '',
+        taskId:    params.id,
+        projectId: String((fresh as any)?.projectId || ''),
+      });
+    }
+    if (body.status === 'done' && current.status !== 'done') {
+      const proj = await Project.findById((fresh as any)?.projectId).select('ownerId name').lean();
+      if (proj && (proj as any).ownerId) {
+        await notify({
+          userId:    String((proj as any).ownerId),
+          actorId:   user!.sub,
+          type:      'task_done',
+          title:     'A task was completed',
+          body:      (fresh as any)?.title || '',
+          taskId:    params.id,
+          projectId: String((fresh as any)?.projectId || ''),
+        });
+      }
+    }
+
     return NextResponse.json(taskS(fresh));
   } catch (e) {
     return handleError(e);

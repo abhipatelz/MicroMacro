@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { Avatar } from './ui';
 import { PragatiMark } from './PragatiMark';
 import { CurrentUserProvider } from './CurrentUserContext';
+import { NotificationBell } from './NotificationBell';
 import { api } from '@/lib/client/api';
 
 // Modal only shown when a TL clicks "Invite a lead" — defer its JS until needed.
@@ -118,11 +119,14 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
             </div>
           </div>
         </Link>
-        {/* Close on mobile */}
-        <button className={`lg:hidden p-1 rounded-md ml-auto ${dark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'}`}
-          onClick={() => setOpen(false)}>
-          <X size={15} />
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          <NotificationBell dark={dark} />
+          {/* Close on mobile */}
+          <button className={`lg:hidden p-1 rounded-md ${dark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'}`}
+            onClick={() => setOpen(false)}>
+            <X size={15} />
+          </button>
+        </div>
       </div>
 
       {/* Nav items */}

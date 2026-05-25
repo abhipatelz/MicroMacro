@@ -7,6 +7,7 @@ import { handleError, readBody } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
 import { TaskCreateSchema } from '@/lib/validations';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
+import { notify } from '@/lib/notify';
 
 export const runtime = 'nodejs';
 
@@ -40,6 +41,21 @@ export async function POST(req: NextRequest) {
       deployStage:    body.deployStage    || 'na',
       remarks:        body.remarks        || '',
     });
+
+    // Tell the assignee they have new work (unless they assigned it to
+    // themselves).
+    if (body.assigneeId) {
+      await notify({
+        userId:    String(body.assigneeId),
+        actorId:   user!.sub,
+        type:      'task_assigned',
+        title:     'New task assigned to you',
+        body:      task.title,
+        taskId:    String(task._id),
+        projectId: String(body.projectId),
+      });
+    }
+
     return NextResponse.json(taskS(task));
   } catch (e) {
     return handleError(e);
