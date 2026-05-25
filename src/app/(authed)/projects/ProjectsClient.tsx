@@ -121,8 +121,9 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
+            <label className="text-xs font-semibold text-slate-500">Filter by Project type</label>
             <select className="select text-sm w-auto" value={lc} onChange={(e) => setLc(e.target.value)}>
-              <option value="">All lifecycles</option>
+              <option value="">All project templates</option>
               {lifecycles.map((l) => (
                 <option key={l.key} value={l.key}>{l.label}</option>
               ))}

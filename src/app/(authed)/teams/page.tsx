@@ -26,9 +26,9 @@ interface UserItem {
 // Two functions only: every team either keeps the lights on (RTB) or
 // delivers change (CTB). Legacy values still render if any old team has one.
 const FUNCTION_LABEL: Record<string, string> = {
-  rtb: 'Run the Business',
-  ctb: 'Change the Business',
   general: 'General',
+  ctb: 'Change the Business',
+  rtb: 'Run the Business',
   csv_validation: 'CSV / Validation',
   data_integrity: 'Data Integrity',
   pharmacovigilance: 'Pharmacovigilance',
@@ -272,7 +272,7 @@ function TeamFormModal({
 }) {
   const [name, setName]               = useState(team?.name || '');
   const [description, setDescription] = useState(team?.description || '');
-  const [func, setFunc]               = useState<string>(team?.function || 'rtb');
+  const [func, setFunc]               = useState<string>(team?.function || 'general');
   const [leadId, setLeadId]           = useState(team?.leadId || '');
   const [memberIds, setMemberIds]     = useState<string[]>(team?.memberIds || []);
   const [memberQuery, setMemberQuery] = useState('');
@@ -388,8 +388,9 @@ function TeamFormModal({
                 Function
               </label>
               <select className="select" value={func} onChange={(e) => setFunc(e.target.value)}>
-                <option value="rtb">Run the Business</option>
-                <option value="ctb">Change the Business</option>
+                <option value="general">GENERAL</option>
+                <option value="ctb">CHANGE THE BUISSNESS</option>
+                <option value="rtb">RUN THE BUISSNESS</option>
               </select>
             </div>
             <div>
