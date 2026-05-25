@@ -9,7 +9,7 @@ const TeamSchema = new Schema(
     // informatics function: data_integrity, csv_validation, pv, lab, audit, training
     function: {
       type: String,
-      enum: ['general', 'ctb', 'rtb', 'data_integrity', 'csv_validation', 'pharmacovigilance', 'lab_informatics', 'audit', 'training'],
+      enum: ['data_integrity', 'csv_validation', 'pharmacovigilance', 'lab_informatics', 'audit', 'training', 'general'],
       default: 'general'
     }
   },

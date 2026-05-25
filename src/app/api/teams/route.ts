@@ -15,7 +15,7 @@ const Create = z.object({
   leadId: z.string().optional(),
   memberIds: z.array(z.string()).optional(),
   function: z
-    .enum(['general', 'ctb', 'rtb', 'data_integrity', 'csv_validation', 'pharmacovigilance', 'lab_informatics', 'audit', 'training'])
+    .enum(['data_integrity', 'csv_validation', 'pharmacovigilance', 'lab_informatics', 'audit', 'training', 'general'])
     .optional()
 });
 

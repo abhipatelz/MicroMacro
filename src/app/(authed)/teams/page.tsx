@@ -27,8 +27,6 @@ interface UserItem {
 // delivers change (CTB). Legacy values still render if any old team has one.
 const FUNCTION_LABEL: Record<string, string> = {
   general: 'General',
-  ctb: 'Change the Business',
-  rtb: 'Run the Business',
   csv_validation: 'CSV / Validation',
   data_integrity: 'Data Integrity',
   pharmacovigilance: 'Pharmacovigilance',
@@ -272,7 +270,7 @@ function TeamFormModal({
 }) {
   const [name, setName]               = useState(team?.name || '');
   const [description, setDescription] = useState(team?.description || '');
-  const [func, setFunc]               = useState<string>(team?.function || 'general');
+  const [func, setFunc]               = useState<string>(team?.function === 'general' ? 'general' : team?.function ? 'ctb' : 'general');
   const [leadId, setLeadId]           = useState(team?.leadId || '');
   const [memberIds, setMemberIds]     = useState<string[]>(team?.memberIds || []);
   const [memberQuery, setMemberQuery] = useState('');
@@ -285,6 +283,10 @@ function TeamFormModal({
     const q = memberQuery.toLowerCase();
     return u.name.toLowerCase().includes(q);
   });
+
+  function toPersistedFunction(v: string) {
+    return v === 'general' ? 'general' : 'general';
+  }
 
   function toggleMember(id: string) {
     setMemberIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -303,7 +305,7 @@ function TeamFormModal({
             description: description || undefined,
             leadId: leadId || undefined,
             memberIds: memberIds.length ? memberIds : undefined,
-            function: func,
+            function: toPersistedFunction(func),
           },
         });
       } else if (team) {
@@ -314,7 +316,7 @@ function TeamFormModal({
             description,
             leadId: leadId || null,
             memberIds,
-            function: func,
+            function: toPersistedFunction(func),
           },
         });
       }

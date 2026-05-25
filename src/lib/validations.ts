@@ -153,15 +153,13 @@ export type DeleteProjectInput = z.infer<typeof DeleteProjectSchema>;
 /* ── Team schemas ────────────────────────────────────────────────────────── */
 
 export const TeamFunctionEnum = z.enum([
-  'general',
-  'ctb',
-  'rtb',
   'data_integrity',
   'csv_validation',
   'pharmacovigilance',
   'lab_informatics',
   'audit',
   'training',
+  'general',
 ]);
 
 // PM-only update. Each field independently optional so callers can patch
