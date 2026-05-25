@@ -53,11 +53,22 @@ export async function POST(req: NextRequest) {
     await connectDB();
     const ident = body.identifier.toLowerCase().trim();
     // Sign in with whatever the person remembers — username, employee ID,
-    // or (legacy) email. We match any of the three; all are unique. The
-    // employeeId match is case-insensitive via a trimmed exact compare.
-    const user  = ident.includes('@')
-      ? await User.findOne({ email: ident })
-      : await User.findOne({ $or: [{ username: ident }, { employeeId: body.identifier.trim() }] });
+    // or email. For legacy accounts created before usernames existed, we
+    // also match the email's local-part (so "abhi.patel" finds
+    // "abhi.patel@company.com"). All identifiers are unique.
+    let user;
+    if (ident.includes('@')) {
+      user = await User.findOne({ email: ident });
+    } else {
+      const localPart = new RegExp('^' + ident.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '@', 'i');
+      user = await User.findOne({
+        $or: [
+          { username: ident },
+          { employeeId: body.identifier.trim() },
+          { email: localPart },
+        ],
+      });
+    }
 
     // Unified "invalid" path for missing user, locked user, and wrong
     // password. We still do the bcrypt comparison against a dummy hash

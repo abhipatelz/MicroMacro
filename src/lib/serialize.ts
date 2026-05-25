@@ -142,6 +142,7 @@ export function task(t: any, extras: Any = {}) {
     })),
     effortMins: (t.effortLog || []).reduce((s: number, e: any) => s + (e.minutes || 0), 0),
     lastActivityAt: t.lastActivityAt || t.updatedAt || t.createdAt,
+    position: t.position ?? 0,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
     ...extras
