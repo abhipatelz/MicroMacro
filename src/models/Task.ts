@@ -36,6 +36,10 @@ const TaskSchema = new Schema(
   {
     projectId: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
     phaseId: { type: Schema.Types.ObjectId },
+    // Manual ordering within a phase (lower = higher up). Lets a lead
+    // reshuffle tasks in the by-phase view. Defaults to 0; ties fall back
+    // to createdAt so existing tasks keep a stable order.
+    position: { type: Number, default: 0 },
     title: { type: String, required: true },
     description: { type: String, default: '' },
     assigneeId: { type: Schema.Types.ObjectId, ref: 'User' },

@@ -11,6 +11,14 @@ const ROLE_COLOR: Record<string, string> = {
   employee: 'bg-slate-100 text-slate-600 border-slate-200',
 };
 
+/** The login handle we show: the username, or — for legacy accounts that
+ *  predate usernames — the part of the email before the "@". Never the
+ *  full email. */
+function handleOf(u: { username?: string | null; email?: string | null }): string {
+  if (u.username) return u.username;
+  return (u.email || '').split('@')[0] || '—';
+}
+
 /* ── Copy-to-clipboard button ─────────────────────────────────────────── */
 function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -380,7 +388,7 @@ function EditUserModal({ user, onClose, onSaved }: {
         <div className="flex items-start justify-between mb-5">
           <div>
             <div className="text-base font-bold text-slate-900">Edit profile</div>
-            <div className="text-sm text-slate-400 mt-0.5 font-mono">@{user.username || user.email}</div>
+            <div className="text-sm text-slate-400 mt-0.5 font-mono">@{handleOf(user)}</div>
           </div>
           <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5"><X size={18} /></button>
         </div>
@@ -624,7 +632,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                 <Avatar name={u.name} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-slate-800 text-sm leading-tight">{u.name}</div>
-                  <div className="text-xs text-slate-400 mt-0.5 font-mono">@{u.username || u.email}</div>
+                  <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
                 </div>
                 <RoleBadge role={u.role} />
                 {u.lockedAt && (
@@ -693,7 +701,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                 <Avatar name={u.name} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-slate-800 text-sm leading-tight">{u.name}</div>
-                  <div className="text-xs text-slate-400 mt-0.5 font-mono">@{u.username || u.email}</div>
+                  <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
                 </div>
                 <RoleBadge role={u.role} />
                 {u.lockedAt && (

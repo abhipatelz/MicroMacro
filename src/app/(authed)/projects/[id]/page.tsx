@@ -11,7 +11,7 @@ import {
 import { DatePicker } from '@/components/DatePicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { weightedProgress } from '@/lib/progress';
-import { Download, GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { chimeIfEnabled } from '@/lib/sound';
 
 const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
@@ -549,6 +549,32 @@ export default function ProjectDetailPage() {
     }
   }
 
+  // Move a task up/down within its phase. Computes the phase's new order
+  // and persists it (position = index) via the reorder endpoint.
+  async function reorderInPhase(phaseId: string | null, taskId: string, dir: -1 | 1) {
+    const phaseTasks = tasks
+      .filter((t: any) => (t.phaseId || null) === (phaseId || null))
+      .slice()
+      .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
+    const idx = phaseTasks.findIndex((t: any) => t.id === taskId);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= phaseTasks.length) return;
+    [phaseTasks[idx], phaseTasks[swap]] = [phaseTasks[swap], phaseTasks[idx]];
+    const orderedIds = phaseTasks.map((t: any) => t.id);
+    // Optimistic: reflect the new positions locally right away.
+    setProject((p: any) => ({
+      ...p,
+      tasks: (p.tasks || []).map((t: any) =>
+        orderedIds.includes(t.id) ? { ...t, position: orderedIds.indexOf(t.id) } : t),
+    }));
+    try {
+      await api(`/projects/${id}/reorder-tasks`, { method: 'POST', body: { orderedIds } });
+    } catch (e: any) {
+      showToast(e.message || 'Could not reorder', 'err');
+      load();
+    }
+  }
+
   async function exportProject() {
     try {
       const res = await fetch(`/api/projects/${id}/export`, { credentials: 'include' });
@@ -571,8 +597,9 @@ export default function ProjectDetailPage() {
       {ToastEl}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
+      <div className="flex items-start justify-between gap-6 flex-wrap">
+        {/* Left — identity, description, then status directly below it */}
+        <div className="min-w-0 flex-1">
           <div className="text-xs text-slate-400 font-mono">{project.code}</div>
           <h1 className="text-2xl font-bold mt-0.5">{project.name}</h1>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -586,22 +613,9 @@ export default function ProjectDetailPage() {
             <PriorityTag priority={project.priority} />
           </div>
           {project.description && <p className="mt-2 text-sm text-slate-600 max-w-3xl">{project.description}</p>}
-        </div>
 
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="text-right text-xs text-slate-500 space-y-0.5">
-            <div>Project owner: <span className="font-medium text-slate-700">{project.ownerName || '—'}</span></div>
-            <div>Team: {project.teamId
-              ? <Link href={`/teams/${project.teamId}`} className="text-blue-600 hover:underline">{project.teamName || '—'}</Link>
-              : '—'}</div>
-            <div>Due: {formatDate(project.dueDate)}</div>
-          </div>
-
-          {/* Project status — guarded for completion */}
-          <div className="flex items-center gap-2">
-            {openTaskCount > 0 && (
-              <span className="text-[10px] text-amber-600 font-semibold">{openTaskCount} open</span>
-            )}
+          {/* Status — directly under the description */}
+          <div className="flex items-center gap-2 mt-3">
             {isLead ? (
               <StatusPillRow
                 value={project.status}
@@ -614,10 +628,23 @@ export default function ProjectDetailPage() {
                 {String(project.status || '').replace(/_/g, ' ')}
               </span>
             )}
+            {openTaskCount > 0 && (
+              <span className="text-[10px] text-amber-600 font-semibold">{openTaskCount} open</span>
+            )}
+          </div>
+        </div>
+
+        {/* Right — owner / team / due pinned top-right, actions beneath */}
+        <div className="flex flex-col items-end gap-3 shrink-0">
+          <div className="text-right text-xs text-slate-500 space-y-0.5">
+            <div>Project owner: <span className="font-medium text-slate-700">{project.ownerName || '—'}</span></div>
+            <div>Team: {project.teamId
+              ? <Link href={`/teams/${project.teamId}`} className="text-blue-600 hover:underline">{project.teamName || '—'}</Link>
+              : '—'}</div>
+            <div>Due: {formatDate(project.dueDate)}</div>
           </div>
 
-          {/* Actions — right-aligned row. Export for everyone; Archive +
-             Delete (destructive lifecycle) are admin-only. */}
+          {/* Actions — Export for everyone; Archive + Delete admin-only. */}
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button onClick={exportProject}
               className="btn-secondary flex items-center gap-1.5 text-xs">
@@ -710,10 +737,26 @@ export default function ProjectDetailPage() {
                 </div>
                 <ProgressBar value={pctP} className="mb-3" />
                 <div className="divide-y divide-slate-100">
-                  {ts.map((t: any) => {
+                  {ts.map((t: any, ti: number) => {
                     const canEdit = isLead || (me && t.assigneeId === me.id);
                     return (
                     <div key={t.id} className="py-2.5 flex items-center gap-2.5 text-sm group">
+                      {isLead && (
+                        <div className="flex flex-col -my-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button type="button" aria-label="Move up"
+                            disabled={ti === 0}
+                            onClick={() => reorderInPhase(ph.id, t.id, -1)}
+                            className="text-slate-300 hover:text-slate-600 disabled:opacity-30 disabled:hover:text-slate-300 leading-none">
+                            <ChevronUp size={13} />
+                          </button>
+                          <button type="button" aria-label="Move down"
+                            disabled={ti === ts.length - 1}
+                            onClick={() => reorderInPhase(ph.id, t.id, 1)}
+                            className="text-slate-300 hover:text-slate-600 disabled:opacity-30 disabled:hover:text-slate-300 leading-none">
+                            <ChevronDown size={13} />
+                          </button>
+                        </div>
+                      )}
                       {canEdit ? (
                         <StatusSelect
                           value={t.status}
