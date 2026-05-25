@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUserFromCookie } from '@/lib/auth';
-import { listProjectsForUser, listTeamsForFilter } from '@/lib/projectList';
-import { listLifecycles } from '@/lib/lifecycles';
+import { listProjectsForUser, listTeamsForFilter, listTemplatesInUse } from '@/lib/projectList';
 import ProjectsClient from './ProjectsClient';
 
 /**
@@ -14,11 +13,14 @@ export default async function ProjectsPage() {
   const jwt = await getCurrentUserFromCookie();
   if (!jwt) redirect('/login');
 
-  const [projects, teams] = await Promise.all([
+  const [projects, teams, templates] = await Promise.all([
     listProjectsForUser(jwt.sub, jwt.role, {
       statuses: ['planning', 'in_progress', 'on_hold'],
     }),
     listTeamsForFilter(),
+    // Only the templates the user actually has projects under — keeps the
+    // filter relevant instead of dumping the whole catalogue.
+    listTemplatesInUse(jwt.sub, jwt.role),
   ]);
 
   return (
@@ -26,7 +28,7 @@ export default async function ProjectsPage() {
       initialData={{
         projects,
         teams,
-        lifecycles: listLifecycles(),
+        lifecycles: templates,
       }}
     />
   );

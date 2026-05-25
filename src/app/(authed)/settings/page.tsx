@@ -112,6 +112,7 @@ export default function SettingsPage() {
   const [user, setUser]   = useState<any>(null);
 
   const [name, setName]           = useState('');
+  const [username, setUsername]   = useState('');
   const [employeeId, setEmpId]    = useState('');
   const [identitySaving, setIdentitySaving] = useState(false);
   const [identityMsg, setIdentityMsg] = useState('');
@@ -134,6 +135,7 @@ export default function SettingsPage() {
       const u = d.user;
       setUser(u);
       setName(u.name || '');
+      setUsername(u.username || '');
       setEmpId(u.employeeId || '');
       setNA(u.notifTaskAssigned  ?? true);
       setNDS(u.notifTaskDueSoon  ?? true);
@@ -144,13 +146,18 @@ export default function SettingsPage() {
 
   const isPM = (user?.role === 'pm' || user?.role === 'lead' || user?.role === 'admin');
 
+  const locked = !!user?.profileLocked;
+
   async function saveIdentity(e?: React.FormEvent) {
     e?.preventDefault();
     setIdentityMsg(''); setIdentitySaving(true);
     try {
-      await api('/users/me', { method: 'PATCH', body: { name } });
-      setIdentityMsg('Saved');
-      setTimeout(() => setIdentityMsg(''), 2500);
+      await api('/users/me', { method: 'PATCH', body: { name, username: username.toLowerCase(), employeeId } });
+      setIdentityMsg('Saved — these are now locked.');
+      // Refresh so the form flips to read-only.
+      const d: any = await api('/users/me');
+      setUser(d.user);
+      setTimeout(() => setIdentityMsg(''), 3000);
     } catch (err: any) { setIdentityMsg(err.message || 'Save failed.'); }
     finally { setIdentitySaving(false); }
   }
@@ -212,24 +219,46 @@ export default function SettingsPage() {
 
         {/* Left: Identity form */}
         <div className="lg:col-span-3">
-          <Section icon={User} title="Personal details" subtitle="Your name as it appears across Pragati.">
-            <form onSubmit={saveIdentity} className="space-y-4">
+          <Section icon={User} title="Personal details"
+            subtitle={locked
+              ? 'Your identity is set. Ask an admin if something needs to change.'
+              : 'Set these once — they lock after you save. Choose carefully.'}>
+            {locked ? (
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Full name">
-                  <input className="input" value={name} onChange={e => setName(e.target.value)} required />
-                </Field>
+                <ReadonlyField label="Full name" value={user.name} />
                 <ReadonlyField label="Username" value={`@${user.username || user.email}`} />
-                <ReadonlyField label="Employee ID" value={employeeId || '—'} />
+                <ReadonlyField label="Employee ID" value={user.employeeId || '—'} />
                 <ReadonlyField label="Role" value={isPM ? 'Team Leader' : 'Individual Contributor'} />
               </div>
-
-              <div className="flex items-center gap-3 pt-1">
-                <button type="submit" className="btn-primary" disabled={identitySaving}>
-                  {identitySaving ? 'Saving…' : 'Save changes'}
-                </button>
-                {identityMsg && <span className="text-xs text-green-600 font-medium">✓ {identityMsg}</span>}
-              </div>
-            </form>
+            ) : (
+              <form onSubmit={saveIdentity} className="space-y-4">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 leading-snug">
+                  Heads up: your name, username and employee ID can be set <strong>once</strong>.
+                  After you save, only an admin can change them.
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Full name">
+                    <input className="input" value={name} onChange={e => setName(e.target.value)} required />
+                  </Field>
+                  <Field label="Username">
+                    <input className="input font-mono lowercase" value={username}
+                      onChange={e => setUsername(e.target.value.toLowerCase())}
+                      placeholder="firstname.lastname"
+                      pattern="[a-z][a-z0-9_.]{1,28}[a-z0-9_]" required />
+                  </Field>
+                  <Field label="Employee ID">
+                    <input className="input" value={employeeId} onChange={e => setEmpId(e.target.value)} placeholder="e.g. 100245" />
+                  </Field>
+                  <ReadonlyField label="Role" value={isPM ? 'Team Leader' : 'Individual Contributor'} />
+                </div>
+                <div className="flex items-center gap-3 pt-1">
+                  <button type="submit" className="btn-primary" disabled={identitySaving}>
+                    {identitySaving ? 'Saving…' : 'Save & lock'}
+                  </button>
+                  {identityMsg && <span className="text-xs text-green-600 font-medium">{identityMsg}</span>}
+                </div>
+              </form>
+            )}
           </Section>
         </div>
 

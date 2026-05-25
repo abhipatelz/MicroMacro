@@ -122,7 +122,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
               ))}
             </select>
             <select className="select text-sm w-auto" value={lc} onChange={(e) => setLc(e.target.value)}>
-              <option value="">All lifecycles</option>
+              <option value="">All templates</option>
               {lifecycles.map((l) => (
                 <option key={l.key} value={l.key}>{l.label}</option>
               ))}

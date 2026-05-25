@@ -5,27 +5,24 @@ import { User } from '@/models/User';
 import { requireUser } from '@/lib/auth';
 import { readBody, handleError } from '@/lib/http';
 import { u } from '@/lib/serialize';
+import { UsernameSchema } from '@/lib/validations';
 
 export const runtime = 'nodejs';
 
-// Fields the user can always edit themselves
+// Always-editable preferences.
 const EditableBody = z.object({
-  title:       z.string().max(120).optional(),
-  phone:       z.string().max(40).optional(),
-  location:    z.string().max(80).optional(),
-  // Notifications
   notifTaskAssigned:  z.boolean().optional(),
   notifTaskDueSoon:   z.boolean().optional(),
   notifTaskOverdue:   z.boolean().optional(),
   notifProjectUpdate: z.boolean().optional(),
 });
 
-// Fields locked when LDAP is synced (name, department, employeeId, managerName)
-const ManualIdentityBody = z.object({
-  name:         z.string().min(1).max(100).optional(),
-  department:   z.string().max(100).optional(),
-  employeeId:   z.string().max(50).optional(),
-  managerName:  z.string().max(100).optional(),
+// Identity — name / username / employee ID. Settable by the user EXACTLY
+// ONCE (then profileLockedAt locks it; only an admin can change it after).
+const IdentityBody = z.object({
+  name:       z.string().trim().min(1).max(120).optional(),
+  username:   UsernameSchema.optional(),
+  employeeId: z.string().trim().max(50).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -51,29 +48,42 @@ export async function PATCH(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const body = await req.json();
+
+    // Preferences — always allowed.
     const editable = EditableBody.safeParse(body);
-    if (!editable.success) return NextResponse.json({ error: editable.error.issues[0].message }, { status: 400 });
+    if (editable.success) {
+      const d = editable.data;
+      if (d.notifTaskAssigned  !== undefined) user.notifTaskAssigned  = d.notifTaskAssigned as any;
+      if (d.notifTaskDueSoon   !== undefined) user.notifTaskDueSoon   = d.notifTaskDueSoon  as any;
+      if (d.notifTaskOverdue   !== undefined) user.notifTaskOverdue   = d.notifTaskOverdue  as any;
+      if (d.notifProjectUpdate !== undefined) user.notifProjectUpdate = d.notifProjectUpdate as any;
+    }
 
-    // Apply always-editable fields
-    const d = editable.data;
-    if (d.title       !== undefined) user.title       = d.title as any;
-    if (d.phone       !== undefined) user.phone       = d.phone as any;
-    if (d.location    !== undefined) user.location    = d.location as any;
-    if (d.notifTaskAssigned  !== undefined) user.notifTaskAssigned  = d.notifTaskAssigned as any;
-    if (d.notifTaskDueSoon   !== undefined) user.notifTaskDueSoon   = d.notifTaskDueSoon  as any;
-    if (d.notifTaskOverdue   !== undefined) user.notifTaskOverdue   = d.notifTaskOverdue  as any;
-    if (d.notifProjectUpdate !== undefined) user.notifProjectUpdate = d.notifProjectUpdate as any;
-
-    // Apply identity fields only when NOT LDAP-synced
-    if (!user.ldapSyncedAt) {
-      const identity = ManualIdentityBody.safeParse(body);
-      if (identity.success) {
-        const id = identity.data;
-        if (id.name        !== undefined) user.name        = id.name        as any;
-        if (id.department  !== undefined) user.department  = id.department  as any;
-        if (id.employeeId  !== undefined) user.employeeId  = id.employeeId  as any;
-        if (id.managerName !== undefined) user.managerName = id.managerName as any;
+    // Identity — one-time only.
+    const identity = IdentityBody.safeParse(body);
+    const wantsIdentityChange = identity.success && (
+      identity.data.name !== undefined ||
+      identity.data.username !== undefined ||
+      identity.data.employeeId !== undefined
+    );
+    if (wantsIdentityChange) {
+      if (user.profileLockedAt) {
+        return NextResponse.json(
+          { error: 'Your name, username and employee ID can only be set once. Ask an admin to change them.' },
+          { status: 403 },
+        );
       }
+      const id = identity.data!;
+      // Username must stay unique across the workspace.
+      if (id.username !== undefined && id.username !== user.username) {
+        const taken = await User.findOne({ username: id.username, _id: { $ne: user._id } }, '_id').lean();
+        if (taken) return NextResponse.json({ error: 'That username is already taken.' }, { status: 409 });
+        user.username = id.username as any;
+      }
+      if (id.name       !== undefined) user.name       = id.name as any;
+      if (id.employeeId !== undefined) user.employeeId = id.employeeId as any;
+      // Lock identity after this first successful edit.
+      user.profileLockedAt = new Date() as any;
     }
 
     await user.save();

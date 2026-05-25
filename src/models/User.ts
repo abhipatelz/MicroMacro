@@ -45,6 +45,13 @@ const UserSchema = new Schema(
     // ── First-login flag ────────────────────────────────────────────────
     mustChangePassword: { type: Boolean, default: false },
 
+    // ── One-time profile lock ────────────────────────────────────────────
+    // A user may set their own name / username / employee ID exactly once
+    // from Settings. After that first save this stamp is set and those
+    // fields become read-only (an admin can still change them on the
+    // People page). Prevents identity churn / handle squatting.
+    profileLockedAt: { type: Date, default: null },
+
     // ── Brute-force protection ──────────────────────────────────────────
     // After MAX_FAILED_LOGINS consecutive wrong passwords the account is
     // locked until an admin/lead clears it (via /api/users/[id]/unlock
