@@ -52,18 +52,18 @@ export function PragatiMark({
          The lower chevron is the same white as the wordmark; the upper one
          carries a soft forest tint to echo the brand gradient. */}
       <svg
-        width={size * 0.58}
-        height={size * 0.58}
+        width={size * 0.64}
+        height={size * 0.64}
         viewBox="0 0 64 64"
         className="relative"
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <path d="M14 40 L32 22 L50 40"
-          stroke="#ffffff" strokeWidth="7" />
-        <path d="M18 52 L32 38 L46 52"
-          stroke="#B7E4C2" strokeWidth="5" opacity="0.92" />
+        <path d="M10 42 L32 18 L54 42"
+          stroke="#ffffff" strokeWidth="8" />
+        <path d="M15 54 L32 36 L49 54"
+          stroke="#C7F0CF" strokeWidth="5.5" opacity="0.95" />
       </svg>
     </div>
   );

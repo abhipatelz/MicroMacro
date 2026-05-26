@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Sparkles } from 'lucide-react';
 
 /* Quiet, rotating wisdom on the brand panel — fades between lines every
    few seconds. Deliberately unattributed. A randomised start so it isn't
@@ -114,11 +114,22 @@ export default function LoginPage() {
   const [title, setTitle] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     api<{ initialized: boolean }>('/system/status').then(d => {
       if (!d.initialized) setIsFirstRun(true);
     }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const read = () => setIsDark(document.documentElement.classList.contains('dark'));
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
   }, []);
 
   async function submit(e: React.FormEvent) {
@@ -219,21 +230,20 @@ export default function LoginPage() {
           <div className="relative flex flex-col flex-1 px-14 py-12">
             <div className="flex-1 flex flex-col justify-center">
 
-              {/* Custom Pragati mark with two dots orbiting close around it. */}
+              {/* Custom Pragati mark with two dots orbiting tight around it. */}
               <div className="flex justify-center mb-10">
                 <div className="relative logo-float" style={{ width: 112, height: 112 }}>
                   <PragatiMark size={112} />
-                  {/* Orbit rings sit ~18px OUTSIDE the logo, so the dots
-                     float clearly around it with a gap (never touching). */}
-                  <div className="absolute orbit-a pointer-events-none" style={{ inset: -18 }}>
-                    <span className="absolute left-1/2 -top-1 -translate-x-1/2" style={{
-                      width: 8, height: 8, borderRadius: '50%',
+                  {/* Keep both orbit dots closer + more balanced to the mark. */}
+                  <div className="absolute orbit-a pointer-events-none" style={{ inset: -12 }}>
+                    <span className="absolute left-1/2 -top-0.5 -translate-x-1/2" style={{
+                      width: 7, height: 7, borderRadius: '50%',
                       background: '#42A5F5', boxShadow: '0 0 12px rgba(66,165,245,0.9)',
                     }} />
                   </div>
-                  <div className="absolute orbit-b pointer-events-none" style={{ inset: -24 }}>
-                    <span className="absolute left-1/2 -bottom-1 -translate-x-1/2" style={{
-                      width: 6, height: 6, borderRadius: '50%',
+                  <div className="absolute orbit-b pointer-events-none" style={{ inset: -16 }}>
+                    <span className="absolute left-1/2 -bottom-0.5 -translate-x-1/2" style={{
+                      width: 7, height: 7, borderRadius: '50%',
                       background: '#67D376', boxShadow: '0 0 10px rgba(103,211,118,0.9)',
                     }} />
                   </div>
@@ -272,21 +282,24 @@ export default function LoginPage() {
         {/* ════ RIGHT — Form panel ═══════════════════════════════════════ */}
         <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 relative"
           style={{
-            background:
-              'radial-gradient(900px 500px at 100% -10%, rgba(21,101,192,0.06), transparent 60%),' +
-              'radial-gradient(700px 420px at -10% 110%, rgba(46,125,50,0.06), transparent 60%),' +
-              '#ffffff',
+            background: isDark
+              ? 'radial-gradient(900px 500px at 100% -10%, rgba(66,165,245,0.10), transparent 60%), radial-gradient(700px 420px at -10% 110%, rgba(103,211,118,0.08), transparent 60%), #1f1e1d'
+              : 'radial-gradient(900px 500px at 100% -10%, rgba(21,101,192,0.06), transparent 60%), radial-gradient(700px 420px at -10% 110%, rgba(46,125,50,0.06), transparent 60%), #ffffff',
           }}>
           <div className="absolute top-0 left-0 right-0 h-[3px]"
             style={{ background: 'linear-gradient(90deg, #1565C0 0%, #1769C8 50%, #2B8C29 100%)' }} />
 
           {/* Glass form card */}
-          <div className="w-full max-w-[360px] fade-up rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 px-6 py-7"
-            style={{ boxShadow: '0 20px 60px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.04)' }}>
+          <div className="w-full max-w-[360px] fade-up rounded-2xl backdrop-blur-xl px-6 py-7"
+            style={{
+              background: isDark ? 'rgba(38,38,36,0.84)' : 'rgba(255,255,255,0.70)',
+              border: isDark ? '1px solid rgba(255,255,255,0.10)' : '1px solid rgba(255,255,255,0.60)',
+              boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.24)' : '0 20px 60px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.04)',
+            }}>
 
             {/* Mobile branding — same Pragati mark, no image */}
             <div className="flex flex-col items-center mb-8 lg:hidden">
-              <PragatiMark size={56} />
+              <PragatiMark size={56} className="shadow-lg" />
               <div className="font-display text-2xl font-bold text-slate-900 mt-3">Pragati</div>
             </div>
 
@@ -345,7 +358,7 @@ export default function LoginPage() {
                   // check. On the register mode we still want email
                   // semantics for autocomplete + format hints.
                   type={mode === 'login' ? 'text' : 'email'}
-                  placeholder={mode === 'login' ? 'username or employee ID' : 'you@company.com'}
+                  placeholder={mode === 'login' ? 'Username or employee ID both work' : 'you@company.com'}
                   required
                   autoComplete={mode === 'login' ? 'username' : 'email'}
                   spellCheck={false}
@@ -353,22 +366,27 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
-                {mode === 'login' && (
-                  <div className="text-[11px] text-slate-400 mt-1.5 leading-snug">
-                    You can sign in with your <span className="font-medium text-slate-500">username</span> or your{' '}
-                    <span className="font-medium text-slate-500">employee ID</span> — both work.
-                  </div>
-                )}
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                   Password
                 </label>
-                <input className="input" type="password" required minLength={mode === 'setup' ? 8 : 1}
-                  placeholder={mode === 'setup' ? 'Min 8 characters' : '••••••••'}
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  value={password} onChange={e => setPassword(e.target.value)} />
+                <div className="relative">
+                  <input className="input pr-10" type={showPassword ? 'text' : 'password'} required minLength={mode === 'setup' ? 8 : 1}
+                    placeholder={mode === 'setup' ? 'Min 8 characters' : '••••••••'}
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    value={password} onChange={e => setPassword(e.target.value)} />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
                 {mode === 'setup' && <StrengthMeter password={password} />}
               </div>
 
