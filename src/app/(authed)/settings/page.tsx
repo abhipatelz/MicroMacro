@@ -105,44 +105,11 @@ function StrengthMeter({ password }: { password: string }) {
   );
 }
 
-function ActivityGraph({ activity }: { activity: Array<{ date: string; count: number }> }) {
-  const max = Math.max(1, ...activity.map((x) => x.count || 0));
-  const shade = (v: number) => {
-    if (v <= 0) return 'bg-slate-100';
-    const ratio = v / max;
-    if (ratio < 0.25) return 'bg-emerald-100';
-    if (ratio < 0.5) return 'bg-emerald-300';
-    if (ratio < 0.75) return 'bg-emerald-500';
-    return 'bg-emerald-700';
-  };
-  return (
-    <Section title="Activity" subtitle="Your recent contribution intensity across task events.">
-      {activity.length === 0 ? (
-        <div className="text-xs text-slate-400">No activity data yet.</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <div className="grid grid-rows-7 grid-flow-col gap-1 min-w-[740px]">
-            {activity.map((a) => (
-              <div
-                key={a.date}
-                title={`${a.date}: ${a.count} activity events`}
-                className={`w-3.5 h-3.5 rounded-[3px] ${shade(a.count)}`}
-                aria-label={`${a.date} activity ${a.count}`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </Section>
-  );
-}
-
 /* ════════════════════════════════════════════════════════════════════════════
    MAIN PAGE
 ════════════════════════════════════════════════════════════════════════════ */
 export default function SettingsPage() {
   const [user, setUser]   = useState<any>(null);
-  const [activity, setActivity] = useState<Array<{ date: string; count: number }>>([]);
 
   const [name, setName]           = useState('');
   const [employeeId, setEmpId]    = useState('');
@@ -173,7 +140,6 @@ export default function SettingsPage() {
       setNO(u.notifTaskOverdue   ?? true);
       setNPU(u.notifProjectUpdate ?? false);
     });
-    api('/users/me/stats').then((s: any) => setActivity(s.activity || [])).catch(() => setActivity([]));
   }, []);
 
   const isPM = (user?.role === 'pm' || user?.role === 'lead' || user?.role === 'admin');
@@ -241,7 +207,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ── 2-column: Identity + (Activity + Notifications + Security) ─────────────── */}
+      {/* ── 2-column: Identity + (Notifications + Security) ─────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
         {/* Left: Identity form */}
@@ -289,37 +255,34 @@ export default function SettingsPage() {
           </Section>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-            <ActivityGraph activity={activity} />
-            {/* Security */}
-            <div id="security" className="scroll-mt-6">
-            <Section icon={Lock} title="Security" subtitle="Change your login password.">
-              <form onSubmit={savePw} className="space-y-3.5">
-                <Field label="Current password">
-                  <input type="password" className="input" autoComplete="current-password"
-                    value={current} onChange={e => setCurrent(e.target.value)} placeholder="••••••••" />
-                </Field>
-                <Field label="New password">
-                  <input type="password" className="input" autoComplete="new-password"
-                    value={next} onChange={e => setNext(e.target.value)} placeholder="Min 8 characters" />
-                  <StrengthMeter password={next} />
-                </Field>
-                <Field label="Confirm password">
-                  <input type="password"
-                    className={`input ${confirm && !pwMatches ? 'border-red-300 focus:border-red-400' : ''}`}
-                    autoComplete="new-password"
-                    value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repeat password" />
-                  {confirm && !pwMatches && <p className="text-[11px] text-red-500 mt-1">Passwords don't match.</p>}
-                </Field>
-                {pwErr && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{pwErr}</div>}
-                {pwMsg && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">✓ {pwMsg}</div>}
-                <button type="submit" className="btn-primary w-full justify-center"
-                  disabled={!current || !pwStrong || !pwMatches || pwSaving}>
-                  {pwSaving ? 'Updating…' : 'Update password'}
-                </button>
-              </form>
-            </Section>
-            </div>
+          {/* Security */}
+          <div id="security" className="scroll-mt-6">
+          <Section icon={Lock} title="Security" subtitle="Change your login password.">
+            <form onSubmit={savePw} className="space-y-3.5">
+              <Field label="Current password">
+                <input type="password" className="input" autoComplete="current-password"
+                  value={current} onChange={e => setCurrent(e.target.value)} placeholder="••••••••" />
+              </Field>
+              <Field label="New password">
+                <input type="password" className="input" autoComplete="new-password"
+                  value={next} onChange={e => setNext(e.target.value)} placeholder="Min 8 characters" />
+                <StrengthMeter password={next} />
+              </Field>
+              <Field label="Confirm password">
+                <input type="password"
+                  className={`input ${confirm && !pwMatches ? 'border-red-300 focus:border-red-400' : ''}`}
+                  autoComplete="new-password"
+                  value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repeat password" />
+                {confirm && !pwMatches && <p className="text-[11px] text-red-500 mt-1">Passwords don't match.</p>}
+              </Field>
+              {pwErr && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{pwErr}</div>}
+              {pwMsg && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">✓ {pwMsg}</div>}
+              <button type="submit" className="btn-primary w-full justify-center"
+                disabled={!current || !pwStrong || !pwMatches || pwSaving}>
+                {pwSaving ? 'Updating…' : 'Update password'}
+              </button>
+            </form>
+          </Section>
           </div>
         </div>
       </div>

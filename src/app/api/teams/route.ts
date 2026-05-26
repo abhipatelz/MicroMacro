@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       teams.map((t) =>
         teamS(t, {
-          memberCount: new Set([...(t.memberIds || []).map(String), t.leadId ? String(t.leadId) : null].filter(Boolean)).size,
+          memberCount: (t.memberIds || []).length,
           projectCount: cmap.get(String(t._id)) || 0
         })
       )

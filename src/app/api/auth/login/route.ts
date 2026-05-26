@@ -26,6 +26,11 @@ const Body = z.object({
 // until an admin/lead clears it from the People page.
 const MAX_FAILED_LOGINS = 5;
 
+// Generic "wrong email or password" response. We never reveal which half
+// was wrong — even when the account is locked — so an attacker can't
+// enumerate valid emails by watching status codes or messages. Real
+// users get the helpful message in-product once they sign in successfully
+// (their admin tells them their account was locked).
 const GENERIC_INVALID = { status: 401, body: { error: 'Invalid email or password.' } } as const;
 
 export async function POST(req: NextRequest) {
@@ -77,10 +82,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (user.lockedAt) {
-      return NextResponse.json(
-        { error: 'Your ID is locked after 5 failed attempts. Please ask your admin to unlock it.' },
-        { status: 423 },
-      );
+      // Don't reveal lock state through the error message — same opaque
+      // response as a wrong password. The admin sees the lock in the
+      // People page UI.
+      return NextResponse.json(GENERIC_INVALID.body, { status: GENERIC_INVALID.status });
     }
 
     if (!passwordOk) {
@@ -114,13 +119,6 @@ export async function POST(req: NextRequest) {
       // (If `updated` is null, another request locked the row first —
       // either way the user sees the same generic error.)
       void updated;
-      const nowLocked = !!(updated as any)?.lockedAt;
-      if (nowLocked) {
-        return NextResponse.json(
-          { error: 'Your ID is locked after 5 failed attempts. Please ask your admin to unlock it.' },
-          { status: 423 },
-        );
-      }
       return NextResponse.json(GENERIC_INVALID.body, { status: GENERIC_INVALID.status });
     }
 

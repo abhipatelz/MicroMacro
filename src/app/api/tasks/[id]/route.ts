@@ -11,12 +11,6 @@ import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { notify } from '@/lib/notify';
 
 export const runtime = 'nodejs';
-function parseLocalYMD(s?: string | null) {
-  if (!s) return null;
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return new Date(s);
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0);
-}
 
 async function assertTaskInScope(taskId: string, userId: string, role?: string | null) {
   const t = await Task.findById(taskId).select('projectId').lean();
@@ -93,7 +87,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const set: any = {};
     for (const [k, v] of Object.entries(body)) {
       if (v === undefined) continue;
-      if (['startDate', 'dueDate', 'ccTcd'].includes(k)) set[k] = v ? parseLocalYMD(v as string) : null;
+      if (['startDate', 'dueDate', 'ccTcd'].includes(k)) set[k] = v ? new Date(v as string) : null;
       else set[k] = v;
     }
     if (body.status === 'done' && current.status !== 'done') set.completedAt = new Date();

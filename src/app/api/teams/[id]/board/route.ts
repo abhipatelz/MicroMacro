@@ -3,7 +3,7 @@ import { connectDB } from '@/lib/db';
 import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { User } from '@/models/User';
-import { requireUser, isLead } from '@/lib/auth';
+import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
 
@@ -19,13 +19,11 @@ const STATUS_ORDER: Record<string, number> = {
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireUser(req);
+    const { error } = await requireUser(req);
     if (error) return error;
     await connectDB();
     const projects = await Project.find({ teamId: params.id }).lean();
-    const taskQuery: any = { projectId: { $in: projects.map((p) => p._id) } };
-    if (!isLead(user.role)) taskQuery.assigneeId = user.sub;
-    const tasks = await Task.find(taskQuery).lean();
+    const tasks = await Task.find({ projectId: { $in: projects.map((p) => p._id) } }).lean();
     const users = await User.find({ _id: { $in: tasks.map((t) => t.assigneeId).filter(Boolean) } }).lean();
     const uMap = new Map(users.map((u) => [String(u._id), u.name]));
     const pMap = new Map(projects.map((p) => [String(p._id), p]));

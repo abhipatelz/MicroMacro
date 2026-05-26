@@ -55,17 +55,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error } = await requireRole(req, 'pm', 'lead', 'admin');
     if (error) return error;
     await connectDB();
 
     const body = await readBody(req, TeamUpdateSchema);
     const current = await Team.findById(params.id).lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    const isOwner = String((current as any).leadId || '') === String(user.sub);
-    if (user.role !== 'admin' && !isOwner) {
-      return NextResponse.json({ error: 'Only team owner or admin can edit team details' }, { status: 403 });
-    }
 
     const patch: any = {};
     if (body.name !== undefined) patch.name = body.name.trim();
