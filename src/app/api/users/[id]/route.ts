@@ -21,6 +21,11 @@ const Body = z.object({
   department: z.string().max(120).optional(),
   phone:      z.string().max(40).optional(),
   location:   z.string().max(120).optional(),
+  // Admin operations lock — true suspends the account (blocks sign-in),
+  // false lifts the lock and clears the failed-login counter.
+  locked:     z.boolean().optional(),
+  // Force the user to set a new password on their next sign-in.
+  mustChangePassword: z.boolean().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -50,6 +55,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'You cannot change your own role.' }, { status: 403 });
     }
 
+    if (body.locked && caller.sub === params.id) {
+      return NextResponse.json({ error: 'You cannot lock your own account.' }, { status: 403 });
+    }
+
     if (body.role === 'employee') {
       const leadCount = await User.countDocuments({ role: { $in: ['pm', 'lead', 'admin'] } });
       if (leadCount <= 1) {
@@ -57,7 +66,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
     }
 
-    const updated = await User.findByIdAndUpdate(params.id, { $set: body }, { new: true }).lean();
+    // Build the update, translating the admin-facing `locked` flag into the
+    // underlying lockedAt / failedLoginAttempts fields.
+    const { locked, ...rest } = body;
+    const set: any = { ...rest };
+    if (locked === true) {
+      set.lockedAt = new Date();
+    } else if (locked === false) {
+      set.lockedAt = null;
+      set.failedLoginAttempts = 0;
+    }
+
+    const updated = await User.findByIdAndUpdate(params.id, { $set: set }, { new: true }).lean();
     if (!updated) return NextResponse.json({ error: 'User not found' }, { status: 404 });
     return NextResponse.json(u(updated));
   } catch (e) {

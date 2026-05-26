@@ -500,10 +500,41 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
     if (!confirm(`Unlock ${user.name}'s account?\nTheir existing password still works; the failed-attempt counter is reset to zero.`)) return;
     setSaving(user.id);
     try {
-      await api(`/users/${user.id}/unlock`, { method: 'POST' });
+      await api(`/users/${user.id}`, { method: 'PATCH', body: { locked: false } });
       await load();
     } catch (e: any) {
       setRoleErr(e.message || 'Failed to unlock account.');
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  // Operations lock — suspend an account so the person can't sign in until
+  // an admin lifts it. The opposite of unlockAccount.
+  async function lockAccount(user: any) {
+    if (!confirm(`Lock ${user.name}'s account?\nThey will be unable to sign in until you unlock it. Existing sessions are not revoked.`)) return;
+    setSaving(user.id);
+    try {
+      await api(`/users/${user.id}`, { method: 'PATCH', body: { locked: true } });
+      await load();
+    } catch (e: any) {
+      setRoleErr(e.message || 'Failed to lock account.');
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  // Force the person to set a brand-new password the next time they sign in,
+  // without changing their current one. Useful for handing over a legacy
+  // account that never went through the first-login flow.
+  async function forcePasswordChange(user: any) {
+    if (!confirm(`Require ${user.name} to set a new password on their next sign-in?`)) return;
+    setSaving(user.id);
+    try {
+      await api(`/users/${user.id}`, { method: 'PATCH', body: { mustChangePassword: true } });
+      await load();
+    } catch (e: any) {
+      setRoleErr(e.message || 'Failed to update account.');
     } finally {
       setSaving(null);
     }
@@ -638,7 +669,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                 <RoleBadge role={u.role} />
                 {u.lockedAt && (
                   <span className="tag border text-xs font-semibold border-rose-200 bg-rose-50 text-rose-700"
-                        title={`Locked at ${new Date(u.lockedAt).toLocaleString()} after too many failed sign-ins`}>
+                        title={`Sign-in suspended — locked at ${new Date(u.lockedAt).toLocaleString()}`}>
                     Locked
                   </span>
                 )}
@@ -665,6 +696,24 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                     disabled={saving === u.id}
                     title="Generate a temporary password for this lead">
                     Reset password
+                  </button>
+                )}
+                {isPM && me?.id !== u.id && u.role !== 'admin' && (
+                  <button
+                    className="text-xs text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
+                    onClick={() => forcePasswordChange(u)}
+                    disabled={saving === u.id}
+                    title="Require a new password on their next sign-in">
+                    Force password
+                  </button>
+                )}
+                {isPM && me?.id !== u.id && u.role !== 'admin' && !u.lockedAt && (
+                  <button
+                    className="text-xs text-slate-500 hover:text-rose-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-200"
+                    onClick={() => lockAccount(u)}
+                    disabled={saving === u.id}
+                    title="Suspend this account — they can't sign in until you unlock it">
+                    Lock
                   </button>
                 )}
                 {/* Demote a lead to contributor. Never offered for the
@@ -709,7 +758,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                 <RoleBadge role={u.role} />
                 {u.lockedAt && (
                   <span className="tag border text-xs font-semibold border-rose-200 bg-rose-50 text-rose-700"
-                        title={`Locked at ${new Date(u.lockedAt).toLocaleString()} after too many failed sign-ins`}>
+                        title={`Sign-in suspended — locked at ${new Date(u.lockedAt).toLocaleString()}`}>
                     Locked
                   </span>
                 )}
@@ -734,6 +783,22 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   title="Generate a temporary password">
                   Reset password
                 </button>
+                <button
+                  className="text-xs text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
+                  onClick={() => forcePasswordChange(u)}
+                  disabled={saving === u.id}
+                  title="Require a new password on their next sign-in">
+                  Force password
+                </button>
+                {!u.lockedAt && (
+                  <button
+                    className="text-xs text-slate-500 hover:text-rose-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-200"
+                    onClick={() => lockAccount(u)}
+                    disabled={saving === u.id}
+                    title="Suspend this account — they can't sign in until you unlock it">
+                    Lock
+                  </button>
+                )}
                 <button
                   className="text-xs text-blue-600 hover:text-blue-800 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
                   onClick={() => setRoleConfirm({ user: u, targetRole: 'lead' })}

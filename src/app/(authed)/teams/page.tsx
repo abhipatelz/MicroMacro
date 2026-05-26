@@ -57,9 +57,10 @@ export default function TeamsPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TeamItem | null>(null);
   const [deleting, setDeleting] = useState<TeamItem | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   function load() {
-    api<TeamItem[]>('/teams').then(setTeams);
+    api<TeamItem[]>('/teams').then((t) => { setTeams(t); setLoaded(true); }).catch(() => setLoaded(true));
   }
   useEffect(() => {
     load();
@@ -109,7 +110,28 @@ export default function TeamsPage() {
       </div>
 
       {/* Cards grid */}
-      {filtered.length === 0 ? (
+      {!loaded ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" aria-busy="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="card p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="skeleton h-5 w-32" />
+                <div className="skeleton h-5 w-16 rounded-full" />
+              </div>
+              <div className="skeleton h-3 w-full" />
+              <div className="flex items-center gap-2">
+                <div className="skeleton h-7 w-7 rounded-full" />
+                <div className="skeleton h-7 w-7 rounded-full" />
+                <div className="skeleton h-7 w-7 rounded-full" />
+              </div>
+              <div className="flex justify-between">
+                <div className="skeleton h-3 w-20" />
+                <div className="skeleton h-3 w-12" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="card p-10 text-center">
           <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-3">
             <UsersIcon size={20} className="text-slate-400" />

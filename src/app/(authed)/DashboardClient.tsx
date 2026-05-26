@@ -131,36 +131,14 @@ export default function DashboardClient({
   const totalOpen     = dash.teamTasks.filter(t => t.status !== 'done').length;
   const totalOverdue  = dash.teamTasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < today).length;
 
-  const workspaceLabel =
-    dash.user.role === 'admin' ? 'Workspace command center'
-    : (dash.user.role === 'pm' || dash.user.role === 'lead') ? 'Your team workspace'
-    : 'Your workspace';
-  // A short, purposeful subline (rotated by the day) — gives the greeting
-  // some character without repeating the numbers shown in the chips below.
-  const MISSION_LINES = [
-    'Every task traceable, every deadline in view.',
-    'Quality work, organized and on schedule.',
-    'Your single source of truth for quality projects.',
-    'Move fast — keep the audit trail intact.',
-  ];
-  const missionLine = MISSION_LINES[today.getDate() % MISSION_LINES.length];
-
   return (
     <div className="pb-12 max-w-[1440px]">
 
       {/* ── Greeting ────────────────────────────────────────────────────── */}
       <div className="mb-6 pt-1">
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <span className="w-1.5 h-1.5 rounded-full shrink-0"
-            style={{ background: 'linear-gradient(135deg,#1565C0,#2E7D32)' }} />
-          <span className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
-            {workspaceLabel}
-          </span>
-        </div>
         <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight">
           <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}, {firstName}.</span>
         </h1>
-        <p className="text-sm text-slate-500 mt-1.5" suppressHydrationWarning>{missionLine}</p>
       </div>
 
       {isFirstRun ? (
