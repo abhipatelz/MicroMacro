@@ -10,6 +10,12 @@ import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { notify } from '@/lib/notify';
 
 export const runtime = 'nodejs';
+function parseLocalYMD(s?: string | null) {
+  if (!s) return undefined;
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return new Date(s);
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,8 +37,8 @@ export async function POST(req: NextRequest) {
       taskType: body.taskType || 'task',
       gxpCritical: !!body.gxpCritical,
       requiresQaSignoff: !!body.requiresQaSignoff,
-      startDate: body.startDate ? new Date(body.startDate) : undefined,
-      dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+      startDate: parseLocalYMD(body.startDate),
+      dueDate: parseLocalYMD(body.dueDate),
       estimatedHours: body.estimatedHours,
       ccNo:           body.ccNo           || '',
       ccTcd:          body.ccTcd ? new Date(body.ccTcd) : undefined,

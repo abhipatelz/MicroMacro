@@ -135,14 +135,11 @@ export default function TeamDetailPage() {
                 </button>
               </div>
             )}
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {team.members.map((m: any) => {
                 const p = progress?.members.find((x: any) => x.id === m.id);
                 return (
-                  <div
-                    key={m.id}
-                    className="flex items-center gap-2 py-1.5 border-b border-slate-100 last:border-b-0"
-                  >
+                  <div key={m.id} className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-b-0">
                     <Avatar name={m.name} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{m.name}</div>
@@ -152,12 +149,6 @@ export default function TeamDetailPage() {
                           ` · ${p.done}/${p.assigned} done${p.overdue ? ` · ${p.overdue} overdue` : ''}`}
                       </div>
                     </div>
-                    <Link
-                      href={`/yearly/${m.id}`}
-                      className="text-xs text-brand-700 hover:underline"
-                    >
-                      Year
-                    </Link>
                     <button
                       onClick={() => removeMember(m.id)}
                       className="text-xs text-slate-400 hover:text-red-600"
@@ -266,24 +257,18 @@ export default function TeamDetailPage() {
             <Card title={`All micro-tasks across team projects`}>
               <div className="divide-y divide-slate-100">
                 {board.map((t: any) => (
-                  <div key={t.id} className="py-2 flex items-center gap-3 text-sm">
-                    <TaskLink task={t} />
-                    <Link
-                      href={`/projects/${t.projectId}`}
-                      className="text-xs text-slate-500 hover:underline"
-                    >
-                      {t.projectCode}
-                    </Link>
-                    <LifecycleTag lifecycle={t.lifecycle} />
-                    <div className="flex-1 text-xs text-slate-500">
-                      {t.assigneeName || 'Unassigned'}
+                  <div key={t.id} className="py-2.5 px-1 grid grid-cols-1 md:grid-cols-[1.4fr_auto_auto_1fr_auto_auto_auto] gap-2 items-center text-sm">
+                    <div className="min-w-0">
+                      <TaskLink task={t} />
+                      <div className="text-[11px] text-slate-500 mt-1">
+                        {t.assigneeName || 'Unassigned'} · Due {formatDate(t.dueDate)}
+                      </div>
                     </div>
+                    <Link href={`/projects/${t.projectId}`} className="text-xs text-slate-500 hover:underline">{t.projectCode}</Link>
+                    <LifecycleTag lifecycle={t.lifecycle} />
                     {t.gxpCritical && <span className="tag bg-red-50 text-red-700">GxP</span>}
                     <StatusTag status={t.status} />
                     <PriorityTag priority={t.priority} />
-                    <span className="text-xs text-slate-500 w-24 text-right">
-                      {formatDate(t.dueDate)}
-                    </span>
                   </div>
                 ))}
                 {board.length === 0 && (

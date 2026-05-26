@@ -122,10 +122,10 @@ export default function MyDayPage() {
             ) : isLead ? (
               <button
                 onClick={() => setPromote(n)}
-                title="Turn this into a tracked task"
+                title="Pick this up into a tracked project task"
                 className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                To task <ArrowRight size={12} />
+                Pick up to project <ArrowRight size={12} />
               </button>
             ) : null}
             <button onClick={() => remove(n)} aria-label="Delete"
