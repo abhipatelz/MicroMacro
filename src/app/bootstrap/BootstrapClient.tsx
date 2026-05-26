@@ -72,7 +72,7 @@ export function BootstrapClient() {
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
               <h2 className="font-semibold text-emerald-900">Setup complete.</h2>
               <p className="text-sm text-emerald-800 mt-1">
-                Admin account: <strong>{result.admin?.email}</strong> ({result.admin?.role})
+                Admin account: <strong>{result.admin?.email}</strong> (Admin)
               </p>
             </div>
 
