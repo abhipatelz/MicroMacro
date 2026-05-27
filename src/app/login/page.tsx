@@ -9,45 +9,51 @@ import { ArrowRight, Sparkles } from 'lucide-react';
    few seconds. Deliberately unattributed. A randomised start so it isn't
    the same line every visit. */
 const QUOTES = [
-  'If something is important enough, do it even if the odds are against you.',
-  'Failure is an option here. If things are not failing, you are not innovating enough.',
-  'When something is important enough, you do it despite fear.',
-  'The pace of progress in AI is incredibly fast.',
-  'Constantly think about how you could be doing things better.',
-  'Persistence is very important. You should not give up unless forced to give up.',
-  'When you’re pioneering, everyone tells you you’re crazy.',
-  'If you double the number of experiments, you double your inventiveness.',
-  'The biggest risk is not taking any risk.',
-  'People should pursue what they’re passionate about.',
-  'Great companies are built on great products.',
-  'You want to be extra rigorous about making the best possible thing you can.',
-  'I think it is possible for ordinary people to choose to be extraordinary.',
-  'Some people don’t like change, but you need to embrace change if the alternative is disaster.',
-  'I could either watch it happen or be a part of it.',
-  'Patience is a virtue, and I’m learning patience.',
-  'I think we have a duty to maintain the light of consciousness.',
+  'The most important skill is learning how to learn.',
+  'You make progress by being specific about what you want.',
+  'A clear mind is a productive mind.',
+  'Inspiration is perishable — act on it immediately.',
+  'Focus on being productive instead of busy.',
+  'Done is better than perfect, every single day.',
+  'Small steps, taken daily, compound into everything.',
+  'Specific knowledge is found by pursuing your genuine curiosity.',
+  'Play long-term games with long-term people.',
+  'The most powerful skill is reading. Read what you love until you love to read.',
+  'Embrace accountability and take business risks under your own name.',
+  'Earn with your mind, not your time.',
+  'A calm mind, a fit body, a house full of love. These things cannot be bought.',
+  'Desire is a contract you make to be unhappy until you get what you want.',
+  'You’re not going to get rich renting out your time.',
+  'The internet enables any niche interest, as long as you’re the best at it.',
+  'Become the best in the world at what you do. Keep redefining what you do.',
+  'Apply specific knowledge with leverage and eventually you will get what you deserve.',
+  'If you can’t decide, the answer is no.',
+  'Free education is abundant. The scarce part is the desire to learn.',
+  'The deeper the work, the higher the leverage.',
+  'Money buys freedom: freedom from doing things you dislike.',
+  'Set up systems, not goals. Use your judgment to figure out the systems.',
+  'Reading is faster than listening. Doing is faster than watching.',
+  'Be present above all else.',
+  'It’s not 1,000 true fans. It’s a handful of people who really trust you.',
+  'Health, love, and your mission, in that order. Nothing else matters.',
+  'The closer you want to get, the more you have to give.',
+  'Learn to sell. Learn to build. If you can do both, you will be unstoppable.',
+  'All the returns in life come from compound interest — money, relationships, and learning.',
+  'You should be too busy to “grab coffee,” while still keeping an uncluttered calendar.',
+  'Clear thinker is a better compliment than smart.',
+  'Impatience with actions, patience with results.',
+  'Self-discipline is choosing what you want most over what you want now.',
+  'A fit body, a calm mind, a house full of love — earn them, they can’t be bought.',
+  'The three big decisions: where you live, who you’re with, and what you do.',
 ];
 
 function RotatingQuote() {
-  const [i, setI] = useState(0);
+  const [i, setI] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [show, setShow] = useState(true);
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const saved = Number(window.localStorage.getItem('loginQuoteIndex') || '0');
-    const safe = Number.isFinite(saved) && saved >= 0 ? saved % QUOTES.length : 0;
-    setI(safe);
-  }, []);
   useEffect(() => {
     const t = setInterval(() => {
       setShow(false);
-      setTimeout(() => {
-        setI((n) => {
-          const next = (n + 1) % QUOTES.length;
-          if (typeof window !== 'undefined') window.localStorage.setItem('loginQuoteIndex', String(next));
-          return next;
-        });
-        setShow(true);
-      }, 400);
+      setTimeout(() => { setI((n) => (n + 1) % QUOTES.length); setShow(true); }, 400);
     }, 6000);
     return () => clearInterval(t);
   }, []);
