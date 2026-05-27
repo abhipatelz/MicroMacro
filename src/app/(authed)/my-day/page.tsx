@@ -23,6 +23,8 @@ export default function MyDayPage() {
   const [loaded, setLoaded] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [promote, setPromote] = useState<Note | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -60,6 +62,19 @@ export default function MyDayPage() {
     setOpen((o) => o.filter((x) => x.id !== n.id));
     setDone((d) => d.filter((x) => x.id !== n.id));
     try { await api(`/scratch/${n.id}`, { method: 'DELETE' }); } finally { load(); }
+  }
+
+  async function saveEdit(n: Note) {
+    const next = editingText.trim();
+    setEditingId(null);
+    if (!next || next === n.text) return;
+    setOpen((items) => items.map((x) => (x.id === n.id ? { ...x, text: next } : x)));
+    setDone((items) => items.map((x) => (x.id === n.id ? { ...x, text: next } : x)));
+    try {
+      await api(`/scratch/${n.id}`, { method: 'PATCH', body: { text: next } });
+    } finally {
+      load();
+    }
   }
 
   return (
@@ -116,7 +131,29 @@ export default function MyDayPage() {
               aria-label="Mark done"
               className="w-5 h-5 rounded-md border border-slate-300 hover:border-emerald-400 flex items-center justify-center shrink-0 transition-colors"
             />
-            <span className="flex-1 text-sm text-slate-700 break-words">{n.text}</span>
+            {editingId === n.id ? (
+              <input
+                autoFocus
+                className="input text-sm flex-1"
+                value={editingText}
+                onChange={(e) => setEditingText(e.target.value)}
+                onBlur={() => saveEdit(n)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveEdit(n);
+                  if (e.key === 'Escape') setEditingId(null);
+                }}
+                maxLength={2000}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => { setEditingId(n.id); setEditingText(n.text); }}
+                className="flex-1 text-left text-sm text-slate-700 break-words hover:text-slate-900"
+                title="Tap to edit"
+              >
+                {n.text}
+              </button>
+            )}
             {n.promotedTaskId ? (
               <a href={`/tasks/${n.promotedTaskId}`} className="text-[11px] font-semibold text-emerald-600 shrink-0">→ tracked</a>
             ) : isLead ? (

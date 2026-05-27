@@ -21,16 +21,19 @@ const Create = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
-    const teams = await Team.find({}).sort({ name: 1 }).lean();
+    const q: any = (user?.role === 'employee')
+      ? { memberIds: user.sub }
+      : {};
+    const teams = await Team.find(q).sort({ name: 1 }).lean();
     const counts = await Project.aggregate([{ $group: { _id: '$teamId', c: { $sum: 1 } } }]);
     const cmap = new Map(counts.map((c) => [String(c._id), c.c]));
     return NextResponse.json(
       teams.map((t) =>
         teamS(t, {
-          memberCount: (t.memberIds || []).length,
+          memberCount: new Set((t.memberIds || []).map((id: any) => String(id))).size,
           projectCount: cmap.get(String(t._id)) || 0
         })
       )

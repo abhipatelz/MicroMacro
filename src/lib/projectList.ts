@@ -127,8 +127,15 @@ export async function listProjectsForUser(
 }
 
 /** Lightweight team list for filter dropdowns. */
-export async function listTeamsForFilter(): Promise<Array<{ id: string; name: string }>> {
+export async function listTeamsForFilter(
+  userId?: string,
+  role?: string,
+): Promise<Array<{ id: string; name: string }>> {
   await connectDB();
-  const teams = await Team.find({}, '_id name').sort({ name: 1 }).lean();
+  let q: any = {};
+  if (userId && role === 'employee') {
+    q = { memberIds: userId };
+  }
+  const teams = await Team.find(q, '_id name').sort({ name: 1 }).lean();
   return teams.map((t) => ({ id: String(t._id), name: t.name }));
 }

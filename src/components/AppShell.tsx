@@ -51,6 +51,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
   const router   = useRouter();
 
   const [open, setOpen]               = useState(false);
+  const [collapsed, setCollapsed]     = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [dark, toggleDark]            = useDarkMode(initialDark);
   const [mustChangePw, setMustChangePw] = useState(!!user.mustChangePassword);
@@ -79,8 +80,9 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
   ];
 
   const employeeNav: NavItem[] = [
-    { href: '/',         label: 'My Tasks', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/',         label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects', icon: FolderKanban,    iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
+    { href: '/teams',    label: 'Team',      icon: Users,           iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
 
   // "My Day" sits at the bottom of the nav, just above the profile — a
@@ -122,7 +124,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
           }}>
           <Icon size={14} style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }} />
         </div>
-        <span className="flex-1 truncate">{n.label}</span>
+        {!collapsed && <span className="flex-1 truncate">{n.label}</span>}
       </Link>
     );
   }
@@ -135,10 +137,20 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
         style={{ borderColor: dark ? 'rgba(255,255,255,0.07)' : '#e8edf4' }}>
         <Link href="/" className="flex items-center gap-2.5 flex-1 min-w-0">
           <PragatiMark size={30} flat />
-          <span className={`font-display font-bold text-[21px] leading-none ${dark ? 'text-white' : 'text-slate-900'}`}>
-            Pragati
-          </span>
+          {!collapsed && (
+            <span className={`font-display font-bold text-[21px] leading-none ${dark ? 'text-white' : 'text-slate-900'}`}>
+              Pragati
+            </span>
+          )}
         </Link>
+        <button
+          className={`hidden lg:inline-flex p-1 rounded-md ${dark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'}`}
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <Menu size={15} /> : <X size={15} />}
+        </button>
         {/* Close on mobile */}
         <button className={`lg:hidden p-1 rounded-md ml-auto ${dark ? 'text-white/40 hover:text-white/70' : 'text-slate-400 hover:text-slate-600'}`}
           onClick={() => setOpen(false)}>
@@ -215,7 +227,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
           </button>
 
           {/* Name + role → profile page */}
-          <Link href="/settings" className="flex-1 min-w-0 group">
+          {!collapsed && <Link href="/settings" className="flex-1 min-w-0 group">
             <div className={`text-xs font-semibold truncate group-hover:underline ${dark ? 'text-white/80' : 'text-slate-700'}`}>{user.name}</div>
             <div style={{ fontSize: 10 }}
               className={`truncate ${
@@ -225,7 +237,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
               }`}>
               {user.role === 'admin' ? 'Admin' : (user.role === 'pm' || user.role === 'lead') ? 'Team Leader' : 'Individual Contributor'}
             </div>
-          </Link>
+          </Link>}
 
           {/* Notifications — opens upward so it's never clipped at the bottom */}
           <NotificationBell dark={dark} openUp />
@@ -258,7 +270,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
       <aside
         className={`
-          w-[220px] shrink-0 flex flex-col
+          ${collapsed ? 'w-[74px]' : 'w-[220px]'} shrink-0 flex flex-col
           fixed inset-y-0 left-0 z-50
           lg:sticky lg:top-0 lg:h-screen
           transition-transform duration-300 ease-in-out

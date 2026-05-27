@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
-import { Card, Avatar, LifecycleTag, formatDate } from '@/components/ui';
+import { Card, Avatar, LifecycleTag, formatDate, roleLabel } from '@/components/ui';
 import { SimpleBarChart } from '@/components/SimpleBarChart';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -48,7 +48,7 @@ export default function YearlyView({ targetUserId }: { targetUserId?: string }) 
           >
             {users.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name} ({u.title || u.role})
+                {u.name} ({u.title || roleLabel(u.role)})
               </option>
             ))}
           </select>
@@ -72,7 +72,7 @@ export default function YearlyView({ targetUserId }: { targetUserId?: string }) 
             <Avatar name={target.name} size={48} />
             <div>
               <div className="text-lg font-semibold">{target.name}</div>
-              <div className="text-sm text-slate-500">{target.title || target.role}</div>
+              <div className="text-sm text-slate-500">{target.title || roleLabel(target.role)}</div>
             </div>
           </div>
         </Card>

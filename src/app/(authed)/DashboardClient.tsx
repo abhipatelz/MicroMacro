@@ -95,6 +95,7 @@ export default function DashboardClient({
 }: { initialData: DashResp; hasSeenTour: boolean }) {
   const dash = initialData;
   const isLead = useIsLead();
+  const isIc = dash.user.role !== 'pm' && dash.user.role !== 'lead' && dash.user.role !== 'admin';
 
   // First-run: a lead/admin whose workspace has no projects yet. Show a
   // guided setup path instead of a wall of empty panels — this is the
@@ -185,7 +186,7 @@ export default function DashboardClient({
         </>
       )}
 
-      {/* ── Main layout: 2/3 projects · 1/3 actions+contributors ──────── */}
+      {/* ── Main layout: 2/3 projects · 1/3 actions+people/tasks ───────── */}
       {!isFirstRun && (
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5 items-start">
 
@@ -195,10 +196,14 @@ export default function DashboardClient({
             tasksByProject={tasksByProject}
           />
 
-          {/* Right column — Actions + Contributors */}
+          {/* Right column — Actions + role-specific secondary panel */}
           <div className="space-y-4 xl:sticky xl:top-4 xl:self-start xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto pr-1">
             <ActionsPanel tasks={dash.teamTasks} />
-            <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />
+            {isIc ? (
+              <AssignedToMePanel tasks={dash.teamTasks} currentUserId={dash.user.id} />
+            ) : (
+              <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />
+            )}
           </div>
         </div>
       )}
@@ -763,6 +768,46 @@ function ContributorsPanel({
   );
 }
 
+function AssignedToMePanel({ tasks, currentUserId }: { tasks: TeamTask[]; currentUserId: string }) {
+  const mine = tasks
+    .filter((t) => t.assigneeId === currentUserId && t.status !== 'done')
+    .sort((a, b) => {
+      const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      return da - db;
+    });
+
+  return (
+    <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
+      style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+        <CheckCircle2 size={13} className="text-slate-400" />
+        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Tasks assigned to me</h3>
+        <span className="ml-auto text-[10px] text-slate-300 font-semibold">{mine.length}</span>
+      </div>
+      {mine.length === 0 ? (
+        <div className="py-8 text-center text-xs text-slate-400">No open assigned tasks.</div>
+      ) : (
+        <ul className="divide-y divide-slate-50">
+          {mine.slice(0, 12).map((t) => (
+            <li key={t.id}>
+              <Link href={`/tasks/${t.id}`} className="block px-4 py-2.5 hover:bg-slate-50 transition-colors">
+                <div className="text-xs font-medium text-slate-700 line-clamp-1">{t.title}</div>
+                <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 flex-wrap">
+                  <span className="font-semibold">{t.projectCode}</span>
+                  {t.dueDate && <><span>·</span><span>{formatDate(t.dueDate)}</span></>}
+                  <span>·</span><span>{STATUS_LABEL[t.status] || t.status}</span>
+                </div>
+              </Link>
+            </li>
+          ))}
+          {mine.length > 12 && <li className="px-4 py-2 text-[10px] text-slate-400">+{mine.length - 12} more</li>}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function ContributorRow({ person, tasks }: { person: DashPerson; tasks: TeamTask[] }) {
   const [open, setOpen] = useState(false);
 
@@ -865,4 +910,3 @@ function ContributorRow({ person, tasks }: { person: DashPerson; tasks: TeamTask
     </li>
   );
 }
-
