@@ -1,9 +1,14 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
 import { ArrowRight, Sparkles } from 'lucide-react';
+
+function getInitials(name: string) {
+  if (!name) return '?';
+  return name.trim().split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+}
 
 /* Rotating wisdom from Elon Musk. Unattributed. */
 const QUOTES = [
@@ -97,6 +102,7 @@ export default function LoginPage() {
   // sign-in and the user has a PIN set.
   const [deviceName, setDeviceName] = useState('');
   const [pin, setPin] = useState('');
+  const pinInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api<{ initialized: boolean }>('/system/status').then(d => {
@@ -329,54 +335,87 @@ export default function LoginPage() {
             {/* ── Quick-PIN unlock (trusted device) ─────────────────────── */}
             {mode === 'unlock' && (
               <div className="form-swap" key="unlock">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                    Welcome back{deviceName ? `, ${deviceName.split(' ')[0]}` : ''}
+
+                {/* Avatar + name */}
+                <div className="flex flex-col items-center text-center mb-7">
+                  <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-2xl font-black text-white mb-4 select-none"
+                    style={{ background: 'linear-gradient(135deg, #1565C0 0%, #1a237e 100%)', boxShadow: '0 8px 24px rgba(21,101,192,0.32)' }}>
+                    {getInitials(deviceName)}
+                  </div>
+                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.18em] mb-1">Welcome back</p>
+                  <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
+                    {deviceName || 'You'}
                   </h2>
-                  <p className="text-sm text-slate-400 mt-1 leading-snug">
-                    Enter your 4-digit Quick PIN to jump back in.
+                  <p className="text-sm text-slate-400 mt-1.5 leading-snug">
+                    Enter your Quick PIN to continue
                   </p>
                 </div>
 
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">Quick PIN</label>
-                <input
-                  autoFocus
-                  type="password"
-                  inputMode="numeric"
-                  pattern="\d*"
-                  maxLength={4}
-                  value={pin}
-                  disabled={loading}
-                  onChange={(e) => {
-                    const v = e.target.value.replace(/\D/g, '').slice(0, 4);
-                    setPin(v);
-                    setErr('');
-                    if (v.length === 4) unlock(v); // auto-submit on the 4th digit
-                  }}
-                  className="input text-center font-black tracking-[0.7em] text-2xl py-3"
-                  placeholder="••••"
-                  aria-label="Quick PIN"
-                />
+                {/* 4-box PIN input — clicking any box focuses the hidden input */}
+                <div className="relative flex justify-center gap-3 mb-4 cursor-text"
+                  onClick={() => pinInputRef.current?.focus()}>
+                  {[0, 1, 2, 3].map(i => (
+                    <div key={i}
+                      className="w-[54px] h-[62px] rounded-2xl border-2 flex items-center justify-center transition-all duration-200"
+                      style={{
+                        borderColor: pin.length === i ? '#1565C0'
+                                   : pin.length > i  ? '#93c5fd'
+                                   : '#e2e8f0',
+                        background:  pin.length > i  ? '#eff6ff'
+                                   : pin.length === i ? '#f0f9ff'
+                                   : 'white',
+                        boxShadow:   pin.length === i ? '0 0 0 3px rgba(21,101,192,0.13)' : 'none',
+                        transform:   pin.length > i  ? 'scale(1.04)' : 'scale(1)',
+                      }}>
+                      {pin.length > i && (
+                        <div className="w-3 h-3 rounded-full bg-blue-600" />
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Invisible input layered over the boxes — captures all keystrokes */}
+                  <input
+                    ref={pinInputRef}
+                    autoFocus
+                    type="password"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    maxLength={4}
+                    value={pin}
+                    disabled={loading}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      setPin(v);
+                      setErr('');
+                      if (v.length === 4) unlock(v);
+                    }}
+                    className="absolute inset-0 opacity-0 w-full h-full cursor-text"
+                    style={{ fontSize: 0 }}
+                    aria-label="Quick PIN"
+                  />
+                </div>
 
                 {err && (
                   <div role="alert" aria-live="assertive"
-                    className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft">
+                    className="mt-1 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft">
                     <span aria-hidden="true" className="font-bold leading-none mt-0.5">!</span>
                     <span>{err}</span>
                   </div>
                 )}
 
                 {loading && (
-                  <div className="mt-3 flex items-center justify-center gap-2 text-sm text-slate-400">
+                  <div className="mt-3 flex items-center justify-center gap-2 text-sm text-slate-400 fade-in-soft">
                     <span className="w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
                     Unlocking…
                   </div>
                 )}
 
-                <button onClick={usePasswordInstead} type="button"
-                  className="mt-5 w-full text-center text-sm text-blue-600 font-semibold hover:underline">
-                  Sign in with password instead
-                </button>
+                <div className="mt-6 flex flex-col items-center gap-1.5">
+                  <button onClick={usePasswordInstead} type="button"
+                    className="text-sm text-slate-400 hover:text-blue-600 font-medium transition-colors">
+                    Sign in with password instead
+                  </button>
+                </div>
               </div>
             )}
 
