@@ -7,7 +7,7 @@ import {
   LIFECYCLE_LABELS, STATUS_COLORS,
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
-import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
+import { useIsLead } from '@/components/CurrentUserContext';
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
   ChevronDown, TrendingUp, Clock, Sparkles, ArrowRight, UserPlus, Plus,
@@ -139,42 +139,15 @@ export default function DashboardClient({
   }, [visibleTasks]);
 
   const firstName  = (dash.user.name || '').split(' ')[0] || 'there';
-  const today      = new Date();
-  const dateLabel  = today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-  const totalOpen     = visibleTasks.filter(t => t.status !== 'done').length;
-  const totalOverdue  = visibleTasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < today).length;
 
   return (
     <div className="pb-12 max-w-[1440px]">
 
       {/* ── Greeting ────────────────────────────────────────────────────── */}
       <div className="mb-6 pt-1">
-        <div className="flex items-center gap-1.5 mb-1">
-          <Sparkles size={12} className="text-blue-400" />
-          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400" suppressHydrationWarning>
-            {dateLabel}
-          </span>
-        </div>
         <h1 className="text-3xl font-black tracking-tight leading-tight">
           <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}, {firstName}.</span>
         </h1>
-        <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-          {ongoingProjects.length === 0 ? (
-            <>No active projects yet — your board fills in as you create them.</>
-          ) : (
-            <>
-              <span className="font-semibold text-slate-700">{ongoingProjects.length}</span>
-              {' '}active {ongoingProjects.length === 1 ? 'project' : 'projects'} ·{' '}
-              <span className="font-semibold text-slate-700">{totalOpen}</span>
-              {' '}open {totalOpen === 1 ? 'task' : 'tasks'}
-              {totalOverdue > 0 ? (
-                <> · <span className="font-semibold text-red-600">{totalOverdue} overdue</span> need attention.</>
-              ) : (
-                <> · <span className="font-semibold text-emerald-600">nothing overdue.</span></>
-              )}
-            </>
-          )}
-        </p>
       </div>
 
       {isFirstRun ? (
@@ -182,18 +155,24 @@ export default function DashboardClient({
       ) : (
         <>
           {/* ── Summary strip ──────────────────────────────────────────── */}
-          <div className="flex flex-wrap gap-2.5 mb-6">
-            <SummaryChip label="Ongoing projects" value={ongoingProjects.length} accent="blue"  href="/projects" />
-            <SummaryChip label="Open tasks"       value={totalOpen}              accent="slate" href="/projects" />
-            <SummaryChip label="Overdue"          value={totalOverdue}           accent={totalOverdue > 0 ? 'red' : 'slate'} href="/projects" />
-            <SummaryChip label={dash.teamCount === 1 ? 'Team' : 'Teams'} value={dash.teamCount} accent="green" href="/teams" />
-          </div>
+          {(() => {
+            const totalOpen    = visibleTasks.filter(t => t.status !== 'done').length;
+            const totalOverdue = visibleTasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date()).length;
+            return (
+              <div className="flex flex-wrap gap-2.5 mb-6">
+                <SummaryChip label="Ongoing projects" value={ongoingProjects.length} accent="blue"  href="/projects" />
+                <SummaryChip label="Open tasks"       value={totalOpen}              accent="slate" href="/projects" />
+                <SummaryChip label="Overdue"          value={totalOverdue}           accent={totalOverdue > 0 ? 'red' : 'slate'} href="/projects" />
+                <SummaryChip label={dash.teamCount === 1 ? 'Team' : 'Teams'} value={dash.teamCount} accent="green" href="/teams" />
+              </div>
+            );
+          })()}
         </>
       )}
 
       {/* ── Main layout: Projects (left) · Actions (right, same row) ───── */}
       {!isFirstRun && (
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
 
           {/* Left column — Projects */}
           <ProjectsColumn
@@ -202,7 +181,7 @@ export default function DashboardClient({
           />
 
           {/* Right column — Actions + "My tasks" (for leads: also Contributors). */}
-          <div className="space-y-4 xl:sticky xl:top-4 xl:self-start xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto pr-1">
+          <div className="space-y-4 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto pr-1">
             <ActionsPanel tasks={visibleTasks} />
             <MyTasksPanel tasks={visibleTasks} myId={myId} />
             {isLead && <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />}
@@ -362,18 +341,14 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
 function ProjectsColumn({
   projects, tasksByProject,
 }: { projects: DashProject[]; tasksByProject: Map<string, TeamTask[]> }) {
-  const isAdmin = useIsAdmin();
   const isLead  = useIsLead();
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <FolderKanban size={14} className="text-slate-400" />
-          {/* Never "Projects you lead" — a lead's team can own projects
-             created by someone else. "Your team's projects" is accurate;
-             admin sees the whole workspace. */}
           <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-            {isAdmin ? 'All projects' : 'Your team’s projects'}
+            Your team’s projects
           </h2>
           <span className="text-[10px] text-slate-300 font-semibold">{projects.length}</span>
         </div>
@@ -859,15 +834,16 @@ function ContributorsPanel({
   people, tasksByAssignee,
 }: { people: DashPerson[]; tasksByAssignee: Map<string, TeamTask[]> }) {
   const [expanded, setExpanded] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false); // collapsed by default
+
   if (people.length === 0) {
     return (
       <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
         style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+        <div className="px-4 py-3 flex items-center gap-2">
           <UsersIcon size={13} className="text-slate-400" />
           <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Individual Contributors</h3>
         </div>
-        <div className="py-8 text-center text-xs text-slate-400">No team members yet.</div>
       </section>
     );
   }
@@ -878,20 +854,31 @@ function ContributorsPanel({
   const inner = (
     <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+      <div
+        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 select-none transition-colors"
+        onClick={() => setPanelOpen(o => !o)}
+      >
         <UsersIcon size={13} className="text-slate-400" />
         <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
           Individual Contributors
         </h3>
         <span className="ml-auto text-[10px] text-slate-300 font-semibold">{people.length}</span>
-        {!expanded && <ExpandButton onClick={() => setExpanded(true)} />}
+        {!expanded && (
+          <span onClick={e => e.stopPropagation()}>
+            <ExpandButton onClick={() => setExpanded(true)} />
+          </span>
+        )}
+        <ChevronDown size={12} className="text-slate-400 transition-transform duration-200"
+          style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
       </div>
 
-      <ul className="divide-y divide-slate-50">
-        {sorted.map(p => (
-          <ContributorRow key={p.id} person={p} tasks={tasksByAssignee.get(p.id) || []} />
-        ))}
-      </ul>
+      {panelOpen && (
+        <ul className="divide-y divide-slate-50 border-t border-slate-100">
+          {sorted.map(p => (
+            <ContributorRow key={p.id} person={p} tasks={tasksByAssignee.get(p.id) || []} />
+          ))}
+        </ul>
+      )}
     </section>
   );
 

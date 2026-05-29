@@ -28,11 +28,11 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string; bo
 const COLUMN_WIDTH = 230;
 const COLUMN_GAP   = 12;
 
-function KanbanBoard({ tasks, onDropReorder }: {
+function KanbanBoard({ tasks, onDropReorder, isLead, onDelete }: {
   tasks: any[];
-  // Persists a drop: moves taskId to toStatus (if changed) and writes the new
-  // order of that column (orderedIds).
   onDropReorder: (taskId: string, toStatus: string, orderedIds: string[]) => void;
+  isLead: boolean;
+  onDelete: (taskId: string) => void;
 }) {
   const [localTasks, setLocalTasks] = useState<any[]>(tasks);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -241,6 +241,16 @@ function KanbanBoard({ tasks, onDropReorder }: {
                     <div className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 transition-opacity" style={{ color: meta.color }}>
                       <GripVertical size={12} />
                     </div>
+                    {isLead && (
+                      <button
+                        onClick={e => { e.stopPropagation(); e.preventDefault(); onDelete(t.id); }}
+                        draggable={false}
+                        aria-label="Delete task"
+                        className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
                     <Link href={`/tasks/${t.id}`} className="block p-3 pl-4" onClick={e => isDragging && e.preventDefault()}>
                       <div className="text-xs font-semibold text-slate-800 leading-snug line-clamp-2">{t.title}</div>
                       {(t.gxpCritical || t.requiresQaSignoff || (t.priority && t.priority !== 'low')) && (
@@ -634,6 +644,17 @@ export default function ProjectDetailPage() {
     }
   }
 
+  async function deleteTask(taskId: string) {
+    if (!confirm('Delete this task permanently? This cannot be undone.')) return;
+    try {
+      await api(`/tasks/${taskId}`, { method: 'DELETE' });
+      showToast('Task deleted');
+      load();
+    } catch (e: any) {
+      showToast(e.message || 'Delete failed', 'err');
+    }
+  }
+
   async function exportProject() {
     try {
       const res = await fetch(`/api/projects/${id}/export`, { credentials: 'include' });
@@ -833,6 +854,12 @@ export default function ProjectDetailPage() {
                         )}
                         <PriorityTag priority={t.priority} />
                         <span className="text-xs text-slate-400 w-16 text-right">{formatDate(t.dueDate)}</span>
+                        {isLead && (
+                          <button onClick={() => deleteTask(t.id)} aria-label="Delete task"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 rounded transition-all">
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     </div>
                     );
@@ -880,6 +907,12 @@ export default function ProjectDetailPage() {
                     )}
                     <PriorityTag priority={t.priority} />
                     <span className="text-xs text-slate-400 w-16 text-right">{formatDate(t.dueDate)}</span>
+                    {isLead && (
+                      <button onClick={() => deleteTask(t.id)} aria-label="Delete task"
+                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 rounded transition-all">
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
                 );
@@ -895,7 +928,7 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {view === 'board' && <KanbanBoard tasks={tasks} onDropReorder={dropReorder} />}
+      {view === 'board' && <KanbanBoard tasks={tasks} onDropReorder={dropReorder} isLead={isLead} onDelete={deleteTask} />}
 
       {/* Modals */}
       {blockCompleteOpen && (

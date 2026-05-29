@@ -258,7 +258,7 @@ export default function TaskDetailPage() {
                 <div>
                   <DatePicker
                     value={task.ccTcd ? task.ccTcd.slice(0, 10) : null}
-                    onChange={(v) => update({ ccTcd: v })}
+                    onChange={(v) => update({ ccTcd: v }, { optimistic: { ccTcd: v } })}
                     placeholder="Set date"
                   />
                 </div>
@@ -466,7 +466,7 @@ export default function TaskDetailPage() {
                 <div>
                   <DatePicker
                     value={task.startDate ? task.startDate.slice(0, 10) : null}
-                    onChange={(v) => update({ startDate: v })}
+                    onChange={(v) => update({ startDate: v }, { optimistic: { startDate: v } })}
                     placeholder="Set date"
                   />
                 </div>
@@ -476,7 +476,7 @@ export default function TaskDetailPage() {
                 <div>
                   <DatePicker
                     value={task.dueDate ? task.dueDate.slice(0, 10) : null}
-                    onChange={(v) => update({ dueDate: v })}
+                    onChange={(v) => update({ dueDate: v }, { optimistic: { dueDate: v } })}
                     placeholder="Set date"
                   />
                 </div>
