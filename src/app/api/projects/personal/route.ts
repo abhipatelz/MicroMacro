@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
         status: 'in_progress',
         priority: 'medium',
         ownerId: userId,
+        isPersonal: true,
       });
       proj = created.toObject();
     }

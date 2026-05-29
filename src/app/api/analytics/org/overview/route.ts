@@ -6,6 +6,7 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
+import { NOT_PERSONAL } from '@/lib/leadScope';
 
 export const runtime = 'nodejs';
 
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     // ── Fetch base data (3 light queries) ────────────────────────────────
     const [allProjects, allUsers, teamDocs] = await Promise.all([
-      Project.find({ status: { $ne: 'cancelled' } }).sort({ status: 1, updatedAt: -1 }).lean(),
+      Project.find({ status: { $ne: 'cancelled' }, ...NOT_PERSONAL }).sort({ status: 1, updatedAt: -1 }).lean(),
       User.find({}).sort({ name: 1 }).lean(),
       Team.find({}).lean(),
     ]);

@@ -40,6 +40,11 @@ const ProjectSchema = new Schema(
     },
     teamId: { type: Schema.Types.ObjectId, ref: 'Team' },
     ownerId: { type: Schema.Types.ObjectId, ref: 'User' },
+    // Personal projects are a single user's private to-do list (see
+    // /api/projects/personal). They must never appear in any cross-user or
+    // admin rollup — only their owner can see them. Identified by this flag
+    // (and, for legacy rows created before the flag, the "PRSN-" code prefix).
+    isPersonal: { type: Boolean, default: false },
     startDate: { type: Date },
     dueDate: { type: Date },
     completedAt: { type: Date },

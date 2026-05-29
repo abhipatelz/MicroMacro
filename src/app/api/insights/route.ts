@@ -5,6 +5,7 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { requireRole } from '@/lib/auth';
 import { handleError } from '@/lib/http';
+import { NOT_PERSONAL } from '@/lib/leadScope';
 
 export const runtime = 'nodejs';
 
@@ -36,8 +37,8 @@ export async function GET(req: NextRequest) {
 
     // ── Base data ──────────────────────────────────────────────────────────
     const [activeProjects, completedProjects, users] = await Promise.all([
-      Project.find({ status: { $in: ['planning', 'in_progress', 'on_hold'] } }).lean(),
-      Project.find({ status: 'completed' }).sort({ updatedAt: -1 }).limit(10).lean(),
+      Project.find({ status: { $in: ['planning', 'in_progress', 'on_hold'] }, ...NOT_PERSONAL }).lean(),
+      Project.find({ status: 'completed', ...NOT_PERSONAL }).sort({ updatedAt: -1 }).limit(10).lean(),
       User.find({ role: 'employee' }).lean(),
     ]);
 
