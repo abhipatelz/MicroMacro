@@ -15,6 +15,12 @@ const ForcePasswordModal = dynamic(
   () => import('./ForcePasswordModal').then(m => m.ForcePasswordModal),
   { ssr: false, loading: () => null },
 );
+// Mandatory Quick-PIN setup on first login — lazy so it stays out of the bundle
+// for everyone who already has a PIN.
+const SetPinModal = dynamic(
+  () => import('./SetPinModal').then(m => m.SetPinModal),
+  { ssr: false, loading: () => null },
+);
 import {
   LayoutDashboard, FolderKanban, Users, UsersRound, NotebookPen,
   LogOut, Menu, X, Moon, Sun, AlertTriangle, ChevronLeft, ChevronRight, ScrollText,
@@ -27,6 +33,7 @@ export interface CurrentUser {
   role: 'employee' | 'pm' | 'lead' | 'admin';
   title?: string;
   mustChangePassword?: boolean;
+  hasPin?: boolean;
 }
 
 /* ── Dark-mode hook ─────────────────────────────────────────────────
@@ -55,6 +62,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
   const [idleWarning, setIdleWarning] = useState(false);
   const [dark, toggleDark]            = useDarkMode(initialDark);
   const [mustChangePw, setMustChangePw] = useState(!!user.mustChangePassword);
+  const [needsPin, setNeedsPin] = useState(!user.hasPin);
   const lastActivityRef = useRef(Date.now());
 
   // Desktop "distraction-free" collapse: shrinks the sidebar to an icon rail
@@ -395,6 +403,12 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
 
       {mustChangePw && (
         <ForcePasswordModal onDone={() => { setMustChangePw(false); router.refresh(); }} />
+      )}
+
+      {/* Mandatory Quick-PIN setup — only once the password step (if any) is
+          cleared, so the two blocking modals never stack. */}
+      {!mustChangePw && needsPin && (
+        <SetPinModal onDone={() => { setNeedsPin(false); router.refresh(); }} />
       )}
 
       {/* Sign-out confirmation — fixed centered modal, works in both expanded and collapsed sidebar */}

@@ -25,6 +25,10 @@ export interface JwtPayload {
   // verify (they simply skip the corresponding check — see validateSession).
   sv?: number;
   sid?: string;
+  // Runtime-only (never signed): whether the user has a Quick PIN configured.
+  // Populated by validateSession from the DB so the UI can enforce the
+  // mandatory-PIN-setup gate without a second round-trip.
+  hasPin?: boolean;
 }
 
 /** A fresh, unguessable session identifier for one login. */
@@ -94,6 +98,11 @@ function getSecret(): string {
 }
 
 const COOKIE = 'pragati_token';
+// The trusted-device cookie. Set ONLY after a full password sign-in; its
+// presence (and validity) is what permits a Quick-PIN unlock. It deliberately
+// outlives the session token so a user can PIN back in the next working day.
+const DEVICE_COOKIE = 'pragati_device';
+const DEVICE_TRUST_DAYS = 30;
 
 export function signToken(payload: JwtPayload): string {
   return jwt.sign(payload, getSecret(), { expiresIn: '7d' });
@@ -101,6 +110,43 @@ export function signToken(payload: JwtPayload): string {
 
 export function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, getSecret()) as JwtPayload;
+}
+
+/* ── Trusted-device token ──────────────────────────────────────────────────
+   A signed, httpOnly cookie that marks THIS browser as one that has already
+   completed a full password login for `sub`. It carries no privileges on its
+   own — it only gates whether the PIN-unlock endpoint will even look at a PIN.
+   `typ:'device'` keeps it from ever being mistaken for a session token. */
+interface DeviceToken { sub: string; typ: 'device'; iat?: number; exp?: number; }
+
+export function signDeviceToken(userId: string): string {
+  return jwt.sign({ sub: userId, typ: 'device' }, getSecret(), { expiresIn: `${DEVICE_TRUST_DAYS}d` });
+}
+
+export function verifyDeviceToken(token: string): DeviceToken | null {
+  try {
+    const d = jwt.verify(token, getSecret()) as DeviceToken;
+    return d.typ === 'device' ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setDeviceCookie(response: NextResponse, userId: string) {
+  response.cookies.set(DEVICE_COOKIE, signDeviceToken(userId), {
+    ...COOKIE_BASE,
+    maxAge: 60 * 60 * 24 * DEVICE_TRUST_DAYS,
+  });
+}
+
+export function clearDeviceCookie(response: NextResponse) {
+  response.cookies.set(DEVICE_COOKIE, '', { ...COOKIE_BASE, maxAge: 0 });
+}
+
+export function getDeviceUserId(req: NextRequest): string | null {
+  const tok = req.cookies.get(DEVICE_COOKIE)?.value;
+  if (!tok) return null;
+  return verifyDeviceToken(tok)?.sub || null;
 }
 
 const COOKIE_BASE = {
@@ -155,7 +201,7 @@ export async function validateSession(payload: JwtPayload): Promise<JwtPayload |
   await connectDB();
   const user = await User.findById(
     payload.sub,
-    'role mustChangePassword sessionVersion activeSessionId name title email',
+    'role mustChangePassword sessionVersion activeSessionId name title email pinHash',
   ).lean();
   if (!user) return null;
 
@@ -170,6 +216,7 @@ export async function validateSession(payload: JwtPayload): Promise<JwtPayload |
     title: u.title ?? payload.title,
     email: u.email ?? payload.email,
     mustChangePassword: !!u.mustChangePassword,
+    hasPin: !!u.pinHash,
   };
 }
 

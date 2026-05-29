@@ -73,6 +73,17 @@ const UserSchema = new Schema(
     failedLoginAttempts: { type: Number, default: 0 },
     lockedAt:            { type: Date,   default: null },
 
+    // ── Quick PIN (device-bound convenience unlock) ─────────────────────
+    // A 4-digit PIN that re-unlocks the app on a device that has ALREADY
+    // completed a full username+password sign-in (a trusted-device cookie).
+    // It is NEVER a substitute for the password on a new device — the first
+    // sign-in on any device always requires the full credential, preserving
+    // 21 CFR Part 11 §11.10(d) access control. The PIN is bcrypt-hashed,
+    // never stored in clear, and locks after too many wrong tries.
+    pinHash:            { type: String, default: null },
+    pinSetAt:           { type: Date,   default: null },
+    pinFailedAttempts:  { type: Number, default: 0 },
+
     // ── Onboarding tour ─────────────────────────────────────────────────
     // Defaults to true so existing users don't see the tour on first
     // login after this change. The register + invite paths explicitly

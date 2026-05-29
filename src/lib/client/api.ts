@@ -27,6 +27,8 @@ const AUTH_ENDPOINTS = [
   '/auth/signup',
   '/auth/first-password',
   '/auth/password',
+  // A wrong-PIN 401 must render under the PIN pad, not bounce to /login.
+  '/auth/unlock',
 ];
 
 function isAuthEndpoint(path: string): boolean {

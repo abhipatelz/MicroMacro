@@ -4,8 +4,75 @@ import { api } from '@/lib/client/api';
 import { Avatar, RoleBadge } from '@/components/ui';
 import { ActivityGraph } from '@/components/ActivityGraph';
 import {
-  User, Bell, Lock, ShieldCheck, Copy, Check, RefreshCw, X, Activity,
+  User, Bell, Lock, ShieldCheck, Copy, Check, RefreshCw, X, Activity, KeyRound,
 } from 'lucide-react';
+
+/* ── Quick PIN management ─────────────────────────────────────────────────── */
+function QuickPinSection() {
+  const [hasPin, setHasPin]   = useState<boolean | null>(null);
+  const [currentPin, setCur]  = useState('');
+  const [pin, setPin]         = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving]   = useState(false);
+  const [msg, setMsg]         = useState('');
+  const [err, setErr]         = useState('');
+
+  useEffect(() => {
+    api<{ hasPin: boolean }>('/auth/pin').then(d => setHasPin(d.hasPin)).catch(() => setHasPin(false));
+  }, []);
+
+  const valid = /^\d{4}$/.test(pin);
+  const matches = pin === confirm;
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(''); setMsg('');
+    if (!valid) { setErr('PIN must be exactly 4 digits.'); return; }
+    if (!matches) { setErr('The two PINs don’t match.'); return; }
+    setSaving(true);
+    try {
+      await api('/auth/pin', { method: 'POST', body: { pin, ...(hasPin ? { currentPin } : {}) } });
+      setMsg('Quick PIN updated.');
+      setHasPin(true); setCur(''); setPin(''); setConfirm('');
+    } catch (e: any) { setErr(e.message || 'Could not update your PIN.'); }
+    finally { setSaving(false); }
+  }
+
+  const box = "input text-center font-bold tracking-[0.4em]";
+
+  return (
+    <div id="quick-pin" className="scroll-mt-6">
+      <Section icon={KeyRound} title="Quick PIN" subtitle="A 4-digit code to resume an idle session on this device.">
+        <form onSubmit={save} className="space-y-3.5">
+          {hasPin && (
+            <Field label="Current PIN">
+              <input type="password" inputMode="numeric" maxLength={4} className={box}
+                value={currentPin} onChange={e => setCur(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" />
+            </Field>
+          )}
+          <Field label={hasPin ? 'New PIN' : 'PIN'}>
+            <input type="password" inputMode="numeric" maxLength={4} className={box}
+              value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" />
+          </Field>
+          <Field label="Confirm PIN">
+            <input type="password" inputMode="numeric" maxLength={4}
+              className={`${box} ${confirm && !matches ? 'border-red-300' : ''}`}
+              value={confirm} onChange={e => setConfirm(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" />
+          </Field>
+          {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
+          {msg && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">✓ {msg}</div>}
+          <button type="submit" className="btn-primary w-full justify-center" disabled={saving || !valid || !matches || (!!hasPin && currentPin.length !== 4)}>
+            {saving ? 'Saving…' : hasPin ? 'Change PIN' : 'Set PIN'}
+          </button>
+          <p className="text-[11px] text-slate-400 leading-snug">
+            Forgot it? Just sign in with your password — it always works — then set a new PIN here.
+            Your password is always required on a new device.
+          </p>
+        </form>
+      </Section>
+    </div>
+  );
+}
 
 /* ── Section wrapper ──────────────────────────────────────────────────────── */
 function Section({ icon: Icon, title, subtitle, children }: {
@@ -372,6 +439,9 @@ export default function SettingsPage() {
             </form>
           </Section>
           </div>
+
+          {/* Quick PIN — device unlock convenience */}
+          <QuickPinSection />
 
           {/* Admin recovery key — admins only */}
           {user.role === 'admin' && (

@@ -84,7 +84,7 @@ function StrengthMeter({ password }: { password: string }) {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<'login' | 'setup'>('login');
+  const [mode, setMode] = useState<'login' | 'setup' | 'unlock'>('login');
   const [isFirstRun, setIsFirstRun] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -93,11 +93,51 @@ export default function LoginPage() {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Quick-PIN unlock: shown when this device previously completed a full
+  // sign-in and the user has a PIN set.
+  const [deviceName, setDeviceName] = useState('');
+  const [pin, setPin] = useState('');
+
   useEffect(() => {
     api<{ initialized: boolean }>('/system/status').then(d => {
       if (!d.initialized) setIsFirstRun(true);
     }).catch(() => {});
+    // If this is a trusted device with a PIN, greet the user and offer the
+    // PIN pad instead of the full form.
+    api<{ trusted: boolean; name?: string; hasPin?: boolean; locked?: boolean }>('/auth/device')
+      .then(d => {
+        if (d.trusted && d.hasPin && !d.locked) {
+          setDeviceName(d.name || '');
+          setMode('unlock');
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  function usePasswordInstead() {
+    setMode('login');
+    setErr('');
+    setPin('');
+  }
+
+  async function unlock(pinValue: string) {
+    setErr('');
+    setLoading(true);
+    try {
+      await api('/auth/unlock', { method: 'POST', body: { pin: pinValue } });
+      router.replace('/');
+      router.refresh();
+    } catch (e: any) {
+      setPin('');
+      if (e?.data?.needPassword || /password/i.test(e?.message || '')) {
+        setErr(e.message || 'Please sign in with your password.');
+        setMode('login');
+      } else {
+        setErr(e.message || 'Incorrect PIN.');
+      }
+      setLoading(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -286,7 +326,62 @@ export default function LoginPage() {
               </div>
             )}
 
+            {/* ── Quick-PIN unlock (trusted device) ─────────────────────── */}
+            {mode === 'unlock' && (
+              <div className="form-swap" key="unlock">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                    Welcome back{deviceName ? `, ${deviceName.split(' ')[0]}` : ''}
+                  </h2>
+                  <p className="text-sm text-slate-400 mt-1 leading-snug">
+                    Enter your 4-digit Quick PIN to jump back in.
+                  </p>
+                </div>
+
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">Quick PIN</label>
+                <input
+                  autoFocus
+                  type="password"
+                  inputMode="numeric"
+                  pattern="\d*"
+                  maxLength={4}
+                  value={pin}
+                  disabled={loading}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    setPin(v);
+                    setErr('');
+                    if (v.length === 4) unlock(v); // auto-submit on the 4th digit
+                  }}
+                  className="input text-center font-black tracking-[0.7em] text-2xl py-3"
+                  placeholder="••••"
+                  aria-label="Quick PIN"
+                />
+
+                {err && (
+                  <div role="alert" aria-live="assertive"
+                    className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft">
+                    <span aria-hidden="true" className="font-bold leading-none mt-0.5">!</span>
+                    <span>{err}</span>
+                  </div>
+                )}
+
+                {loading && (
+                  <div className="mt-3 flex items-center justify-center gap-2 text-sm text-slate-400">
+                    <span className="w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+                    Unlocking…
+                  </div>
+                )}
+
+                <button onClick={usePasswordInstead} type="button"
+                  className="mt-5 w-full text-center text-sm text-blue-600 font-semibold hover:underline">
+                  Sign in with password instead
+                </button>
+              </div>
+            )}
+
             {/* Heading */}
+            {mode !== 'unlock' && (
             <div className="mb-7 form-swap" key={mode + '-h'}>
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">
                 {mode === 'login' ? 'Welcome back' : 'Set up workspace'}
@@ -297,7 +392,9 @@ export default function LoginPage() {
                   : 'Create the first lead account.'}
               </p>
             </div>
+            )}
 
+            {mode !== 'unlock' && (
             <form onSubmit={submit} className="space-y-4 form-swap" key={mode + '-f'}>
               {mode === 'setup' && (
                 <>
@@ -382,7 +479,9 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
+            )}
 
+            {mode !== 'unlock' && (
             <p className="mt-5 text-center text-sm text-slate-400">
               {mode === 'setup' ? (
                 <>
@@ -396,6 +495,7 @@ export default function LoginPage() {
                 </span>
               )}
             </p>
+            )}
           </div>
         </div>
 

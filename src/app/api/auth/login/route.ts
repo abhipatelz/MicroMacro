@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { signToken, setAuthCookie, configuredAdminEmail, newSessionId } from '@/lib/auth';
+import { signToken, setAuthCookie, setDeviceCookie, configuredAdminEmail, newSessionId } from '@/lib/auth';
 import { readBody, handleError } from '@/lib/http';
 import { u } from '@/lib/serialize';
 import { rateLimit } from '@/lib/rateLimit';
@@ -186,8 +186,11 @@ export async function POST(req: NextRequest) {
       summary: securityKeyOk ? 'Signed in with recovery key' : 'Signed in',
     });
 
-    const res = NextResponse.json({ token, user: u(user) });
+    const res = NextResponse.json({ token, user: u(user), hasPin: !!(user as any).pinHash });
     setAuthCookie(res, token);
+    // Mark this device as trusted so the user can re-enter with a Quick PIN
+    // next time (a full password login is what earns that trust).
+    setDeviceCookie(res, String(user._id));
     return res;
   } catch (e) {
     return handleError(e);
