@@ -97,11 +97,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const fresh = await Project.findById(params.id).lean();
 
     const statusChanged = !!body.status && body.status !== current.status;
-    await logOperation({
-      action: statusChanged ? 'project.status' : 'project.update', category: 'project', actor: user,
-      targetType: 'project', targetId: params.id, targetLabel: (fresh as any)?.name || '',
-      summary: statusChanged ? `Project status → ${body.status}` : 'Updated project details',
-    });
+    if (!((fresh as any)?.isPersonal || String((fresh as any)?.code || '').startsWith('PRSN-'))) {
+      await logOperation({
+        action: statusChanged ? 'project.status' : 'project.update', category: 'project', actor: user,
+        targetType: 'project', targetId: params.id, targetLabel: (fresh as any)?.name || '',
+        summary: statusChanged ? `Project status → ${body.status}` : 'Updated project details',
+      });
+    }
 
     return NextResponse.json(projectS(fresh));
   } catch (e) {
@@ -126,14 +128,17 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
     }
 
+    const existingFull = await Project.findById(params.id).select('isPersonal code').lean();
     await Task.deleteMany({ projectId: params.id });
     await Project.deleteOne({ _id: params.id });
 
-    await logOperation({
-      action: 'project.delete', category: 'project', actor: user,
-      targetType: 'project', targetId: params.id, targetLabel: (existing as any)?.name || '',
-      summary: `Deleted project ${(existing as any)?.name || ''}`.trim(),
-    });
+    if (!((existingFull as any)?.isPersonal || String((existingFull as any)?.code || '').startsWith('PRSN-'))) {
+      await logOperation({
+        action: 'project.delete', category: 'project', actor: user,
+        targetType: 'project', targetId: params.id, targetLabel: (existing as any)?.name || '',
+        summary: `Deleted project ${(existing as any)?.name || ''}`.trim(),
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {

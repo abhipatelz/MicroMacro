@@ -2,7 +2,32 @@
 import { useState } from 'react';
 import { api } from '@/lib/client/api';
 import { Avatar, RoleBadge } from '@/components/ui';
-import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
+import { ActivityGraph } from '@/components/ActivityGraph';
+import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2, BarChart3 } from 'lucide-react';
+
+/* ── Activity peek modal — team leaders click a teammate to see how they're
+   tracking: contribution graph, streak and badges (read-only, no private
+   project data is exposed). ─────────────────────────────────────────────── */
+function ActivityModal({ user, onClose }: { user: any; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[640px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 mb-5">
+          <Avatar name={user.name} size={44} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-black text-slate-900 truncate">{user.name}</h3>
+              <RoleBadge role={user.role} />
+            </div>
+            <div className="text-xs text-slate-400 mt-0.5">Performance overview</div>
+          </div>
+          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-2 mt-0.5"><X size={18} /></button>
+        </div>
+        <ActivityGraph userId={user.id} name={user.name} />
+      </div>
+    </div>
+  );
+}
 
 /* ── role display helpers ─────────────────────────────────────────────── */
 const ROLE_COLOR: Record<string, string> = {
@@ -461,6 +486,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
   const [editUser, setEditUser] = useState<any | null>(null);
   const [removeConfirm, setRemoveConfirm] = useState<any | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [activityUser, setActivityUser] = useState<any | null>(null);
 
   // Background refresh after a mutation. The initial render uses the
   // server-provided list, so no fetch fires on mount.
@@ -563,6 +589,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
       )}
       {creds && <CredentialsModal {...creds} onClose={() => setCreds(null)} />}
       {editUser && <EditUserModal user={editUser} onClose={() => setEditUser(null)} onSaved={load} />}
+      {activityUser && <ActivityModal user={activityUser} onClose={() => setActivityUser(null)} />}
       {removeConfirm && (
         <RemoveConfirmDialog
           user={removeConfirm}
@@ -629,11 +656,21 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
           <div className="divide-y divide-slate-50">
             {pms.map((u) => (
               <div key={u.id} className="flex items-center gap-3 px-5 py-4">
-                <Avatar name={u.name} size={36} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-800 text-sm leading-tight">{u.name}</div>
-                  <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => isPM && setActivityUser(u)}
+                  disabled={!isPM}
+                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isPM ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
+                  title={isPM ? `View ${u.name}'s activity` : undefined}>
+                  <Avatar name={u.name} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
+                      {u.name}
+                      {isPM && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
+                  </div>
+                </button>
                 <RoleBadge role={u.role} />
                 {u.lockedAt && (
                   <span className="tag border text-xs font-semibold border-rose-200 bg-rose-50 text-rose-700"
@@ -698,11 +735,21 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
           <div className="divide-y divide-slate-50">
             {ics.map((u) => (
               <div key={u.id} className="flex items-center gap-3 px-5 py-4">
-                <Avatar name={u.name} size={36} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-800 text-sm leading-tight">{u.name}</div>
-                  <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => isPM && setActivityUser(u)}
+                  disabled={!isPM}
+                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isPM ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
+                  title={isPM ? `View ${u.name}'s activity` : undefined}>
+                  <Avatar name={u.name} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
+                      {u.name}
+                      {isPM && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
+                  </div>
+                </button>
                 <RoleBadge role={u.role} />
                 {u.lockedAt && (
                   <span className="tag border text-xs font-semibold border-rose-200 bg-rose-50 text-rose-700"

@@ -280,14 +280,14 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ── 2-column: Identity + (Notifications + Security) ─────────────── */}
+      {/* ── Top row: Personal details (left) + Activity (right) ─────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
         {/* Left: Identity form */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-2">
           <Section icon={User} title="Personal details" subtitle="Your name as it appears across Pragati.">
             <form onSubmit={saveIdentity} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <Field label="Full name">
                   <input className="input" value={name} onChange={e => setName(e.target.value)} required />
                 </Field>
@@ -304,18 +304,21 @@ export default function SettingsPage() {
               </div>
             </form>
           </Section>
-
-          {/* Activity heatmap — sits in the left column, beside the Security
-              card on the right (#7). */}
-          <div className="mt-5">
-            <Section icon={Activity} title="Activity" subtitle="Your completed tasks over the last year.">
-              <ActivityGraph />
-            </Section>
-          </div>
         </div>
 
-        {/* Right: Notifications + Security stacked */}
-        <div className="lg:col-span-2 space-y-5">
+        {/* Right: Activity — GitHub-style contribution graph + badges (#7) */}
+        <div className="lg:col-span-3">
+          <Section icon={Activity} title="Activity" subtitle="Everything you do on Pragati — logins, projects, and completed work.">
+            <ActivityGraph />
+          </Section>
+        </div>
+      </div>
+
+      {/* ── Second row: Notifications + Security ─────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        {/* Notifications column */}
+        <div className="space-y-5">
 
           {/* Notifications */}
           <div id="notifications" className="scroll-mt-6">
@@ -335,6 +338,10 @@ export default function SettingsPage() {
             </p>
           </Section>
           </div>
+        </div>
+
+        {/* Security column */}
+        <div className="space-y-5">
 
           {/* Security */}
           <div id="security" className="scroll-mt-6">

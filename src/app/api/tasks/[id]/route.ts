@@ -129,11 +129,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const statusChanged = !!body.status && body.status !== current.status;
-    await logOperation({
-      action: statusChanged ? 'task.status' : 'task.update', category: 'task', actor: user,
-      targetType: 'task', targetId: params.id, targetLabel: (fresh as any)?.title || '',
-      summary: statusChanged ? `Task status → ${body.status}` : 'Updated task',
-    });
+    const proj = await Project.findById((fresh as any)?.projectId).select('isPersonal code').lean();
+    if (!((proj as any)?.isPersonal || String((proj as any)?.code || '').startsWith('PRSN-'))) {
+      await logOperation({
+        action: statusChanged ? 'task.status' : 'task.update', category: 'task', actor: user,
+        targetType: 'task', targetId: params.id, targetLabel: (fresh as any)?.title || '',
+        summary: statusChanged ? `Task status → ${body.status}` : 'Updated task',
+        meta: { projectId: String((fresh as any)?.projectId || '') },
+      });
+    }
 
     return NextResponse.json(taskS(fresh));
   } catch (e) {
@@ -151,14 +155,18 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     await connectDB();
     const { t, forbidden } = await assertTaskInScope(params.id, user!.sub, user!.role);
     if (!t || forbidden) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    const doomed = await Task.findById(params.id).select('title').lean();
+    const doomed = await Task.findById(params.id).select('title projectId').lean();
     await Task.deleteOne({ _id: params.id });
 
-    await logOperation({
-      action: 'task.delete', category: 'task', actor: user,
-      targetType: 'task', targetId: params.id, targetLabel: (doomed as any)?.title || '',
-      summary: `Deleted task "${(doomed as any)?.title || ''}"`,
-    });
+    const doomedProj = await Project.findById((doomed as any)?.projectId).select('isPersonal code').lean();
+    if (!((doomedProj as any)?.isPersonal || String((doomedProj as any)?.code || '').startsWith('PRSN-'))) {
+      await logOperation({
+        action: 'task.delete', category: 'task', actor: user,
+        targetType: 'task', targetId: params.id, targetLabel: (doomed as any)?.title || '',
+        summary: `Deleted task "${(doomed as any)?.title || ''}"`,
+        meta: { projectId: String((doomed as any)?.projectId || '') },
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {

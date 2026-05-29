@@ -31,11 +31,28 @@ export async function GET(req: NextRequest) {
     // personal projects are private to their owners, and should not appear in
     // a cross-user admin view even in log form.
     const personalIds = new Set(personalProjects.map((p: any) => String(p._id)));
-    const visible = rows.filter((r: any) => {
+    let visible = rows.filter((r: any) => {
       if (r.targetType === 'project' && personalIds.has(r.targetId)) return false;
       if (r.targetType === 'task' && r.meta?.projectId && personalIds.has(String(r.meta.projectId))) return false;
       return true;
     });
+
+    // Batch-check task entries without meta.projectId (e.g. legacy update/delete logs)
+    const orphanIds = visible
+      .filter((r: any) => r.targetType === 'task' && !r.meta?.projectId && r.targetId)
+      .map((r: any) => r.targetId);
+    if (orphanIds.length > 0) {
+      const { Task } = await import('@/models/Task');
+      const taskDocs = await Task.find({ _id: { $in: orphanIds } }, 'projectId').lean();
+      const tpMap = new Map(taskDocs.map((t: any) => [String(t._id), String((t as any).projectId)]));
+      visible = visible.filter((r: any) => {
+        if (r.targetType === 'task' && !r.meta?.projectId) {
+          const pid = tpMap.get(String(r.targetId));
+          return !pid || !personalIds.has(pid);
+        }
+        return true;
+      });
+    }
 
     return NextResponse.json(
       visible.map((r: any) => ({
