@@ -54,6 +54,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // password and admin would have to make two clicks.
     target.failedLoginAttempts = 0;
     target.lockedAt            = null;
+    // Force-logout every existing session for this user: a reset means the
+    // old credential is dead, so any device still holding a token must be
+    // kicked out immediately.
+    target.sessionVersion      = (target.sessionVersion ?? 0) + 1;
+    target.activeSessionId     = null;
     await target.save();
 
     return NextResponse.json({

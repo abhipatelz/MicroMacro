@@ -45,6 +45,25 @@ const UserSchema = new Schema(
     // ── First-login flag ────────────────────────────────────────────────
     mustChangePassword: { type: Boolean, default: false },
 
+    // ── Admin recovery key ──────────────────────────────────────────────
+    // bcrypt hash of a self-service recovery key the admin generates from
+    // their profile. When the admin forgets their password they can type
+    // this key into the password field on the login form and get straight
+    // in (see src/app/api/auth/login/route.ts). Plaintext is shown exactly
+    // once at generation time and never stored. Only meaningful on admins.
+    securityKeyHash: { type: String, default: null },
+
+    // ── Session control ─────────────────────────────────────────────────
+    // sessionVersion is embedded in every JWT we sign. Bumping it instantly
+    // invalidates every token previously issued for this user — used to
+    // force-logout a user after an admin edits/locks/resets their account
+    // (21 CFR Part 11 §11.10(d): access control stays under our control).
+    sessionVersion: { type: Number, default: 0 },
+    // activeSessionId is the id of the most recent successful login. A newer
+    // login overwrites it, so any older token (carrying a different sid) is
+    // rejected on its next request — enforcing one active session per user.
+    activeSessionId: { type: String, default: null },
+
     // ── Brute-force protection ──────────────────────────────────────────
     // After MAX_FAILED_LOGINS consecutive wrong passwords the account is
     // locked until an admin/lead clears it (via /api/users/[id]/unlock

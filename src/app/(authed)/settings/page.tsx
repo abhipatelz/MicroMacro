@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/client/api';
 import { Avatar, RoleBadge } from '@/components/ui';
 import {
-  User, Bell, Lock,
+  User, Bell, Lock, ShieldCheck, Copy, Check, RefreshCw, X,
 } from 'lucide-react';
 
 /* ── Section wrapper ──────────────────────────────────────────────────────── */
@@ -105,6 +105,58 @@ function StrengthMeter({ password }: { password: string }) {
   );
 }
 
+/* ── Recovery-key reveal modal ────────────────────────────────────────────── */
+function RecoveryKeyModal({ keyValue, onClose }: { keyValue: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard.writeText(keyValue).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck size={20} className="text-amber-500 shrink-0" />
+            <h3 className="text-base font-black text-slate-900">Your recovery key</h3>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 leading-snug">
+          <strong>Store this somewhere safe.</strong> It is shown only once and can&rsquo;t be retrieved
+          again. If you ever forget your password, type this key into the password field on the login
+          screen to sign in, then set a new password here.
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-slate-800 select-all tracking-wider break-all">
+            {keyValue}
+          </div>
+          <button onClick={copy}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all"
+            style={{
+              background: copied ? '#dcfce7' : '#f1f5f9',
+              color: copied ? '#166534' : '#475569',
+              border: `1px solid ${copied ? '#bbf7d0' : '#e2e8f0'}`,
+            }}>
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+        <button onClick={onClose}
+          className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+          style={{ background: '#1565C0' }}>
+          I&rsquo;ve saved it — close
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    MAIN PAGE
 ════════════════════════════════════════════════════════════════════════════ */
@@ -129,6 +181,10 @@ export default function SettingsPage() {
   const [pwMsg, setPwMsg]     = useState('');
   const [pwErr, setPwErr]     = useState('');
 
+  const [hasRecoveryKey, setHasRecoveryKey]   = useState<boolean | null>(null);
+  const [recoveryKeyBusy, setRecoveryKeyBusy] = useState(false);
+  const [generatedKey, setGeneratedKey]       = useState<string | null>(null);
+
   useEffect(() => {
     api('/users/me').then((d: any) => {
       const u = d.user;
@@ -139,8 +195,24 @@ export default function SettingsPage() {
       setNDS(u.notifTaskDueSoon  ?? true);
       setNO(u.notifTaskOverdue   ?? true);
       setNPU(u.notifProjectUpdate ?? false);
+      if (u.role === 'admin') {
+        api('/auth/security-key').then((r: any) => setHasRecoveryKey(r.hasKey)).catch(() => {});
+      }
     });
   }, []);
+
+  async function generateRecoveryKey() {
+    setRecoveryKeyBusy(true);
+    try {
+      const r: any = await api('/auth/security-key', { method: 'POST' });
+      setGeneratedKey(r.key);
+      setHasRecoveryKey(true);
+    } catch {
+      alert('Failed to generate recovery key. Please try again.');
+    } finally {
+      setRecoveryKeyBusy(false);
+    }
+  }
 
   const isPM = (user?.role === 'pm' || user?.role === 'lead' || user?.role === 'admin');
 
@@ -284,8 +356,46 @@ export default function SettingsPage() {
             </form>
           </Section>
           </div>
+
+          {/* Admin recovery key — admins only */}
+          {user.role === 'admin' && (
+            <div id="recovery-key" className="scroll-mt-6">
+              <Section icon={ShieldCheck} title="Recovery key"
+                subtitle="Sign in with this if you ever forget your password.">
+                <div className="space-y-3.5">
+                  <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5 text-xs text-slate-500 leading-snug">
+                    {hasRecoveryKey === null
+                      ? 'Checking…'
+                      : hasRecoveryKey
+                        ? <><span className="text-green-700 font-semibold">✓ Key is set.</span> Regenerate it only if you think it has been exposed — the old key stops working.</>
+                        : <><span className="text-amber-700 font-semibold">No key yet.</span> Generate one and keep it safe so you&rsquo;re never locked out.</>}
+                  </div>
+                  <button type="button" onClick={generateRecoveryKey}
+                    disabled={recoveryKeyBusy || hasRecoveryKey === null}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all"
+                    style={{
+                      background: hasRecoveryKey ? '#f8fafc' : '#1565C0',
+                      color: hasRecoveryKey ? '#475569' : '#ffffff',
+                      border: hasRecoveryKey ? '1px solid #e2e8f0' : 'none',
+                      opacity: recoveryKeyBusy || hasRecoveryKey === null ? 0.6 : 1,
+                    }}>
+                    <RefreshCw size={14} className={recoveryKeyBusy ? 'animate-spin' : ''} />
+                    {recoveryKeyBusy ? 'Generating…' : hasRecoveryKey ? 'Regenerate recovery key' : 'Generate recovery key'}
+                  </button>
+                  <p className="text-[11px] text-slate-400 leading-snug">
+                    To use it: on the login screen, enter your email and type this key in the
+                    password box. You&rsquo;ll be signed in and can set a new password here.
+                  </p>
+                </div>
+              </Section>
+            </div>
+          )}
         </div>
       </div>
+
+      {generatedKey && (
+        <RecoveryKeyModal keyValue={generatedKey} onClose={() => setGeneratedKey(null)} />
+      )}
     </div>
   );
 }

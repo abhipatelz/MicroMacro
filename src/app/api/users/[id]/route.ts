@@ -57,7 +57,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
     }
 
-    const updated = await User.findByIdAndUpdate(params.id, { $set: body }, { new: true }).lean();
+    // When an admin changes *another* user's account, force them to re-auth
+    // and set a new password on next login (21 CFR Part 11 access control):
+    //   • bump sessionVersion → every existing token for them is invalidated
+    //     (they're logged out wherever they're signed in), and
+    //   • set mustChangePassword → they must pick a new password to continue.
+    // Editing your own account here (admins can) does not lock you out.
+    const isSelfEdit = caller.sub === params.id;
+    const mutation: Record<string, any> = isSelfEdit
+      ? { $set: body }
+      : {
+          $set: { ...body, mustChangePassword: true, activeSessionId: null },
+          $inc: { sessionVersion: 1 },
+        };
+
+    const updated = await User.findByIdAndUpdate(params.id, mutation, { new: true }).lean();
     if (!updated) return NextResponse.json({ error: 'User not found' }, { status: 404 });
     return NextResponse.json(u(updated));
   } catch (e) {

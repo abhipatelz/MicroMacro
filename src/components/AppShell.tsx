@@ -61,6 +61,32 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
     return () => { document.body.style.overflow = ''; };
   }, [open]);
 
+  // ── Idle auto-logout ────────────────────────────────────────────────
+  // Sign the user out after 30 minutes with no interaction. We record the
+  // last-activity time on cheap passive listeners and poll once a minute,
+  // rather than resetting a timer on every mousemove. (21 CFR Part 11
+  // §11.10(d) — unattended sessions shouldn't stay open indefinitely.)
+  useEffect(() => {
+    const IDLE_MS = 30 * 60 * 1000;
+    let last = Date.now();
+    const mark = () => { last = Date.now(); };
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    events.forEach((e) => window.addEventListener(e, mark, { passive: true }));
+    const iv = setInterval(() => {
+      if (Date.now() - last >= IDLE_MS) {
+        clearInterval(iv);
+        api('/auth/logout', { method: 'POST' }).finally(() => {
+          router.replace('/login');
+          router.refresh();
+        });
+      }
+    }, 60_000);
+    return () => {
+      clearInterval(iv);
+      events.forEach((e) => window.removeEventListener(e, mark));
+    };
+  }, [router]);
+
   type NavItem = { href: string; label: string; icon: any; iconColor: string; iconBg: string };
 
   const isAdmin       = user.role === 'admin';

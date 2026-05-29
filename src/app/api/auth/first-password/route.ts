@@ -25,7 +25,8 @@ export async function POST(req: NextRequest) {
     user.mustChangePassword = false;
     await user.save();
 
-    // Re-issue token with mustChangePassword cleared
+    // Re-issue token with mustChangePassword cleared, preserving the current
+    // session identity so the user stays signed in on this device.
     const token = signToken({
       sub: String(user._id),
       email: user.email,
@@ -33,6 +34,8 @@ export async function POST(req: NextRequest) {
       name: user.name,
       title: user.title || '',
       mustChangePassword: false,
+      sv: user.sessionVersion ?? 0,
+      sid: user.activeSessionId ?? undefined,
     });
     const res = NextResponse.json({ ok: true });
     setAuthCookie(res, token);

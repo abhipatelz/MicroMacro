@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { connectDB } from './db';
@@ -19,6 +20,16 @@ export interface JwtPayload {
   name: string;
   title?: string;
   mustChangePassword?: boolean;
+  // sv = the user's sessionVersion at sign time. sid = this login's session id.
+  // Both are optional so JWTs minted before session control shipped still
+  // verify (they simply skip the corresponding check — see validateSession).
+  sv?: number;
+  sid?: string;
+}
+
+/** A fresh, unguessable session identifier for one login. */
+export function newSessionId(): string {
+  return crypto.randomBytes(16).toString('hex');
 }
 
 // True for the lead/pm/admin roles — anyone who can lead a team or manage the
@@ -126,13 +137,49 @@ export function getTokenFromRequest(req: NextRequest): string | null {
   return null;
 }
 
+/**
+ * Verify a JWT *and* confirm it still represents a live session by checking
+ * the database. A token is rejected when:
+ *   • the user no longer exists, OR
+ *   • its `sv` is behind the user's current sessionVersion (force-logout, e.g.
+ *     after an admin edits/locks the account), OR
+ *   • its `sid` doesn't match the user's activeSessionId (a newer login
+ *     elsewhere superseded this one — one active session per user).
+ *
+ * Tokens minted before session control shipped carry no `sv`/`sid`; the
+ * corresponding check is skipped for them so we don't mass-logout on deploy.
+ * The returned payload is enriched with the fresh role + mustChangePassword
+ * so a role change or forced reset takes effect without re-login.
+ */
+export async function validateSession(payload: JwtPayload): Promise<JwtPayload | null> {
+  await connectDB();
+  const user = await User.findById(
+    payload.sub,
+    'role mustChangePassword sessionVersion activeSessionId name title email',
+  ).lean();
+  if (!user) return null;
+
+  const u = user as any;
+  if (typeof payload.sv === 'number' && (u.sessionVersion ?? 0) !== payload.sv) return null;
+  if (payload.sid && u.activeSessionId && u.activeSessionId !== payload.sid) return null;
+
+  return {
+    ...payload,
+    role: u.role,
+    name: u.name ?? payload.name,
+    title: u.title ?? payload.title,
+    email: u.email ?? payload.email,
+    mustChangePassword: !!u.mustChangePassword,
+  };
+}
+
 export async function getCurrentUserFromRequest(
   req: NextRequest
 ): Promise<JwtPayload | null> {
   const token = getTokenFromRequest(req);
   if (!token) return null;
   try {
-    return verifyToken(token);
+    return await validateSession(verifyToken(token));
   } catch {
     return null;
   }
@@ -143,11 +190,7 @@ export async function getCurrentUserFromCookie(): Promise<JwtPayload | null> {
   const token = cookies().get(COOKIE)?.value;
   if (!token) return null;
   try {
-    const payload = verifyToken(token);
-    await connectDB();
-    const user = await User.findById(payload.sub, 'mustChangePassword').lean();
-    if (!user) return null;
-    return { ...payload, mustChangePassword: !!(user as any).mustChangePassword };
+    return await validateSession(verifyToken(token));
   } catch {
     return null;
   }

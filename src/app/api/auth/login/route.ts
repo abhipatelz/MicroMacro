@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { signToken, setAuthCookie, configuredAdminEmail } from '@/lib/auth';
+import { signToken, setAuthCookie, configuredAdminEmail, newSessionId } from '@/lib/auth';
 import { readBody, handleError } from '@/lib/http';
 import { u } from '@/lib/serialize';
 import { rateLimit } from '@/lib/rateLimit';
@@ -81,14 +81,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(GENERIC_INVALID.body, { status: GENERIC_INVALID.status });
     }
 
-    if (user.lockedAt) {
+    // ── Admin recovery key ───────────────────────────────────────────────
+    // An admin who forgot their password can type the recovery key they
+    // generated in their profile into the password field and sign straight
+    // in. It works as an alternate credential, never counts toward the
+    // lockout counter, and deliberately bypasses an existing lock — that's
+    // the whole point: it's the way back in when nothing else works.
+    const securityKeyOk =
+      !passwordOk &&
+      user.role === 'admin' &&
+      !!(user as any).securityKeyHash &&
+      bcrypt.compareSync(body.password, (user as any).securityKeyHash);
+
+    if (user.lockedAt && !securityKeyOk) {
       // Don't reveal lock state through the error message — same opaque
       // response as a wrong password. The admin sees the lock in the
       // People page UI.
       return NextResponse.json(GENERIC_INVALID.body, { status: GENERIC_INVALID.status });
     }
 
-    if (!passwordOk) {
+    if (!passwordOk && !securityKeyOk) {
       // Atomic increment so two concurrent wrong-password requests can't
       // both read N and both write N+1. The 5th miss flips lockedAt in
       // the same round-trip; ifn the counter is already at the threshold
@@ -133,7 +145,14 @@ export async function POST(req: NextRequest) {
     if (adminEmail && user.email === adminEmail && user.role !== 'admin') {
       user.role = 'admin' as any;
     }
-    if (user.isModified()) await user.save();
+
+    // Stamp a fresh session id. Because every authenticated request checks
+    // this against the user's activeSessionId, issuing a new one here means
+    // any session opened from another browser/device is immediately logged
+    // out — one active session per user (concurrent-login restriction).
+    const sid = newSessionId();
+    user.activeSessionId = sid;
+    await user.save();
 
     // Every provisioned account can sign in: leads + admin get full
     // management, contributors (employee) get a read-only view of their
@@ -154,6 +173,9 @@ export async function POST(req: NextRequest) {
       role:  user.role as any,
       name:  user.name,
       title: user.title || '',
+      mustChangePassword: !!user.mustChangePassword,
+      sv:    user.sessionVersion ?? 0,
+      sid,
     });
 
     const res = NextResponse.json({ token, user: u(user) });
