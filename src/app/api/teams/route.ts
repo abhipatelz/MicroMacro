@@ -55,7 +55,11 @@ export async function POST(req: NextRequest) {
       name: body.name,
       description: body.description || '',
       leadId: body.leadId || undefined,
-      memberIds: body.memberIds || [],
+      // Auto-include the lead in memberIds so they appear on the team card,
+      // can be picked as a task assignee, and show up in member rollups
+      // without the admin having to add themselves a second time. Callers
+      // can still override by passing an explicit memberIds array.
+      memberIds: body.memberIds || (body.leadId ? [body.leadId] : []),
       function: body.function || 'general'
     });
     await logOperation({
