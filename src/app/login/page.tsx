@@ -115,11 +115,43 @@ export default function LoginPage() {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Quick-PIN state. `device` is undefined while we probe, null when this
+  // browser isn't recognised, and { id, name } once we know who it's bound
+  // to. `usePin` flips to false when the user picks "use password instead".
+  const [device, setDevice] = useState<{ id: string; name: string } | null | undefined>(undefined);
+  const [usePin, setUsePin] = useState(true);
+  const [pin, setPin] = useState('');
+
   useEffect(() => {
     api<{ initialized: boolean }>('/system/status').then(d => {
       if (!d.initialized) setIsFirstRun(true);
     }).catch(() => {});
+    api<{ id: string; name: string } | null>('/auth/device')
+      .then(d => setDevice(d ?? null))
+      .catch(() => setDevice(null));
   }, []);
+
+  async function submitPin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{4,6}$/.test(pin)) { setErr('PIN must be 4–6 digits.'); return; }
+    setErr(''); setLoading(true);
+    try {
+      await api('/auth/pin-login', { method: 'POST', body: { pin } });
+      router.replace('/');
+      router.refresh();
+    } catch (e: any) {
+      setErr(e.message || 'Incorrect PIN.');
+      setPin('');
+    } finally { setLoading(false); }
+  }
+
+  async function forgetDevice() {
+    setLoading(true);
+    try { await api('/auth/device', { method: 'DELETE' }); } catch {}
+    setDevice(null); setUsePin(false); setPin(''); setErr(''); setLoading(false);
+  }
+
+  const pinMode = !!device && usePin && mode === 'login';
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -305,17 +337,76 @@ export default function LoginPage() {
             )}
 
             {/* Heading */}
-            <div className="mb-7 form-swap" key={mode + '-h'}>
+            <div className="mb-7 form-swap" key={(pinMode ? 'pin' : mode) + '-h'}>
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                {mode === 'login' ? 'Welcome back' : 'Set up workspace'}
+                {pinMode ? `Welcome back, ${device!.name.split(' ')[0]}` : (mode === 'login' ? 'Welcome back' : 'Set up workspace')}
               </h2>
               <p className="text-sm text-slate-400 mt-1 leading-snug">
-                {mode === 'login'
-                  ? 'Sign in to continue.'
-                  : 'Create the first lead account.'}
+                {pinMode
+                  ? 'Enter your quick PIN to continue.'
+                  : (mode === 'login' ? 'Sign in to continue.' : 'Create the first lead account.')}
               </p>
             </div>
 
+            {pinMode ? (
+              <form onSubmit={submitPin} className="space-y-4 form-swap" key="pin-form">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Quick PIN
+                  </label>
+                  <input
+                    className="input text-center text-2xl font-bold tracking-[0.5em] font-mono"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    maxLength={6}
+                    pattern="\d{4,6}"
+                    placeholder="••••"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                    aria-label="Quick PIN"
+                  />
+                </div>
+
+                {err && (
+                  <div role="alert" aria-live="assertive"
+                    className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft">
+                    <span aria-hidden="true" className="font-bold leading-none mt-0.5">!</span>
+                    <span>{err}</span>
+                  </div>
+                )}
+
+                <button type="submit" disabled={loading || pin.length < 4} aria-busy={loading}
+                  className="btn-primary w-full justify-center py-3 text-sm font-bold group mt-1"
+                  style={{ boxShadow: '0 4px 14px rgba(21,101,192,0.35)' }}>
+                  {loading ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
+                      <span>Signing in…</span>
+                    </>
+                  ) : (
+                    <>
+                      Sign in with PIN
+                      <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                    </>
+                  )}
+                </button>
+
+                <div className="flex items-center justify-between text-[11px] pt-1">
+                  <button type="button"
+                    onClick={() => { setUsePin(false); setErr(''); setPin(''); }}
+                    className="font-semibold text-slate-500 hover:text-blue-600 transition-colors">
+                    Use password instead
+                  </button>
+                  <button type="button"
+                    onClick={forgetDevice}
+                    className="font-semibold text-slate-400 hover:text-slate-700 transition-colors">
+                    Not {device!.name.split(' ')[0]}? Forget this device
+                  </button>
+                </div>
+              </form>
+            ) : (
             <form onSubmit={submit} className="space-y-4 form-swap" key={mode + '-f'}>
               {mode === 'setup' && (
                 <>
@@ -407,6 +498,7 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
+            )}
 
             <p className="mt-5 text-center text-sm text-slate-400">
               {mode === 'setup' ? (

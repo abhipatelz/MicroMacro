@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
-import { useIsLead } from '@/components/CurrentUserContext';
 import { Plus, X, GripVertical, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
@@ -156,15 +155,11 @@ function PhaseRow({
 ════════════════════════════════════════════════════════════════════════════ */
 export default function NewProjectPage() {
   const router = useRouter();
-  const isLead = useIsLead();
 
-  // Contributors can only create PERSONAL projects (private to them). Leads
-  // and admins can create either kind, choosing via the toggle below. Once
-  // we know the viewer is a contributor, lock the form into personal mode.
+  // Every user can create a project; the Personal toggle decides whether it
+  // is a shared team project or a private to-do list. There is no separate
+  // entry point — one form, one toggle.
   const [personal, setPersonal] = useState(false);
-  useEffect(() => {
-    if (isLead === false) setPersonal(true);
-  }, [isLead]);
 
   const [form, setForm] = useState({
     name: '', description: '', lifecycle: 'generic',
@@ -305,28 +300,25 @@ export default function NewProjectPage() {
                 <input type="date" className="input" value={form.dueDate} onChange={e => up('dueDate', e.target.value)} />
               </div>
             </div>
-            {/* Personal toggle — contributors are locked into personal mode;
-                leads can pick. A personal project is private to you and has
-                no team. */}
+            {/* Personal toggle — flip it on to keep the project private to
+                you (no team, hidden from everyone else). Off = a shared
+                project belonging to a team. */}
             <div className="rounded-lg border border-slate-200 px-3 py-2.5 flex items-start gap-3">
               <button
                 type="button"
                 role="switch"
                 aria-checked={personal}
-                disabled={isLead === false}
-                onClick={() => isLead !== false && setPersonal(p => !p)}
-                className={`mt-0.5 relative w-9 h-5 rounded-full shrink-0 transition-colors ${
+                onClick={() => setPersonal(p => !p)}
+                className={`mt-0.5 relative w-9 h-5 rounded-full shrink-0 transition-colors cursor-pointer ${
                   personal ? 'bg-blue-600' : 'bg-slate-300'
-                } ${isLead === false ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+                }`}
               >
                 <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${personal ? 'left-4' : 'left-0.5'}`} />
               </button>
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-slate-700">Personal project</div>
                 <div className="text-xs text-slate-400 mt-0.5">
-                  {isLead === false
-                    ? 'Only visible to you. Contributors create personal projects.'
-                    : 'Only visible to you — no team, hidden from everyone else.'}
+                  Only visible to you — no team, hidden from everyone else (including admins).
                 </div>
               </div>
             </div>

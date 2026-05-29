@@ -137,6 +137,53 @@ export function getTokenFromRequest(req: NextRequest): string | null {
   return null;
 }
 
+/* ── Quick PIN device cookie ────────────────────────────────────────────
+   pragati_device is a long-lived (90d) signed cookie that tells the login
+   page "this device is recognised as user X". It carries NO authority on
+   its own — it only unlocks the PIN sign-in form. The user must still
+   prove they know the PIN (or fall back to password) to mint a real
+   auth token.
+
+   Kept separate from the session cookie so that logging out (which clears
+   pragati_token) does not forget the device — that's the whole point of
+   the quick PIN. */
+const DEVICE_COOKIE = 'pragati_device';
+const DEVICE_MAX_AGE = 60 * 60 * 24 * 90; // 90 days
+
+export interface DevicePayload {
+  kind: 'device';
+  sub:  string;   // user id this device is bound to
+  name: string;   // display name (so we can greet the user before sign-in)
+}
+
+export function signDeviceToken(payload: Omit<DevicePayload, 'kind'>): string {
+  return jwt.sign({ kind: 'device', ...payload }, getSecret(), { expiresIn: '90d' });
+}
+
+export function verifyDeviceToken(token: string): DevicePayload | null {
+  try {
+    const p = jwt.verify(token, getSecret()) as DevicePayload;
+    if (p?.kind !== 'device' || !p.sub) return null;
+    return p;
+  } catch {
+    return null;
+  }
+}
+
+export function setDeviceCookie(response: NextResponse, token: string) {
+  response.cookies.set(DEVICE_COOKIE, token, { ...COOKIE_BASE, maxAge: DEVICE_MAX_AGE });
+}
+
+export function clearDeviceCookie(response: NextResponse) {
+  response.cookies.set(DEVICE_COOKIE, '', { ...COOKIE_BASE, maxAge: 0 });
+}
+
+export function readDeviceFromRequest(req: NextRequest): DevicePayload | null {
+  const c = req.cookies.get(DEVICE_COOKIE)?.value;
+  if (!c) return null;
+  return verifyDeviceToken(c);
+}
+
 /**
  * Verify a JWT *and* confirm it still represents a live session by checking
  * the database. A token is rejected when:

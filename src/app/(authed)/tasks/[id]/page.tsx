@@ -184,6 +184,18 @@ export default function TaskDetailPage() {
       {/* ── Left: main content ─────────────────────────────────────────── */}
       <div className="lg:col-span-2 space-y-4">
 
+        {/* Read-only notice — contributors viewing a task that isn't theirs
+            see the details but can't edit anything. The fields below are
+            disabled so a save attempt can't even start. */}
+        {!canActOnTask && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-[12px] text-slate-600 flex items-start gap-2">
+            <span className="font-bold text-slate-500 shrink-0">View only</span>
+            <span className="text-slate-500">
+              This task isn’t assigned to you, so it’s read-only. Ask its assignee or a team lead to make changes.
+            </span>
+          </div>
+        )}
+
         {/* Breadcrumb + title */}
         <div>
           <div className="text-xs text-slate-400 flex items-center gap-1 mb-2">
@@ -251,9 +263,10 @@ export default function TaskDetailPage() {
           <textarea
             className="textarea min-h-[90px] text-sm"
             value={task.description || ''}
-            onChange={(e) => setTask({ ...task, description: e.target.value })}
-            onBlur={(e) => update({ description: e.target.value })}
+            onChange={(e) => canActOnTask && setTask({ ...task, description: e.target.value })}
+            onBlur={(e) => canActOnTask && update({ description: e.target.value })}
             placeholder="Describe what's expected, references, evidence required…"
+            readOnly={!canActOnTask}
           />
         </Card>
 
@@ -276,16 +289,18 @@ export default function TaskDetailPage() {
                   className="input text-sm font-mono"
                   placeholder="e.g. REF-2025-042"
                   value={task.ccNo || ''}
-                  onChange={(e) => setTask({ ...task, ccNo: e.target.value })}
-                  onBlur={(e) => update({ ccNo: e.target.value })}
+                  onChange={(e) => canActOnTask && setTask({ ...task, ccNo: e.target.value })}
+                  onBlur={(e) => canActOnTask && update({ ccNo: e.target.value })}
+                  readOnly={!canActOnTask}
                 />
               </div>
               <div>
                 <label className="label">Target Completion Date</label>
-                <div>
+                <div className={!canActOnTask ? 'pointer-events-none opacity-60' : ''}
+                  aria-disabled={!canActOnTask || undefined}>
                   <DatePicker
                     value={task.ccTcd ? task.ccTcd.slice(0, 10) : null}
-                    onChange={(v) => update({ ccTcd: v })}
+                    onChange={(v) => canActOnTask && update({ ccTcd: v })}
                     placeholder="Set date"
                   />
                 </div>
@@ -301,8 +316,9 @@ export default function TaskDetailPage() {
                 className="input text-sm font-mono"
                 placeholder="SOP / Protocol / Doc ref"
                 value={task.documentNo || ''}
-                onChange={(e) => setTask({ ...task, documentNo: e.target.value })}
-                onBlur={(e) => update({ documentNo: e.target.value })}
+                onChange={(e) => canActOnTask && setTask({ ...task, documentNo: e.target.value })}
+                onBlur={(e) => canActOnTask && update({ documentNo: e.target.value })}
+                readOnly={!canActOnTask}
               />
             </div>
 
@@ -315,8 +331,9 @@ export default function TaskDetailPage() {
                 className="textarea text-sm min-h-[60px]"
                 placeholder="Any additional notes, blockers, or context…"
                 value={task.remarks || ''}
-                onChange={(e) => setTask({ ...task, remarks: e.target.value })}
-                onBlur={(e) => update({ remarks: e.target.value })}
+                onChange={(e) => canActOnTask && setTask({ ...task, remarks: e.target.value })}
+                onBlur={(e) => canActOnTask && update({ remarks: e.target.value })}
+                readOnly={!canActOnTask}
               />
             </div>
           </div>
@@ -353,12 +370,14 @@ export default function TaskDetailPage() {
               <div className="text-xs text-slate-400 py-1">No subtasks yet.</div>
             )}
           </div>
-          <div className="flex gap-2 mt-3">
-            <input className="input text-sm" placeholder="Add a subtask…"
-              value={newSub} onChange={(e) => setNewSub(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addSubtask()} />
-            <button className="btn-primary text-sm" onClick={addSubtask}>Add</button>
-          </div>
+          {canActOnTask && (
+            <div className="flex gap-2 mt-3">
+              <input className="input text-sm" placeholder="Add a subtask…"
+                value={newSub} onChange={(e) => setNewSub(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addSubtask()} />
+              <button className="btn-primary text-sm" onClick={addSubtask}>Add</button>
+            </div>
+          )}
         </Card>
 
         {/* Comments */}

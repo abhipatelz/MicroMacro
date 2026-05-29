@@ -80,7 +80,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
         {/* Leads can create any project; contributors can still create a
             personal (private) one. */}
         <Link href="/projects/new" className="btn-primary gap-2 shrink-0">
-          <Plus size={15} /> {isLead ? 'New project' : 'New personal project'}
+          <Plus size={15} /> New project
         </Link>
       </div>
 
@@ -251,7 +251,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
           </div>
           {!q && !team && !lc && !status && (
             <Link href="/projects/new" className="btn-primary text-sm gap-2 inline-flex">
-              <Plus size={14} /> {isLead ? 'New project' : 'New personal project'}
+              <Plus size={14} /> New project
             </Link>
           )}
         </div>

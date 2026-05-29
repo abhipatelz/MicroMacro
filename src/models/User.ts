@@ -53,6 +53,13 @@ const UserSchema = new Schema(
     // once at generation time and never stored. Only meaningful on admins.
     securityKeyHash: { type: String, default: null },
 
+    // ── Quick PIN ───────────────────────────────────────────────────────
+    // bcrypt hash of the user's 4–6 digit quick PIN. When set, a returning
+    // visitor on a recognised device (pragati_device cookie) can sign in
+    // with just the PIN instead of their full password. Null = no PIN
+    // configured; user must enter their password as normal.
+    pinHash: { type: String, default: null },
+
     // ── Session control ─────────────────────────────────────────────────
     // sessionVersion is embedded in every JWT we sign. Bumping it instantly
     // invalidates every token previously issued for this user — used to

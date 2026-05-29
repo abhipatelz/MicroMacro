@@ -187,6 +187,43 @@ export default function SettingsPage() {
   const [recoveryKeyBusy, setRecoveryKeyBusy] = useState(false);
   const [generatedKey, setGeneratedKey]       = useState<string | null>(null);
 
+  // Quick PIN section state.
+  const [pin, setPin]           = useState('');
+  const [pinConfirm, setPinCnf] = useState('');
+  const [pinBusy, setPinBusy]   = useState(false);
+  const [pinMsg, setPinMsg]     = useState('');
+  const [pinErr, setPinErr]     = useState('');
+
+  async function savePin(e: React.FormEvent) {
+    e.preventDefault();
+    setPinMsg(''); setPinErr('');
+    if (!/^\d{4,6}$/.test(pin)) { setPinErr('PIN must be 4–6 digits.'); return; }
+    if (pin !== pinConfirm) { setPinErr("PINs don't match."); return; }
+    setPinBusy(true);
+    try {
+      await api('/auth/pin', { method: 'POST', body: { pin } });
+      setPinMsg(user?.pinSet ? 'Quick PIN updated.' : 'Quick PIN saved — you can sign in with it next time on this device.');
+      setPin(''); setPinCnf('');
+      const d: any = await api('/users/me');
+      setUser(d.user);
+    } catch (err: any) {
+      setPinErr(err.message || 'Failed to save PIN.');
+    } finally { setPinBusy(false); }
+  }
+
+  async function removePin() {
+    if (!window.confirm('Remove your quick PIN? You will need your full password to sign in again.')) return;
+    setPinBusy(true);
+    try {
+      await api('/auth/pin', { method: 'DELETE' });
+      setPinMsg('Quick PIN removed.');
+      const d: any = await api('/users/me');
+      setUser(d.user);
+    } catch (err: any) {
+      setPinErr(err.message || 'Failed to remove PIN.');
+    } finally { setPinBusy(false); }
+  }
+
   useEffect(() => {
     api('/users/me').then((d: any) => {
       const u = d.user;
@@ -391,6 +428,57 @@ export default function SettingsPage() {
                 disabled={!current || !pwStrong || !pwMatches || pwSaving}>
                 {pwSaving ? 'Updating…' : 'Update password'}
               </button>
+            </form>
+          </Section>
+          </div>
+
+          {/* Quick PIN — skip the full password on a remembered device */}
+          <div id="quick-pin" className="scroll-mt-6">
+          <Section icon={Lock} title="Quick PIN"
+            subtitle={user?.pinSet
+              ? 'Your quick PIN is set. Sign in with it on any device you log in from.'
+              : 'Set a 4–6 digit PIN to sign back in without your full password on this device.'}>
+            <form onSubmit={savePin} className="space-y-3.5">
+              <Field label={user?.pinSet ? 'New PIN' : 'Choose a PIN'}>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  className="input text-center text-lg font-mono tracking-[0.4em]"
+                  maxLength={6}
+                  pattern="\d{4,6}"
+                  placeholder="••••"
+                  value={pin}
+                  onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+                />
+              </Field>
+              <Field label="Confirm PIN">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  className="input text-center text-lg font-mono tracking-[0.4em]"
+                  maxLength={6}
+                  pattern="\d{4,6}"
+                  placeholder="••••"
+                  value={pinConfirm}
+                  onChange={e => setPinCnf(e.target.value.replace(/\D/g, ''))}
+                />
+              </Field>
+              {pinErr && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{pinErr}</div>}
+              {pinMsg && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">✓ {pinMsg}</div>}
+              <div className="flex gap-2">
+                <button type="submit" className="btn-primary flex-1 justify-center"
+                  disabled={pinBusy || pin.length < 4 || pin !== pinConfirm}>
+                  {pinBusy ? 'Saving…' : (user?.pinSet ? 'Update PIN' : 'Save PIN')}
+                </button>
+                {user?.pinSet && (
+                  <button type="button" onClick={removePin} disabled={pinBusy}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors">
+                    Remove
+                  </button>
+                )}
+              </div>
             </form>
           </Section>
           </div>
