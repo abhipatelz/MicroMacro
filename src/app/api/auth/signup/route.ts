@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { Invite } from '@/models/Invite';
-import { signToken, setAuthCookie, configuredAdminEmail } from '@/lib/auth';
+import { normalizeRole, signToken, setAuthCookie, configuredAdminEmail } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { u } from '@/lib/serialize';
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     const jwt = signToken({
       sub:   String(user._id),
       email: user.email,
-      role:  user.role as any,
+      role:  normalizeRole(user.role),
       name:  user.name,
       title: user.title || '',
     });

@@ -123,21 +123,23 @@ export const ROLE_LABEL: Record<string, string> = {
   admin:    'Admin',
   pm:       'Team Lead',
   lead:     'Team Lead',
+  contributor: 'Individual Contributor',
   employee: 'Individual Contributor',
 };
 const ROLE_BADGE_CLASS: Record<string, string> = {
   admin:    'bg-amber-50 text-amber-800 border-amber-200',
   pm:       'bg-emerald-50 text-emerald-700 border-emerald-200',
   lead:     'bg-emerald-50 text-emerald-700 border-emerald-200',
+  contributor: 'bg-blue-50 text-blue-700 border-blue-200',
   employee: 'bg-blue-50 text-blue-700 border-blue-200',
 };
 export function roleLabel(role?: string | null): string {
-  return ROLE_LABEL[role || 'employee'] ?? 'Individual Contributor';
+  return ROLE_LABEL[role || 'contributor'] ?? 'Individual Contributor';
 }
 export function RoleBadge({ role, className = '' }: { role?: string | null; className?: string }) {
-  const r = role || 'employee';
+  const r = role || 'contributor';
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[11px] font-semibold ${ROLE_BADGE_CLASS[r] ?? ROLE_BADGE_CLASS.employee} ${className}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[11px] font-semibold ${ROLE_BADGE_CLASS[r] ?? ROLE_BADGE_CLASS.contributor} ${className}`}>
       {roleLabel(r)}
     </span>
   );

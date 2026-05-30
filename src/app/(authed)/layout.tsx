@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getCurrentUserFromCookie } from '@/lib/auth';
+import { getCurrentUserFromCookie, normalizeRole } from '@/lib/auth';
 import AppShell from '@/components/AppShell';
 
 export default async function AuthedLayout({ children }: { children: React.ReactNode }) {
@@ -19,7 +19,7 @@ export default async function AuthedLayout({ children }: { children: React.React
         id: user.sub,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: normalizeRole(user.role),
         title: user.title || '',
         mustChangePassword: user.mustChangePassword,
         hasPin: user.hasPin,

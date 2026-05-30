@@ -16,7 +16,7 @@ export function u(user: any) {
     email: user.email,
     username: user.username || null,
     name: user.name,
-    role: user.role === 'pm' ? 'lead' : user.role,
+    role: user.role === 'pm' ? 'lead' : user.role === 'employee' ? 'contributor' : user.role,
     employeeId: user.employeeId || '',
     // Lock state — surfaced on the People page so admin/lead can see
     // who can't sign in and click Unlock. Not credential data.

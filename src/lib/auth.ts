@@ -8,10 +8,10 @@ import { User } from '@/models/User';
 // Product roles:
 //   'admin'    — workspace owner / administrator.
 //   'lead'     — team lead.
-//   'employee' — individual contributor.
-// Legacy rows may still contain 'pm'; normalize it to 'lead' at every boundary.
-export type Role = 'employee' | 'lead' | 'admin';
-export type StoredRole = Role | 'pm';
+//   'contributor' — individual contributor.
+// Legacy rows may still contain 'pm' or 'employee'; normalize at every boundary.
+export type Role = 'contributor' | 'lead' | 'admin';
+export type StoredRole = Role | 'pm' | 'employee';
 
 export interface JwtPayload {
   sub: string;
@@ -39,7 +39,7 @@ export function newSessionId(): string {
 export function normalizeRole(role?: string | null): Role {
   if (role === 'admin') return 'admin';
   if (role === 'lead' || role === 'pm') return 'lead';
-  return 'employee';
+  return 'contributor';
 }
 
 // True for team lead/admin roles. Use `isAdmin()` when you specifically want
@@ -60,6 +60,10 @@ export function isAdmin(role?: string | null): boolean {
 // product owner can use their account for everything.
 export function canMutate(role?: string | null): boolean {
   return isAdmin(role) || isLead(role);
+}
+
+export function isContributor(role?: string | null): boolean {
+  return normalizeRole(role) === 'contributor';
 }
 
 // Workspace owner's email — hard-coded so the auto-promote works even when

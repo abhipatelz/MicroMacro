@@ -12,11 +12,11 @@ import { logOperation } from '@/lib/audit';
 export const runtime = 'nodejs';
 
 const Body = z.object({
-  // The admin can move anyone between Contributor (employee) and Team Lead.
+  // The admin can move anyone between Individual Contributor and Team Lead.
   // 'admin' is intentionally NOT assignable here — there is a single
   // workspace admin (the owner), provisioned via env/bootstrap, never
   // through a generic PATCH.
-  role:       z.enum(['employee', 'lead']).optional(),
+  role:       z.enum(['contributor', 'lead']).optional(),
   title:      z.string().max(120).optional(),
   name:       z.string().max(120).optional(),
   department: z.string().max(120).optional(),
@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'You cannot lock your own account.' }, { status: 403 });
     }
 
-    if (body.role === 'employee') {
+    if (body.role === 'contributor') {
       const leadCount = await User.countDocuments({ role: { $in: ['pm', 'lead', 'admin'] } });
       if (leadCount <= 1) {
         return NextResponse.json({ error: 'Cannot demote the last lead. Promote another user first.' }, { status: 409 });

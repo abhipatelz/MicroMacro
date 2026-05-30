@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     const [activeProjects, completedProjects, users] = await Promise.all([
       Project.find({ status: { $in: ['planning', 'in_progress', 'on_hold'] }, ...NOT_PERSONAL }).lean(),
       Project.find({ status: 'completed', ...NOT_PERSONAL }).sort({ updatedAt: -1 }).limit(10).lean(),
-      User.find({ role: 'employee' }).lean(),
+      User.find({ role: { $in: ['contributor', 'employee'] } }).lean(),
     ]);
 
     const projectIds = activeProjects.map(p => p._id);

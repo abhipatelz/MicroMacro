@@ -24,19 +24,19 @@ async function _devSeed() {
   // ── Users ──────────────────────────────────────────────────────────────────
   const people = [
     { email: 'satya@qi.local',       name: 'Satya Rajendran',   role: 'lead',     title: 'DGM – Quality Informatics',   pw: 'satya123' },
-    { email: 'bhoomika@qi.local',     name: 'Bhoomika',          role: 'employee', title: 'UI/UX Designer',              pw: 'bhoomika123' },
-    { email: 'yash@qi.local',         name: 'Yash Patel',        role: 'employee', title: 'UI/UX Designer',              pw: 'yash123' },
-    { email: 'jimil@qi.local',        name: 'Jimil',             role: 'employee', title: 'UI/UX Designer',              pw: 'jimil123' },
-    { email: 'dhruva@qi.local',       name: 'Dhruva Chauhan',    role: 'employee', title: 'Developer',                   pw: 'dhruva123' },
-    { email: 'ronak@qi.local',        name: 'Ronak Ray',         role: 'employee', title: 'Senior Developer',            pw: 'ronak123' },
-    { email: 'nikesh@qi.local',       name: 'Nikesh Modi',       role: 'employee', title: 'Senior Developer',            pw: 'nikesh123' },
-    { email: 'rishi@qi.local',        name: 'Rishi Bhatt',       role: 'employee', title: 'Developer',                   pw: 'rishi123' },
-    { email: 'subhangini@qi.local',   name: 'Subhangini Shetty', role: 'employee', title: 'QA Specialist',               pw: 'subhangini123' },
+    { email: 'bhoomika@qi.local',     name: 'Bhoomika',          role: 'contributor', title: 'UI/UX Designer',              pw: 'bhoomika123' },
+    { email: 'yash@qi.local',         name: 'Yash Patel',        role: 'contributor', title: 'UI/UX Designer',              pw: 'yash123' },
+    { email: 'jimil@qi.local',        name: 'Jimil',             role: 'contributor', title: 'UI/UX Designer',              pw: 'jimil123' },
+    { email: 'dhruva@qi.local',       name: 'Dhruva Chauhan',    role: 'contributor', title: 'Developer',                   pw: 'dhruva123' },
+    { email: 'ronak@qi.local',        name: 'Ronak Ray',         role: 'contributor', title: 'Senior Developer',            pw: 'ronak123' },
+    { email: 'nikesh@qi.local',       name: 'Nikesh Modi',       role: 'contributor', title: 'Senior Developer',            pw: 'nikesh123' },
+    { email: 'rishi@qi.local',        name: 'Rishi Bhatt',       role: 'contributor', title: 'Developer',                   pw: 'rishi123' },
+    { email: 'subhangini@qi.local',   name: 'Subhangini Shetty', role: 'contributor', title: 'QA Specialist',               pw: 'subhangini123' },
   ];
 
   const users = await Promise.all(
     people.map((p) =>
-      User.create({ email: p.email, name: p.name, passwordHash: hash(p.pw), role: p.role as any, title: p.title })
+      User.create({ email: p.email, name: p.name, passwordHash: hash(p.pw), role: (p.role === 'employee' ? 'contributor' : p.role) as any, title: p.title })
     )
   );
   const U = Object.fromEntries(users.map((u) => [u.email, u]));

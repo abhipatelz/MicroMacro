@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import {
-  signToken, setAuthCookie, setDeviceCookie, clearDeviceCookie,
+  normalizeRole, signToken, setAuthCookie, setDeviceCookie, clearDeviceCookie,
   getDeviceUserId, newSessionId,
 } from '@/lib/auth';
 import { readBody, handleError } from '@/lib/http';
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     const token = signToken({
       sub:   String(user._id),
       email: (user as any).email,
-      role:  (user as any).role,
+      role:  normalizeRole((user as any).role),
       name:  (user as any).name,
       title: (user as any).title || '',
       mustChangePassword: !!(user as any).mustChangePassword,

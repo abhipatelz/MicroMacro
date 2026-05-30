@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
           employeeId,
           name,
           passwordHash:       bcrypt.hashSync(defaultPassword(name, employeeId), 10),
-          role:               'employee',
+          role:               'contributor',
           mustChangePassword: true,
         });
         created.push({ username: r.username, name });

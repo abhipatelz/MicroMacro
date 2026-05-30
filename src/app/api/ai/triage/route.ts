@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
-import { requireUser } from '@/lib/auth';
+import { isContributor, requireUser } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { runTriage } from '@/lib/ai/triage';
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const result = runTriage(body.title, body.description || '', corpusWithCodes);
 
     if (body.save && body.taskId) {
-      if (user.role === 'employee' && String((await Task.findById(body.taskId).select('assigneeId').lean())?.assigneeId) !== user.sub)
+      if (isContributor(user.role) && String((await Task.findById(body.taskId).select('assigneeId').lean())?.assigneeId) !== user.sub)
         return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
       await Task.updateOne(
         { _id: body.taskId },

@@ -11,9 +11,9 @@ const UserSchema = new Schema(
     username:     { type: String, unique: true, sparse: true, lowercase: true, trim: true },
     name:         { type: String, required: true },
     passwordHash: { type: String, required: true },
-    // Product roles are admin, lead, and employee (individual contributor).
-    // 'pm' is accepted only as a legacy alias and normalized to 'lead' by auth.
-    role:         { type: String, enum: ['employee', 'pm', 'lead', 'admin'], default: 'employee' },
+    // Product roles are admin, lead, and contributor.
+    // 'pm'/'employee' are legacy aliases accepted only until migrated.
+    role:         { type: String, enum: ['contributor', 'lead', 'admin', 'pm', 'employee'], default: 'contributor' },
 
     // ── Identity fields ─────────────────────────────────────────────────
     // These can be set manually or overwritten by LDAP sync.

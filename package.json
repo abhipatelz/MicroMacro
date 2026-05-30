@@ -14,6 +14,7 @@
     "set-admin": "tsx scripts/set-admin.ts",
     "set-password": "tsx scripts/set-password.ts",
     "backfill-usernames": "tsx scripts/backfill-usernames.ts",
+    "migrate-roles": "tsx scripts/migrate-roles.ts",
     "smoke-prod": "tsx scripts/smoke-prod.ts",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",

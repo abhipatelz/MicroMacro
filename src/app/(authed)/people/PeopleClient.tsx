@@ -351,7 +351,7 @@ function ImportMembersModal({ onClose, onDone }: { onClose: () => void; onDone: 
 
 /* ── Role-change confirmation dialog ──────────────────────────────────── */
 function RoleConfirmDialog({ user, targetRole, onConfirm, onCancel, saving }: {
-  user: any; targetRole: 'lead' | 'employee'; onConfirm: () => void; onCancel: () => void; saving: boolean;
+  user: any; targetRole: 'lead' | 'contributor'; onConfirm: () => void; onCancel: () => void; saving: boolean;
 }) {
   const promote = targetRole === 'lead';
   return (
@@ -481,7 +481,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
   const [showImport, setShowImport] = useState(false);
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const [creds, setCreds] = useState<{ name: string; email: string; tempPassword: string } | null>(null);
-  const [roleConfirm, setRoleConfirm] = useState<{ user: any; targetRole: 'lead' | 'employee' } | null>(null);
+  const [roleConfirm, setRoleConfirm] = useState<{ user: any; targetRole: 'lead' | 'contributor' } | null>(null);
   const [roleErr, setRoleErr] = useState('');
   const [editUser, setEditUser] = useState<any | null>(null);
   const [removeConfirm, setRemoveConfirm] = useState<any | null>(null);
@@ -569,7 +569,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
   }
 
   const pms = users.filter((u) => u.role === 'lead' || u.role === 'admin');
-  const ics = users.filter((u) => u.role === 'employee');
+  const ics = users.filter((u) => u.role === 'contributor');
   const isPM = (me?.role === 'lead' || me?.role === 'admin');
 
   return (
@@ -708,7 +708,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                 {me?.id !== u.id && u.role !== 'admin' && (
                   <button
                     className="text-xs text-slate-500 hover:text-amber-600 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-amber-50 transition-colors border border-transparent hover:border-amber-200"
-                    onClick={() => setRoleConfirm({ user: u, targetRole: 'employee' })}
+                    onClick={() => setRoleConfirm({ user: u, targetRole: 'contributor' })}
                     disabled={saving === u.id}>
                     Make contributor
                   </button>

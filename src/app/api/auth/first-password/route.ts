@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { requireUser, signToken, setAuthCookie } from '@/lib/auth';
+import { normalizeRole, requireUser, signToken, setAuthCookie } from '@/lib/auth';
 import { readBody, handleError } from '@/lib/http';
 
 export const runtime = 'nodejs';
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const token = signToken({
       sub: String(user._id),
       email: user.email,
-      role: user.role as any,
+      role: normalizeRole(user.role),
       name: user.name,
       title: user.title || '',
       mustChangePassword: false,

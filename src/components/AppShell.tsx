@@ -30,7 +30,7 @@ export interface CurrentUser {
   id: string;
   name: string;
   email: string;
-  role: 'employee' | 'pm' | 'lead' | 'admin';
+  role: 'contributor' | 'lead' | 'admin';
   title?: string;
   mustChangePassword?: boolean;
   hasPin?: boolean;
@@ -131,7 +131,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
     { href: '/audit',    label: 'Logs',      icon: ScrollText,      iconColor: '#6366F1', iconBg: '#EEF2FF' },
   ];
 
-  const employeeNav: NavItem[] = [
+  const contributorNav: NavItem[] = [
     { href: '/',         label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects',  icon: FolderKanban,    iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams',    label: 'Team',      icon: Users,           iconColor: '#2E7D32', iconBg: '#E8F5E9' },
@@ -141,7 +141,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
 
   const nav = isAdmin
     ? [...leadNav, ...adminExtra]
-    : isLeadOrAdmin ? leadNav : employeeNav;
+    : isLeadOrAdmin ? leadNav : contributorNav;
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname?.startsWith(href);
 
   async function logout() {

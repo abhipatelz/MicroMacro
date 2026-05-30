@@ -156,11 +156,11 @@ export async function POST(req: NextRequest) {
     await user.save();
 
     // Every provisioned account can sign in: leads + admin get full
-    // management, contributors (employee) get a read-only view of their
+    // management, contributors get a read-only view of their
     // team's board plus the ability to update the status / subtasks /
     // comments of tasks assigned to them. Accounts with an unknown role
     // are still refused.
-    const KNOWN_ROLES = ['employee', 'pm', 'lead', 'admin'];
+    const KNOWN_ROLES = ['contributor', 'employee', 'pm', 'lead', 'admin'];
     if (!KNOWN_ROLES.includes(String(user.role))) {
       return NextResponse.json(
         { error: 'Your account is not active. Contact your administrator.' },
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
     const token = signToken({
       sub:   String(user._id),
       email: user.email,
-      role:  user.role === 'pm' ? 'lead' : user.role as any,
+      role:  user.role === 'pm' ? 'lead' : user.role === 'employee' ? 'contributor' : user.role as any,
       name:  user.name,
       title: user.title || '',
       mustChangePassword: !!user.mustChangePassword,

@@ -30,7 +30,7 @@ async function main() {
       email: p.email.toLowerCase(),
       name: p.name,
       passwordHash: hash(p.pw),
-      role: p.role as any,
+      role: (p.role === 'employee' ? 'contributor' : p.role) as any,
       title: p.title
     });
 
@@ -41,11 +41,11 @@ async function main() {
     { email: 'rahul@pragati.local', name: 'Rahul Mehta', role: 'lead', title: 'CSV Lead', pw: 'rahul123' },
     { email: 'ananya@pragati.local', name: 'Ananya Iyer', role: 'lead', title: 'Data Integrity Lead', pw: 'ananya123' },
     { email: 'dhruv@pragati.local', name: 'Dhruv Kapoor', role: 'lead', title: 'Pharmacovigilance Lead', pw: 'dhruv123' },
-    { email: 'karan@pragati.local', name: 'Karan Desai', role: 'employee', title: 'QA Analyst', pw: 'karan123' },
-    { email: 'neha@pragati.local', name: 'Neha Patel', role: 'employee', title: 'QA Analyst', pw: 'neha123' },
-    { email: 'vikram@pragati.local', name: 'Vikram Joshi', role: 'employee', title: 'CSV Engineer', pw: 'vikram123' },
-    { email: 'meera@pragati.local', name: 'Meera Kulkarni', role: 'employee', title: 'Validation Specialist', pw: 'meera123' },
-    { email: 'arjun@pragati.local', name: 'Arjun Reddy', role: 'employee', title: 'PV Case Processor', pw: 'arjun123' }
+    { email: 'karan@pragati.local', name: 'Karan Desai', role: 'contributor', title: 'QA Analyst', pw: 'karan123' },
+    { email: 'neha@pragati.local', name: 'Neha Patel', role: 'contributor', title: 'QA Analyst', pw: 'neha123' },
+    { email: 'vikram@pragati.local', name: 'Vikram Joshi', role: 'contributor', title: 'CSV Engineer', pw: 'vikram123' },
+    { email: 'meera@pragati.local', name: 'Meera Kulkarni', role: 'contributor', title: 'Validation Specialist', pw: 'meera123' },
+    { email: 'arjun@pragati.local', name: 'Arjun Reddy', role: 'contributor', title: 'PV Case Processor', pw: 'arjun123' }
   ];
   const users = await Promise.all(people.map(mkUser));
   const U = Object.fromEntries(users.map((u) => [u.email, u]));

@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       employeeId,
       name:               body.name,
       passwordHash:       bcrypt.hashSync(password, 10),
-      role:               'employee',
+      role:               'contributor',
       // Sign in with the standard default (FirstName@employeeId), then set
       // your own password on first login.
       mustChangePassword: true,

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { User } from '@/models/User';
-import { requireUser } from '@/lib/auth';
+import { isContributor, requireUser } from '@/lib/auth';
 import { getTaskAccess, canActOnOwnTask } from '@/lib/taskAccess';
 import { handleError, readBody } from '@/lib/http';
 import mongoose from 'mongoose';
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const t = await Task.findById(params.id);
     if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    if (user.role === 'employee' && String(t.assigneeId) !== user.sub && !(t as any).subtasks?.some((s: any) => String(s.assigneeId) === user.sub))
+    if (isContributor(user.role) && String(t.assigneeId) !== user.sub && !(t as any).subtasks?.some((s: any) => String(s.assigneeId) === user.sub))
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     const c = {
       _id: new mongoose.Types.ObjectId(),
