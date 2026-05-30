@@ -38,7 +38,7 @@ export async function getLeadDashboardData(
 
   const [myTasks, teamTasksRaw, teams, owners, projectTaskAgg, perUserAgg, users] = await Promise.all([
     Task.find({ assigneeId: scope.userOid }).sort({ status: 1, dueDate: 1 }).lean(),
-    Task.find({ projectId: { $in: visibleProjectIds } }).sort({ status: 1, dueDate: 1 }).limit(200).lean(),
+    Task.find({ projectId: { $in: visibleProjectIds } }).sort({ position: 1, dueDate: 1 }).limit(200).lean(),
     Team.find({ _id: { $in: scope.teamOids } }).lean(),
     User.find({ _id: { $in: projects.map(p => p.ownerId).filter(Boolean) } }, '_id name').lean(),
     Task.aggregate([
@@ -141,6 +141,7 @@ export async function getLeadDashboardData(
       subtasksDone: ((t as any).subtasks || []).filter((s: any) => s.status === 'done').length,
       subtaskTitles: ((t as any).subtasks || []).slice(0, 3).map((s: any) => s.title),
       gxpCritical:  !!(t as any).gxpCritical,
+      position:     (t as any).position ?? 0,
     };
   });
 

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
-import { requireUser, isLead } from '@/lib/auth';
+import { requireUser } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 
@@ -16,9 +16,10 @@ const Body = z.object({
 });
 
 /**
- * Persist a manual reshuffle of tasks (within a phase) on the by-phase
- * project view. Lead/pm/admin only; the project must be in the caller's
- * scope. We write position = array index so the order is exact and stable.
+ * Persist a manual reshuffle of tasks for a visible project. Dashboard and
+ * project-detail lists both use this lightweight position field; the project
+ * must be in the caller's scope. We write position = array index so the order
+ * is exact and stable.
  */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -35,12 +36,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       '_id ownerId',
     ).lean();
     if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    // Leads, or the owner of the project (e.g. a personal project), may reorder.
-    const ownsProject = String((project as any).ownerId || '') === String(user!.sub);
-    if (!isLead(user!.role) && !ownsProject) {
-      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
-    }
-
     const { orderedIds } = await readBody(req, Body);
     const valid = orderedIds.filter((x) => mongoose.isValidObjectId(x));
 

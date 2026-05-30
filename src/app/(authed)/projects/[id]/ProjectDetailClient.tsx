@@ -226,11 +226,11 @@ function KanbanBoard({ tasks, onDropReorder, isLead, onDelete }: {
                 return (
                   <div key={t.id}>
                   {showLineBefore && <div className="h-0.5 rounded-full mb-2" style={{ background: meta.color }} />}
-                  <div draggable
-                    onDragStart={e => handleDragStart(e, t.id)}
+                  <div draggable={isLead}
+                    onDragStart={e => isLead && handleDragStart(e, t.id)}
                     onDragEnd={handleDragEnd}
                     onDragOver={e => handleCardDragOver(e, col, index)}
-                    className="group relative rounded-lg border transition-all duration-150 cursor-grab active:cursor-grabbing"
+                    className={`group relative rounded-lg border transition-all duration-150 ${isLead ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
                     style={{
                       background: dark ? '#1e293b' : '#ffffff',
                       borderColor: isDraggingThis ? meta.color : (dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
@@ -742,7 +742,29 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
             <div>Team: {project.teamId
               ? <Link href={`/teams/${project.teamId}`} className="text-blue-600 hover:underline">{project.teamName || '—'}</Link>
               : '—'}</div>
-            <div>Due: {formatDate(project.dueDate)}</div>
+            <div className="flex items-center justify-end gap-2">
+                <span>Due:</span>
+                {canManage ? (
+                  <DatePicker
+                    value={project.dueDate ? project.dueDate.slice(0, 10) : null}
+                    onChange={async (v) => {
+                      setProject((p: any) => ({ ...p, dueDate: v }));
+                      try {
+                        await api(`/projects/${id}`, { method: 'PATCH', body: { dueDate: v } });
+                        showToast('Project due date updated');
+                        load();
+                      } catch (e: any) {
+                        showToast(e.message || 'Could not update due date', 'err');
+                        load();
+                      }
+                    }}
+                    placeholder="Set date"
+                    size="sm"
+                  />
+                ) : (
+                  <span>{formatDate(project.dueDate)}</span>
+                )}
+              </div>
           </div>
 
           {/* Actions — Export for everyone; Archive + Delete admin-only. */}
@@ -839,7 +861,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                 <ProgressBar value={pctP} className="mb-3" />
                 <div className="divide-y divide-slate-100">
                   {ts.map((t: any, ti: number) => {
-                    const canEdit = canManage || (me && t.assigneeId === me.id);
+                    const canEdit = canManage;
                     return (
                     <div key={t.id} className="py-2.5 flex items-center gap-2.5 text-sm group">
                       {canEdit ? (
@@ -897,7 +919,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           <Card title="Unphased tasks">
             <div className="divide-y divide-slate-100">
               {tasks.filter((t: any) => !t.phaseId).map((t: any) => {
-                const canEdit = canManage || (me && t.assigneeId === me.id);
+                const canEdit = canManage;
                 return (
                 <div key={t.id} className="py-2.5 flex items-center gap-2.5 text-sm group">
                   {canEdit ? (

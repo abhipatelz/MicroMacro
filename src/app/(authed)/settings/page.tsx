@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/client/api';
-import { Avatar, RoleBadge } from '@/components/ui';
+import { Avatar } from '@/components/ui';
 import { ActivityGraph } from '@/components/ActivityGraph';
 import {
   User, Bell, Lock, ShieldCheck, Copy, Check, RefreshCw, X, Activity, KeyRound,
@@ -113,6 +113,23 @@ function ReadonlyField({ label, value }: { label: string; value: string }) {
       </div>
     </div>
   );
+}
+
+
+function ProfilePhoto({ name, src, size = 88 }: { name: string; src?: string | null; size?: number }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={`${name || 'User'} profile`}
+        width={size}
+        height={size}
+        className="rounded-2xl object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return <Avatar name={name} size={size} />;
 }
 
 /* ── Toggle switch ────────────────────────────────────────────────────────── */
@@ -263,6 +280,7 @@ export default function SettingsPage() {
 
   const [name, setName]           = useState('');
   const [employeeId, setEmpId]    = useState('');
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [identitySaving, setIdentitySaving] = useState(false);
   const [identityMsg, setIdentityMsg] = useState('');
 
@@ -284,6 +302,7 @@ export default function SettingsPage() {
   const [generatedKey, setGeneratedKey]       = useState<string | null>(null);
 
   useEffect(() => {
+    setProfilePhoto(localStorage.getItem('pragati.profilePhoto'));
     api('/users/me').then((d: any) => {
       const u = d.user;
       setUser(u);
@@ -310,6 +329,30 @@ export default function SettingsPage() {
     } finally {
       setRecoveryKeyBusy(false);
     }
+  }
+
+  function handleProfilePhoto(file?: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setIdentityMsg('Please choose an image file.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result || '');
+      setProfilePhoto(value);
+      localStorage.setItem('pragati.profilePhoto', value);
+      setIdentityMsg('Profile photo saved on this device.');
+      setTimeout(() => setIdentityMsg(''), 2500);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearProfilePhoto() {
+    setProfilePhoto(null);
+    localStorage.removeItem('pragati.profilePhoto');
+    setIdentityMsg('Profile photo removed.');
+    setTimeout(() => setIdentityMsg(''), 2500);
   }
 
   async function saveIdentity(e?: React.FormEvent) {
@@ -380,25 +423,21 @@ export default function SettingsPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
               <div className="shrink-0 rounded-3xl bg-white p-1.5"
                 style={{ boxShadow: '0 14px 34px rgba(15,23,42,0.22)' }}>
-                <Avatar name={user.name} size={88} />
+                <ProfilePhoto name={user.name} src={profilePhoto} size={88} />
               </div>
               <div className="min-w-0 pb-1">
-                <div className="mb-3 inline-flex rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white backdrop-blur">
+                <div className="brand-shimmer-block mb-3 inline-flex rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white backdrop-blur">
                   Pragati profile
                 </div>
-                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                  <h1 className="text-2xl font-black leading-tight tracking-tight text-white sm:text-3xl">{user.name}</h1>
-                  <RoleBadge role={user.role} className="w-fit border-white/50 bg-white text-slate-800" />
-                </div>
+                <h1 className="text-2xl font-black leading-tight tracking-tight text-white sm:text-3xl">{user.name}</h1>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/75">
                   <span className="font-mono break-all">@{user.username || user.email}</span>
-                  {user.email && user.username && <span className="break-all">{user.email}</span>}
                 </div>
               </div>
             </div>
             <div className="grid w-full grid-cols-2 gap-2 lg:min-w-[260px] lg:w-auto">
               <div className="rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white backdrop-blur">
-                <div className="text-[10px] font-black uppercase tracking-wider text-white/60">Role</div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-white/60">Access</div>
                 <div className="mt-1 text-sm font-black">{roleText}</div>
               </div>
               <div className="rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white backdrop-blur">
@@ -433,9 +472,28 @@ export default function SettingsPage() {
                 <Field label="Full name">
                   <input className="input" value={name} onChange={e => setName(e.target.value)} required />
                 </Field>
+                <Field label="Profile photo">
+                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                    <ProfilePhoto name={name || user.name} src={profilePhoto} size={52} />
+                    <div className="min-w-0 flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-blue-700 hover:file:bg-blue-100"
+                        onChange={(e) => handleProfilePhoto(e.target.files?.[0])}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-400">Stored on this device only, so only you see it.</p>
+                    </div>
+                    {profilePhoto && (
+                      <button type="button" onClick={clearProfilePhoto} className="btn-secondary text-xs">
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </Field>
                 <ReadonlyField label="Username" value={`@${user.username || user.email}`} />
                 <ReadonlyField label="Member ID" value={employeeId || '—'} />
-                <ReadonlyField label="Role" value={roleText} />
+                <ReadonlyField label="Access rights" value={roleText} />
                 <div className="flex items-center gap-3 pt-1">
                   <button type="submit" className="btn-primary" disabled={identitySaving}>
                     {identitySaving ? 'Saving…' : 'Save changes'}

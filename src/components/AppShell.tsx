@@ -24,7 +24,7 @@ const SetPinModal = dynamic(
 import {
   LayoutDashboard, FolderKanban, Users, UsersRound, NotebookPen,
   LogOut, Menu, X, Moon, Sun, AlertTriangle, ChevronLeft, ChevronRight, ScrollText,
-  Settings, UserCircle, Activity, Bell, ShieldCheck, KeyRound,
+  Settings,
 } from 'lucide-react';
 
 export interface CurrentUser {
@@ -171,14 +171,6 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
     ? 'Admin'
     : user.role === 'lead' ? 'Team Lead' : 'Individual Contributor';
 
-  const accountItems = [
-    { href: '/settings#profile', label: 'Profile', icon: UserCircle },
-    { href: '/settings#activity', label: 'Activity', icon: Activity },
-    { href: '/settings#notifications', label: 'Notifications', icon: Bell },
-    { href: '/settings#security', label: 'Security', icon: ShieldCheck },
-    { href: '/settings#quick-pin', label: 'Quick PIN', icon: KeyRound },
-    ...(user.role === 'admin' ? [{ href: '/settings#recovery-key', label: 'Recovery key', icon: Settings }] : []),
-  ];
 
   const AccountMenu = accountMenuOpen ? (
     <div
@@ -199,21 +191,15 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
         </div>
       </div>
 
-      {accountItems.map((item) => {
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
-              dark ? 'text-white/70 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Icon size={16} className={dark ? 'text-white/40' : 'text-slate-400'} />
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
+      <Link
+        href="/settings"
+        className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
+          dark ? 'text-white/70 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+        }`}
+      >
+        <Settings size={16} className={dark ? 'text-white/40' : 'text-slate-400'} />
+        <span>Account settings</span>
+      </Link>
 
       <div className="my-1.5 border-t" style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }} />
       <button
@@ -373,9 +359,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
             <Avatar name={user.name} size={30} />
           </button>
 
-          <button type="button" onClick={() => setAccountMenuOpen((v) => !v)}
-            onMouseDown={(e) => e.stopPropagation()}
-            className="flex-1 min-w-0 group text-left">
+          <Link href="/settings" className="flex-1 min-w-0 group text-left">
             <div className={`text-xs font-semibold truncate group-hover:underline ${dark ? 'text-white/80' : 'text-slate-700'}`}>{user.name}</div>
             <div style={{ fontSize: 10 }}
               className={`truncate ${
@@ -385,7 +369,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
             }`}>
               {roleText}
             </div>
-          </button>
+          </Link>
 
           {/* Notifications — opens upward so it's never clipped at the bottom */}
           <NotificationBell dark={dark} openUp />

@@ -177,11 +177,16 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const canSignoff = task.requiresQaSignoff && !task.qaSignoffAt && (me?.role === 'lead' || me?.role === 'admin');
   const hasReferenceData = task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
 
-  // Assignee-level actions: a lead/admin, OR the contributor this task is
-  // assigned to. Controls the status pills, subtask toggles, and the
-  // comment box. Everyone else with mere visibility sees them read-only.
+  // IC edit contract: contributors may add execution context only for their
+  // own task or a task that is still unassigned. Status and ownership fields
+  // stay read-only for ICs; leads/admins keep full controls.
   const isAssignee  = !!(me && task.assigneeId && String(task.assigneeId) === String(me.id));
-  const canActOnTask = isLead || isAssignee;
+  const isUnassigned = !task.assigneeId;
+  const canEditDetails = isLead || isAssignee || isUnassigned;
+  const canComment = isLead || isAssignee;
+  const canEditStatus = isLead;
+  const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+  const comments = Array.isArray(task.comments) ? task.comments : [];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
@@ -230,10 +235,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
         {/* Description */}
         <Card title="Description">
           <textarea
-            className="textarea min-h-[90px] text-sm"
+            className="textarea min-h-[90px] text-sm disabled:bg-slate-50 disabled:text-slate-500"
             value={task.description || ''}
+            disabled={!canEditDetails}
             onChange={(e) => setTask({ ...task, description: e.target.value })}
-            onBlur={(e) => update({ description: e.target.value })}
+            onBlur={(e) => canEditDetails && update({ description: e.target.value })}
             placeholder="Describe what's expected, references, evidence required…"
           />
         </Card>
@@ -254,11 +260,12 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
               <div>
                 <label className="label">Reference Number</label>
                 <input
-                  className="input text-sm font-mono"
+                  className="input text-sm font-mono disabled:bg-slate-50 disabled:text-slate-500"
                   placeholder="e.g. REF-2025-042"
                   value={task.ccNo || ''}
+                  disabled={!canEditDetails}
                   onChange={(e) => setTask({ ...task, ccNo: e.target.value })}
-                  onBlur={(e) => update({ ccNo: e.target.value })}
+                  onBlur={(e) => canEditDetails && update({ ccNo: e.target.value })}
                 />
               </div>
               <div>
@@ -266,8 +273,9 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 <div>
                   <DatePicker
                     value={task.ccTcd ? task.ccTcd.slice(0, 10) : null}
-                    onChange={(v) => update({ ccTcd: v }, { optimistic: { ccTcd: v } })}
+                    onChange={(v) => canEditDetails && update({ ccTcd: v }, { optimistic: { ccTcd: v } })}
                     placeholder="Set date"
+                    disabled={!canEditDetails}
                   />
                 </div>
               </div>
@@ -279,11 +287,12 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 <FileText size={11} /> Document No.
               </label>
               <input
-                className="input text-sm font-mono"
+                className="input text-sm font-mono disabled:bg-slate-50 disabled:text-slate-500"
                 placeholder="SOP / Protocol / Doc ref"
                 value={task.documentNo || ''}
+                disabled={!canEditDetails}
                 onChange={(e) => setTask({ ...task, documentNo: e.target.value })}
-                onBlur={(e) => update({ documentNo: e.target.value })}
+                onBlur={(e) => canEditDetails && update({ documentNo: e.target.value })}
               />
             </div>
 
@@ -293,11 +302,12 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 <MessageSquare size={11} /> Remarks
               </label>
               <textarea
-                className="textarea text-sm min-h-[60px]"
+                className="textarea text-sm min-h-[60px] disabled:bg-slate-50 disabled:text-slate-500"
                 placeholder="Any additional notes, blockers, or context…"
                 value={task.remarks || ''}
+                disabled={!canEditDetails}
                 onChange={(e) => setTask({ ...task, remarks: e.target.value })}
-                onBlur={(e) => update({ remarks: e.target.value })}
+                onBlur={(e) => canEditDetails && update({ remarks: e.target.value })}
               />
             </div>
           </div>
@@ -305,22 +315,22 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
 
         {/* Subtasks */}
         <Card
-          title={`Subtasks (${task.subtasks.length})`}
+          title={`Subtasks (${subtasks.length})`}
           action={
             <span className="text-xs text-slate-400">
-              {task.subtasks.filter((s: any) => s.status === 'done').length}/{task.subtasks.length} done
+              {subtasks.filter((s: any) => s.status === 'done').length}/{subtasks.length} done
             </span>
           }
         >
           <div className="space-y-1">
-            {task.subtasks.map((s: any) => (
+            {subtasks.map((s: any) => (
               <div key={s.id} className="flex items-center gap-2.5 text-sm py-1 group">
                 <button
-                  onClick={() => canActOnTask && toggleSub(s)}
-                  disabled={!canActOnTask}
+                  onClick={() => canComment && toggleSub(s)}
+                  disabled={!canComment}
                   className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${
                     s.status === 'done' ? 'border-green-500 bg-green-500' : 'border-slate-300 hover:border-blue-400'
-                  } ${canActOnTask ? '' : 'opacity-60 cursor-default'}`}
+                  } ${canComment ? '' : 'opacity-60 cursor-default'}`}
                 >
                   {s.status === 'done' && <span className="text-white text-[8px] font-black">✓</span>}
                 </button>
@@ -330,22 +340,24 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 <span className="text-xs text-slate-400">{formatDate(s.dueDate)}</span>
               </div>
             ))}
-            {task.subtasks.length === 0 && (
+            {subtasks.length === 0 && (
               <div className="text-xs text-slate-400 py-1">No subtasks yet.</div>
             )}
           </div>
-          <div className="flex gap-2 mt-3">
-            <input className="input text-sm" placeholder="Add a subtask…"
-              value={newSub} onChange={(e) => setNewSub(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addSubtask()} />
-            <button className="btn-primary text-sm" onClick={addSubtask}>Add</button>
-          </div>
+          {canComment && (
+            <div className="flex gap-2 mt-3">
+              <input className="input text-sm" placeholder="Add a subtask…"
+                value={newSub} onChange={(e) => setNewSub(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addSubtask()} />
+              <button className="btn-primary text-sm" onClick={addSubtask}>Add</button>
+            </div>
+          )}
         </Card>
 
         {/* Comments */}
-        <Card title={`Comments (${task.comments.length})`}>
+        <Card title={`Comments (${comments.length})`}>
           <div className="space-y-3 mb-3">
-            {task.comments.map((c: any) => (
+            {comments.map((c: any) => (
               <div key={c.id} className="flex gap-3">
                 <Avatar name={c.userName} size={28} />
                 <div className="flex-1">
@@ -356,11 +368,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 </div>
               </div>
             ))}
-            {task.comments.length === 0 && (
+            {comments.length === 0 && (
               <div className="text-xs text-slate-400">No comments yet.</div>
             )}
           </div>
-          {canActOnTask ? (
+          {canComment ? (
             <div className="flex gap-2">
               <input className="input text-sm" placeholder="Add a comment…"
                 value={comment} onChange={(e) => setComment(e.target.value)}
@@ -384,7 +396,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 clickable flow (the API would 403 them anyway). */}
             <div>
               <label className="label">Status</label>
-              {!isLead && me && task.assigneeId !== me.id ? (
+              {!canEditStatus ? (
                 <div className="mt-1">
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 capitalize">
                     <span className="w-2 h-2 rounded-full"
@@ -399,8 +411,8 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                   const active = task.status === s;
                   return (
                     <button key={s} type="button"
-                      disabled={savingStatus}
-                      onClick={() => updateStatus(s)}
+                      disabled={!canEditStatus || savingStatus}
+                      onClick={() => canEditStatus && updateStatus(s)}
                       className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
                         active
                           ? 'border-transparent font-bold'
@@ -429,7 +441,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
             </div>
             <div>
               <label className="label">Assignee</label>
-              <select className="select" value={task.assigneeId || ''} onChange={(e) => update({ assigneeId: e.target.value || null })}>
+              <select className="select" value={task.assigneeId || ''} disabled={!canEditStatus} onChange={(e) => canEditStatus && update({ assigneeId: e.target.value || null })}>
                 <option value="">Unassigned</option>
                 {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
@@ -444,9 +456,9 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 className="input text-sm"
                 placeholder="e.g. QA review · Sachin · IT Helpdesk"
                 value={task.pendingWith || ''}
-                disabled={!canActOnTask}
+                disabled={!canEditDetails}
                 onChange={(e) => setTask({ ...task, pendingWith: e.target.value })}
-                onBlur={(e) => canActOnTask && update({ pendingWith: e.target.value })}
+                onBlur={(e) => canEditDetails && update({ pendingWith: e.target.value })}
               />
               {task.pendingWith && (
                 <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
