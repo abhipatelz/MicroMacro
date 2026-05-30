@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
@@ -7,6 +7,7 @@ import {
   LIFECYCLE_LABELS, STATUS_COLORS,
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
+import { api } from '@/lib/client/api';
 import { useIsLead } from '@/components/CurrentUserContext';
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
@@ -77,9 +78,19 @@ function greeting(now = new Date()) {
   return 'Good evening';
 }
 
+const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
+
 const STATUS_LABEL: Record<string, string> = {
   todo: 'To do', in_progress: 'In progress', review: 'Review',
   blocked: 'Blocked', done: 'Done',
+};
+
+const FLOW_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  todo: { label: 'To do', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
+  in_progress: { label: 'In progress', color: '#1565C0', bg: '#eff6ff', border: '#bfdbfe' },
+  review: { label: 'Review', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+  blocked: { label: 'Blocked', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+  done: { label: 'Done', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
 };
 
 const HEALTH_META: Record<string, { label: string; bg: string; text: string; dot: string }> = {
@@ -387,10 +398,82 @@ function ProjectsColumn({
   );
 }
 
+
+function DashboardTaskFlow({ tasks, canMove }: { tasks: TeamTask[]; canMove: boolean }) {
+  const [local, setLocal] = useState(tasks);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  useEffect(() => setLocal(tasks), [tasks]);
+
+  async function drop(status: string) {
+    if (!canMove || !draggingId) return;
+    const task = local.find((t) => t.id === draggingId);
+    setDraggingId(null);
+    if (!task || task.status === status) return;
+    setLocal((rows) => rows.map((t) => t.id === task.id ? { ...t, status } : t));
+    try {
+      await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status } });
+    } catch {
+      setLocal(tasks);
+    }
+  }
+
+  const visible = local.slice(0, 20);
+  return (
+    <div className="overflow-x-auto kanban-scroll p-3">
+      <div className="flex gap-3 min-w-max">
+        {STATUSES.map((status) => {
+          const meta = FLOW_META[status];
+          const rows = visible.filter((t) => t.status === status);
+          return (
+            <div
+              key={status}
+              onDragOver={(e) => { if (canMove) e.preventDefault(); }}
+              onDrop={() => drop(status)}
+              className="w-52 shrink-0 rounded-xl border p-2 transition-colors"
+              style={{ background: meta.bg, borderColor: meta.border }}
+            >
+              <div className="mb-2 flex items-center justify-between px-1">
+                <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: meta.color }}>{meta.label}</span>
+                <span className="rounded-full bg-white/75 px-1.5 py-0.5 text-[10px] font-black" style={{ color: meta.color }}>{rows.length}</span>
+              </div>
+              <div className="space-y-2 min-h-16">
+                {rows.map((t) => (
+                  <Link
+                    key={t.id}
+                    href={`/tasks/${t.id}`}
+                    draggable={canMove}
+                    onDragStart={(e) => { if (!canMove) return; setDraggingId(t.id); e.dataTransfer.setData('text/plain', t.id); }}
+                    onDragEnd={() => setDraggingId(null)}
+                    className={`block rounded-lg border border-slate-200 bg-white p-2 shadow-sm transition-all hover:border-blue-200 hover:shadow ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    onClick={(e) => draggingId && e.preventDefault()}
+                  >
+                    <div className="line-clamp-2 text-xs font-semibold leading-snug text-slate-800">{t.title}</div>
+                    <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-400">
+                      <span className="truncate">{t.assigneeName || 'Unassigned'}</span>
+                      <span className="shrink-0">{formatDate(t.ccTcd || t.dueDate)}</span>
+                    </div>
+                  </Link>
+                ))}
+                {rows.length === 0 && <div className="rounded-lg border border-dashed border-slate-200 bg-white/50 p-3 text-center text-[11px] text-slate-400">No tasks</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {local.length > 20 && (
+        <div className="px-1 pt-2 text-[10px] text-slate-400">
+          Showing 20 of {local.length} tasks — open the project for the full Kanban board.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProjectRow({
   project, tasks, defaultOpen,
 }: { project: DashProject; tasks: TeamTask[]; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(!!defaultOpen);
+  const isLead = useIsLead();
   const health = HEALTH_META[project.health];
   const total  = project.taskCount ?? 0;
   const done   = project.tasksDone ?? 0;
@@ -469,28 +552,7 @@ function ProjectRow({
               <div className="text-xs text-slate-400">No tasks yet for this project.</div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50/60 border-b border-slate-100">
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-4 py-2">Task</th>
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Subtasks</th>
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">TCD</th>
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Assigned</th>
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Status</th>
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Completed</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {sortedTasks.slice(0, 20).map(t => <TaskTableRow key={t.id} t={t} />)}
-                </tbody>
-              </table>
-              {sortedTasks.length > 20 && (
-                <div className="px-4 py-2 text-[10px] text-slate-400 border-t border-slate-50">
-                  Showing 20 of {sortedTasks.length} tasks — <Link href={`/projects/${project.id}`} className="text-blue-600 font-semibold">view all in project →</Link>
-                </div>
-              )}
-            </div>
+            <DashboardTaskFlow tasks={sortedTasks} canMove={isLead} />
           )}
         </div>
       )}

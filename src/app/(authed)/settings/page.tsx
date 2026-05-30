@@ -1,11 +1,34 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/client/api';
-import { Avatar, RoleBadge } from '@/components/ui';
+import { Avatar } from '@/components/ui';
 import { ActivityGraph } from '@/components/ActivityGraph';
 import {
   User, Bell, Lock, ShieldCheck, Copy, Check, RefreshCw, X, Activity, KeyRound,
 } from 'lucide-react';
+
+
+const FUN_AVATARS = ['🦊','🐼','🐯','🦄','🐳','🦉','🐙','🚀','🌈','⚡','🍀','🎯'];
+const FUN_AVATAR_KEY = 'pragati.funAvatar';
+
+function FunAvatar({ name, emoji, size = 88 }: { name?: string | null; emoji?: string; size?: number }) {
+  if (!emoji) return <Avatar name={name} size={size} />;
+  return (
+    <div
+      className="flex items-center justify-center shrink-0 select-none rounded-full bg-white"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.48,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), 0 8px 20px rgba(15,23,42,0.14)',
+      }}
+      title={name || 'Your avatar'}
+      aria-label={name || 'Your avatar'}
+    >
+      {emoji}
+    </div>
+  );
+}
 
 /* ── Quick PIN management ─────────────────────────────────────────────────── */
 function QuickPinSection() {
@@ -282,8 +305,10 @@ export default function SettingsPage() {
   const [hasRecoveryKey, setHasRecoveryKey]   = useState<boolean | null>(null);
   const [recoveryKeyBusy, setRecoveryKeyBusy] = useState(false);
   const [generatedKey, setGeneratedKey]       = useState<string | null>(null);
+  const [funAvatar, setFunAvatar] = useState('');
 
   useEffect(() => {
+    setFunAvatar(localStorage.getItem(FUN_AVATAR_KEY) || '');
     api('/users/me').then((d: any) => {
       const u = d.user;
       setUser(u);
@@ -310,6 +335,13 @@ export default function SettingsPage() {
     } finally {
       setRecoveryKeyBusy(false);
     }
+  }
+
+  function chooseFunAvatar(emoji: string) {
+    const next = funAvatar === emoji ? '' : emoji;
+    setFunAvatar(next);
+    if (next) localStorage.setItem(FUN_AVATAR_KEY, next);
+    else localStorage.removeItem(FUN_AVATAR_KEY);
   }
 
   async function saveIdentity(e?: React.FormEvent) {
@@ -380,26 +412,24 @@ export default function SettingsPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
               <div className="shrink-0 rounded-3xl bg-white p-1.5"
                 style={{ boxShadow: '0 14px 34px rgba(15,23,42,0.22)' }}>
-                <Avatar name={user.name} size={88} />
+                <FunAvatar name={user.name} emoji={funAvatar} size={88} />
               </div>
               <div className="min-w-0 pb-1">
                 <div className="mb-3 inline-flex rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white backdrop-blur">
                   Pragati profile
                 </div>
                 <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                  <h1 className="text-2xl font-black leading-tight tracking-tight text-white sm:text-3xl">{user.name}</h1>
-                  <RoleBadge role={user.role} className="w-fit border-white/50 bg-white text-slate-800" />
+                  <h1 className="brand-shimmer-text text-2xl font-black leading-tight tracking-tight sm:text-3xl">{user.name}</h1>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/75">
-                  <span className="font-mono break-all">@{user.username || user.email}</span>
-                  {user.email && user.username && <span className="break-all">{user.email}</span>}
+                  {user.username && <span className="font-mono break-all">@{user.username}</span>}
                 </div>
               </div>
             </div>
             <div className="grid w-full grid-cols-2 gap-2 lg:min-w-[260px] lg:w-auto">
               <div className="rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white backdrop-blur">
-                <div className="text-[10px] font-black uppercase tracking-wider text-white/60">Role</div>
-                <div className="mt-1 text-sm font-black">{roleText}</div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-white/60">Access</div>
+                <div className="mt-1 text-sm font-black">{user.role === 'admin' ? 'Admin' : isLeadOrAdmin ? 'Team Lead' : 'Workspace member'}</div>
               </div>
               <div className="rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white backdrop-blur">
                 <div className="text-[10px] font-black uppercase tracking-wider text-white/60">Member ID</div>
@@ -432,6 +462,24 @@ export default function SettingsPage() {
               <form onSubmit={saveIdentity} className="space-y-4">
                 <Field label="Full name">
                   <input className="input" value={name} onChange={e => setName(e.target.value)} required />
+                </Field>
+                <Field label="Fun avatar" hint="Stored on this device only, so only you see it.">
+                  <div className="flex flex-wrap gap-2">
+                    {FUN_AVATARS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => chooseFunAvatar(emoji)}
+                        className={`h-10 w-10 rounded-xl border text-xl transition-all ${funAvatar === emoji ? 'border-blue-400 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50'}`}
+                        aria-pressed={funAvatar === emoji}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => chooseFunAvatar('')} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-500 hover:bg-slate-50">
+                      <RefreshCw size={12} /> Initials
+                    </button>
+                  </div>
                 </Field>
                 <ReadonlyField label="Username" value={`@${user.username || user.email}`} />
                 <ReadonlyField label="Member ID" value={employeeId || '—'} />

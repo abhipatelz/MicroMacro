@@ -40,7 +40,6 @@ function NewPersonalProjectModal({ onClose, onCreated }: { onClose: () => void; 
             <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center"><Lock size={15} className="text-violet-500" /></div>
             <div>
               <div className="text-base font-bold text-slate-900">New personal project</div>
-              <div className="text-xs text-slate-400 mt-0.5">Private to you — no one else can see it, not even an admin.</div>
             </div>
           </div>
           <button type="button" onClick={onClose} className="text-slate-300 hover:text-slate-500"><X size={18} /></button>

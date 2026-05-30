@@ -50,18 +50,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const current = await Task.findById(params.id).select('status assigneeId').lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // Contributors (non-leads) on their OWN task may update the status and
-    // flag who it's stuck/pending with — nothing else. Title, due date,
-    // assignee, priority, etc. remain lead-only. Leads keep full edit rights.
+    // Contributors can enrich execution details on tasks assigned to them or
+    // still unassigned, but status/assignee/priority/compliance controls stay
+    // lead-owned. This keeps peer work read-only while letting ICs add the
+    // description, due/target date, reference numbers and notes they need.
     // Exception: inside their own personal project, the owner edits freely.
     if (!canMutate(user!.role) && !ownsPersonal) {
       const isAssignee = current.assigneeId && String(current.assigneeId) === String(user!.sub);
+      const isUnassigned = !current.assigneeId;
       const keys = Object.keys(body).filter(k => body[k as keyof typeof body] !== undefined);
-      const ALLOWED_FOR_ASSIGNEE = new Set(['status', 'pendingWith']);
-      const onlyAllowed = isAssignee && keys.length > 0 && keys.every(k => ALLOWED_FOR_ASSIGNEE.has(k));
+      const IC_EDITABLE = new Set([
+        'description', 'dueDate', 'ccTcd', 'ccNo', 'documentNo', 'remarks',
+        'pendingWith', 'estimatedHours', 'actualHours',
+      ]);
+      const onlyAllowed = (isAssignee || isUnassigned) && keys.length > 0 && keys.every(k => IC_EDITABLE.has(k));
       if (!onlyAllowed) {
         return NextResponse.json(
-          { error: 'Contributors can only change the status and "waiting on" of their own tasks.' },
+          { error: 'Contributors can edit details on their own or unassigned tasks only; status and other fields are read-only.' },
           { status: 403 },
         );
       }
