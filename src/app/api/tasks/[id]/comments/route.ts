@@ -37,6 +37,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const t = await Task.findById(params.id);
     if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (user.role === 'employee' && String(t.assigneeId) !== user.sub && !(t as any).subtasks?.some((s: any) => String(s.assigneeId) === user.sub))
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     const c = {
       _id: new mongoose.Types.ObjectId(),
       userId: new mongoose.Types.ObjectId(user.sub),

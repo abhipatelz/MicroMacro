@@ -18,7 +18,7 @@ const Body = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const { error } = await requireUser(req);
+    const { user, error } = await requireUser(req);
     if (error) return error;
     await connectDB();
     const body = await readBody(req, Body);
@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
     const result = runTriage(body.title, body.description || '', corpusWithCodes);
 
     if (body.save && body.taskId) {
+      if (user.role === 'employee' && String((await Task.findById(body.taskId).select('assigneeId').lean())?.assigneeId) !== user.sub)
+        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
       await Task.updateOne(
         { _id: body.taskId },
         {

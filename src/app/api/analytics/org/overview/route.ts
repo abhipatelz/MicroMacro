@@ -4,7 +4,7 @@ import { User } from '@/models/User';
 import { Team } from '@/models/Team';
 import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
-import { requireUser } from '@/lib/auth';
+import { isLead, requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { NOT_PERSONAL } from '@/lib/leadScope';
 
@@ -17,8 +17,11 @@ function calcHealth(done: number, total: number, overdue: number): 'good' | 'at_
 
 export async function GET(req: NextRequest) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
+    if (!isLead(user.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
     await connectDB();
 
     const now = new Date();

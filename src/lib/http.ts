@@ -38,7 +38,6 @@ export function handleError(e: unknown) {
   console.error('[handleError]', e);
   const raw = e instanceof Error ? e.message : 'Internal error';
 
-  // Never expose database config / connection details to end users
   const userMsg = isInfraError(raw)
     ? 'The service is temporarily unavailable. Please try again in a moment or contact your administrator.'
     : raw;

@@ -3,7 +3,7 @@ import { connectDB } from '@/lib/db';
 import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { User } from '@/models/User';
-import { requireUser } from '@/lib/auth';
+import { isLead, requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import ExcelJS from 'exceljs';
 
@@ -500,8 +500,11 @@ function buildBottleneckSheet(wb: ExcelJS.Workbook, project: any, tasks: any[], 
 ════════════════════════════════════════════════════════════════════════════ */
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
+    if (!isLead(user.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
     await connectDB();
 
     const project = await Project.findById(params.id).lean();

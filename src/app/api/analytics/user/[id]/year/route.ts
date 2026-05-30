@@ -3,15 +3,18 @@ import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
-import { requireUser } from '@/lib/auth';
+import { isLead, requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireUser(req);
+    const { user, error } = await requireUser(req);
     if (error) return error;
+    if (!isLead(user.role) && user.sub !== params.id) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
     await connectDB();
     const year = Number(req.nextUrl.searchParams.get('year')) || new Date().getFullYear();
     const start = new Date(Date.UTC(year, 0, 1));

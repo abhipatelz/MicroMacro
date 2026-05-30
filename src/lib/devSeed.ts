@@ -10,6 +10,12 @@ const d = (offset: number) => { const x = new Date(); x.setDate(x.getDate() + of
 const fixed = (y: number, m: number, day: number) => new Date(y, m - 1, day);
 
 export async function devSeed() {
+  const g = global as any;
+  if (!g.__devSeedPromise) g.__devSeedPromise = _devSeed();
+  await g.__devSeedPromise;
+}
+
+async function _devSeed() {
   const existing = await User.countDocuments();
   if (existing > 0) return;
 

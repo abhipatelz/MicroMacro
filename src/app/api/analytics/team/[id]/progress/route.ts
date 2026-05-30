@@ -5,15 +5,18 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { Team } from '@/models/Team';
 import { User } from '@/models/User';
-import { requireUser } from '@/lib/auth';
+import { isLead, requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
+    if (!isLead(user.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
     await connectDB();
     const team = await Team.findById(params.id).lean();
     if (!team) return NextResponse.json({ error: 'Not found' }, { status: 404 });
