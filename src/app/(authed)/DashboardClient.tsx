@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
@@ -7,7 +7,6 @@ import {
   LIFECYCLE_LABELS, STATUS_COLORS,
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
-import { api } from '@/lib/client/api';
 import { useIsLead } from '@/components/CurrentUserContext';
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
@@ -40,7 +39,6 @@ interface TeamTask {
   subtasksDone: number;
   subtaskTitles?: string[];
   gxpCritical?: boolean;
-  position?: number;
 }
 
 interface DashProject {
@@ -83,7 +81,6 @@ const STATUS_LABEL: Record<string, string> = {
   todo: 'To do', in_progress: 'In progress', review: 'Review',
   blocked: 'Blocked', done: 'Done',
 };
-
 
 const HEALTH_META: Record<string, { label: string; bg: string; text: string; dot: string }> = {
   healthy:  { label: 'On track',  bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-400' },
@@ -390,82 +387,6 @@ function ProjectsColumn({
   );
 }
 
-
-
-function DashboardTaskList({ tasks, projectId }: { tasks: TeamTask[]; projectId: string }) {
-  const [local, setLocal] = useState(tasks);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-
-  useEffect(() => setLocal(tasks), [tasks]);
-
-  async function persist(next: TeamTask[]) {
-    try {
-      await api(`/projects/${projectId}/reorder-tasks`, {
-        method: 'POST',
-        body: { orderedIds: next.map((t) => t.id) },
-      });
-    } catch {
-      setLocal(tasks);
-    }
-  }
-
-  function dropOn(targetId: string) {
-    if (!draggingId || draggingId === targetId) {
-      setDraggingId(null); setDragOverId(null); return;
-    }
-    const from = local.findIndex((t) => t.id === draggingId);
-    const to = local.findIndex((t) => t.id === targetId);
-    if (from < 0 || to < 0) return;
-    const next = [...local];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    setLocal(next);
-    setDraggingId(null); setDragOverId(null);
-    persist(next);
-  }
-
-  const visible = local.slice(0, 20);
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-slate-50/60 border-b border-slate-100">
-            <th className="w-8 px-2 py-2" aria-label="Drag handle" />
-            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Task</th>
-            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Subtasks</th>
-            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">TCD</th>
-            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Assigned</th>
-            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Status</th>
-            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Completed</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-50">
-          {visible.map((t) => (
-            <TaskTableRow
-              key={t.id}
-              t={t}
-              draggable
-              isDragging={draggingId === t.id}
-              isDropTarget={dragOverId === t.id && draggingId !== t.id}
-              onDragStart={() => setDraggingId(t.id)}
-              onDragOver={(e) => { e.preventDefault(); setDragOverId(t.id); }}
-              onDrop={() => dropOn(t.id)}
-              onDragEnd={() => { setDraggingId(null); setDragOverId(null); }}
-            />
-          ))}
-        </tbody>
-      </table>
-      {local.length > 20 && (
-        <div className="px-4 py-2 text-[10px] text-slate-400 border-t border-slate-50">
-          Showing 20 of {local.length} tasks — <Link href={`/projects/${projectId}`} className="text-blue-600 font-semibold">view all in project →</Link>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
 function ProjectRow({
   project, tasks, defaultOpen,
 }: { project: DashProject; tasks: TeamTask[]; defaultOpen?: boolean }) {
@@ -477,11 +398,11 @@ function ProjectRow({
   const dueIn  = daysUntil(project.dueDate);
   const cat    = project.lifecycle && project.lifecycle !== 'generic' ? (LIFECYCLE_LABELS[project.lifecycle] || project.lifecycle) : null;
 
-  // Manual project order first. Existing rows without a saved position keep
-  // a stable due-date fallback until someone shuffles them vertically.
+  // Sort tasks: active first, done last
+  const STATUS_ORDER: Record<string, number> = { in_progress: 0, review: 1, blocked: 2, todo: 3, done: 4 };
   const sortedTasks = [...tasks].sort((a, b) => {
-    const pos = (a.position ?? 0) - (b.position ?? 0);
-    if (pos !== 0) return pos;
+    const s = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
+    if (s !== 0) return s;
     const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
     const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
     return da - db;
@@ -548,7 +469,28 @@ function ProjectRow({
               <div className="text-xs text-slate-400">No tasks yet for this project.</div>
             </div>
           ) : (
-            <DashboardTaskList tasks={sortedTasks} projectId={project.id} />
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50/60 border-b border-slate-100">
+                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-4 py-2">Task</th>
+                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Subtasks</th>
+                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">TCD</th>
+                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Assigned</th>
+                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Status</th>
+                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Completed</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {sortedTasks.slice(0, 20).map(t => <TaskTableRow key={t.id} t={t} />)}
+                </tbody>
+              </table>
+              {sortedTasks.length > 20 && (
+                <div className="px-4 py-2 text-[10px] text-slate-400 border-t border-slate-50">
+                  Showing 20 of {sortedTasks.length} tasks — <Link href={`/projects/${project.id}`} className="text-blue-600 font-semibold">view all in project →</Link>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -556,31 +498,14 @@ function ProjectRow({
   );
 }
 
-function TaskTableRow({
-  t, draggable = false, isDragging = false, isDropTarget = false,
-  onDragStart, onDragOver, onDrop, onDragEnd,
-}: {
-  t: TeamTask; draggable?: boolean; isDragging?: boolean; isDropTarget?: boolean;
-  onDragStart?: () => void; onDragOver?: (e: React.DragEvent<HTMLTableRowElement>) => void;
-  onDrop?: () => void; onDragEnd?: () => void;
-}) {
+function TaskTableRow({ t }: { t: TeamTask }) {
   const due     = t.ccTcd || t.dueDate;
   const dueIn   = daysUntil(due);
   const overdue = due && new Date(due) < new Date() && t.status !== 'done';
 
   return (
-    <tr
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-      className={`group transition-colors ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${isDragging ? 'opacity-50 bg-blue-50/70' : isDropTarget ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : 'hover:bg-slate-50/80'}`}
-    >
-      <td className="px-2 py-2.5 text-slate-300">
-        {draggable && <span className="inline-flex h-6 w-5 items-center justify-center rounded hover:bg-slate-100">⋮⋮</span>}
-      </td>
-      <td className="px-2 py-2.5">
+    <tr className="group hover:bg-slate-50/80 transition-colors">
+      <td className="px-4 py-2.5">
         <Link href={`/tasks/${t.id}`}
           className="text-xs text-slate-800 font-medium hover:text-blue-700 line-clamp-1 group-hover:underline underline-offset-2">
           {t.title}
