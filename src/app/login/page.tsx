@@ -1,54 +1,37 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
-/* Quiet, rotating wisdom on the brand panel — fades between lines every
-   few seconds. Deliberately unattributed. A randomised start so it isn't
-   the same line every visit. */
+function getInitials(name: string) {
+  if (!name) return '?';
+  return name.trim().split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+}
+
+/* Rotating wisdom from Elon Musk. Unattributed. */
 const QUOTES = [
-  'The most important skill is learning how to learn.',
-  'You make progress by being specific about what you want.',
-  'A clear mind is a productive mind.',
-  'Inspiration is perishable — act on it immediately.',
-  'Focus on being productive instead of busy.',
-  'Done is better than perfect, every single day.',
-  'Small steps, taken daily, compound into everything.',
-  'Specific knowledge is found by pursuing your genuine curiosity.',
-  'Play long-term games with long-term people.',
-  'The most powerful skill is reading. Read what you love until you love to read.',
-  'Embrace accountability and take business risks under your own name.',
-  'Earn with your mind, not your time.',
-  'A calm mind, a fit body, a house full of love. These things cannot be bought.',
-  'Desire is a contract you make to be unhappy until you get what you want.',
-  'You’re not going to get rich renting out your time.',
-  'The internet enables any niche interest, as long as you’re the best at it.',
-  'Become the best in the world at what you do. Keep redefining what you do.',
-  'Apply specific knowledge with leverage and eventually you will get what you deserve.',
-  'If you can’t decide, the answer is no.',
-  'Free education is abundant. The scarce part is the desire to learn.',
-  'The deeper the work, the higher the leverage.',
-  'Money buys freedom: freedom from doing things you dislike.',
-  'Set up systems, not goals. Use your judgment to figure out the systems.',
-  'Reading is faster than listening. Doing is faster than watching.',
-  'Be present above all else.',
-  'It’s not 1,000 true fans. It’s a handful of people who really trust you.',
-  'Health, love, and your mission, in that order. Nothing else matters.',
-  'The closer you want to get, the more you have to give.',
-  'Learn to sell. Learn to build. If you can do both, you will be unstoppable.',
-  'All the returns in life come from compound interest — money, relationships, and learning.',
-  'You should be too busy to “grab coffee,” while still keeping an uncluttered calendar.',
-  'Clear thinker is a better compliment than smart.',
-  'Impatience with actions, patience with results.',
-  'Self-discipline is choosing what you want most over what you want now.',
-  'A fit body, a calm mind, a house full of love — earn them, they can’t be bought.',
-  'The three big decisions: where you live, who you’re with, and what you do.',
+  "If something is important enough, even if the odds are against you, you should still do it.",
+  "Persistence is very important. You should not give up unless you are forced to give up.",
+  "The first step is to establish that something is possible; then probability will occur.",
+  "When you innovate, you have to be prepared for everyone telling you that you are nuts.",
+  "Failure is an option here. If things are not failing, you are not innovating enough.",
+  "Some people do not like change, but you need to embrace change if the alternative is disaster.",
+  "I think it is possible for ordinary people to choose to be extraordinary.",
+  "Constantly think about how you could be doing things better.",
+  "Great companies are built on great products.",
+  "Brand is just a perception, and perception will match reality over time.",
+  "It is OK to have your eggs in one basket as long as you control what happens to that basket.",
+  "Work like hell. Put in eighty- to a-hundred-hour weeks every week.",
+  "When something is important enough, you do it even if the odds are not in your favor.",
+  "If you get up in the morning and think the future is going to be better, it is a bright day.",
+  "People should pursue what they are passionate about. That will make them happier than anything else.",
+  "The path to the CEO's office should not be through the CFO's office, and it should not be through the marketing department. It needs to be through engineering and design.",
 ];
 
 function RotatingQuote() {
-  const [i, setI] = useState(() => Math.floor(Math.random() * QUOTES.length));
+  const [i, setI] = useState(0);
   const [show, setShow] = useState(true);
   useEffect(() => {
     const t = setInterval(() => {
@@ -106,7 +89,7 @@ function StrengthMeter({ password }: { password: string }) {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<'login' | 'setup'>('login');
+  const [mode, setMode] = useState<'login' | 'setup' | 'unlock'>('login');
   const [isFirstRun, setIsFirstRun] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -115,43 +98,52 @@ export default function LoginPage() {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Quick-PIN state. `device` is undefined while we probe, null when this
-  // browser isn't recognised, and { id, name } once we know who it's bound
-  // to. `usePin` flips to false when the user picks "use password instead".
-  const [device, setDevice] = useState<{ id: string; name: string } | null | undefined>(undefined);
-  const [usePin, setUsePin] = useState(true);
+  // Quick-PIN unlock: shown when this device previously completed a full
+  // sign-in and the user has a PIN set.
+  const [deviceName, setDeviceName] = useState('');
   const [pin, setPin] = useState('');
+  const pinInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api<{ initialized: boolean }>('/system/status').then(d => {
       if (!d.initialized) setIsFirstRun(true);
     }).catch(() => {});
-    api<{ id: string; name: string } | null>('/auth/device')
-      .then(d => setDevice(d ?? null))
-      .catch(() => setDevice(null));
+    // If this is a trusted device with a PIN, greet the user and offer the
+    // PIN pad instead of the full form.
+    api<{ trusted: boolean; name?: string; hasPin?: boolean; locked?: boolean }>('/auth/device')
+      .then(d => {
+        if (d.trusted && d.hasPin && !d.locked) {
+          setDeviceName(d.name || '');
+          setMode('unlock');
+        }
+      })
+      .catch(() => {});
   }, []);
 
-  async function submitPin(e: React.FormEvent) {
-    e.preventDefault();
-    if (!/^\d{4,6}$/.test(pin)) { setErr('PIN must be 4–6 digits.'); return; }
-    setErr(''); setLoading(true);
+  function usePasswordInstead() {
+    setMode('login');
+    setErr('');
+    setPin('');
+  }
+
+  async function unlock(pinValue: string) {
+    setErr('');
+    setLoading(true);
     try {
-      await api('/auth/pin-login', { method: 'POST', body: { pin } });
+      await api('/auth/unlock', { method: 'POST', body: { pin: pinValue } });
       router.replace('/');
       router.refresh();
     } catch (e: any) {
-      setErr(e.message || 'Incorrect PIN.');
       setPin('');
-    } finally { setLoading(false); }
+      if (e?.data?.needPassword || /password/i.test(e?.message || '')) {
+        setErr(e.message || 'Please sign in with your password.');
+        setMode('login');
+      } else {
+        setErr(e.message || 'Incorrect PIN.');
+      }
+      setLoading(false);
+    }
   }
-
-  async function forgetDevice() {
-    setLoading(true);
-    try { await api('/auth/device', { method: 'DELETE' }); } catch {}
-    setDevice(null); setUsePin(false); setPin(''); setErr(''); setLoading(false);
-  }
-
-  const pinMode = !!device && usePin && mode === 'login';
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -251,21 +243,33 @@ export default function LoginPage() {
           <div className="relative flex flex-col flex-1 px-14 py-12">
             <div className="flex-1 flex flex-col justify-center">
 
-              {/* Custom Pragati mark with two dots orbiting close around it. */}
+              {/* Custom Pragati mark with two dots orbiting around it.
+                  The logo is 112px (radius 56). Each orbit ring is an absolute
+                  box centred on the logo; the dot sits at the ring's top edge,
+                  and the ring spins around its centre, so the dot traces a
+                  circle of radius = half the ring box.
+                  • The two rings have DIFFERENT radii (28px gap), so the dots
+                    travel on separate circles and can never collide.
+                  • Both radii clear the logo edge, so the dots never ride
+                    across the mark itself. */}
               <div className="flex justify-center mb-10">
                 <div className="relative logo-float" style={{ width: 112, height: 112 }}>
                   <PragatiMark size={112} />
-                  {/* Orbit rings sit ~18px OUTSIDE the logo, so the dots
-                     float clearly around it with a gap (never touching). */}
-                  <div className="absolute orbit-a pointer-events-none" style={{ inset: -18 }}>
-                    <span className="absolute left-1/2 -top-1 -translate-x-1/2" style={{
+                  {/* Inner orbit (blue) — box 168px → radius 84, clears logo (56). */}
+                  <div className="absolute pointer-events-none orbit-a"
+                    style={{ top: -28, left: -28, right: -28, bottom: -28 }}>
+                    <span className="absolute" style={{
                       width: 8, height: 8, borderRadius: '50%',
+                      top: -4, left: '50%', transform: 'translateX(-50%)',
                       background: '#42A5F5', boxShadow: '0 0 12px rgba(66,165,245,0.9)',
                     }} />
                   </div>
-                  <div className="absolute orbit-b pointer-events-none" style={{ inset: -24 }}>
-                    <span className="absolute left-1/2 -bottom-1 -translate-x-1/2" style={{
+                  {/* Outer orbit (green) — box 224px → radius 112, well outside blue. */}
+                  <div className="absolute pointer-events-none orbit-b"
+                    style={{ top: -56, left: -56, right: -56, bottom: -56 }}>
+                    <span className="absolute" style={{
                       width: 6, height: 6, borderRadius: '50%',
+                      top: -3, left: '50%', transform: 'translateX(-50%)',
                       background: '#67D376', boxShadow: '0 0 10px rgba(103,211,118,0.9)',
                     }} />
                   </div>
@@ -274,8 +278,8 @@ export default function LoginPage() {
 
               {/* Wordmark */}
               <h1
-                className="fade-up-1 font-display text-center font-bold text-white leading-none"
-                style={{ fontSize: 'clamp(62px, 6.2vw, 90px)', letterSpacing: '-0.045em' }}
+                className="fade-up-1 text-center font-black text-white leading-none"
+                style={{ fontSize: 'clamp(62px, 6.2vw, 88px)', letterSpacing: '-0.035em' }}
               >
                 Pragati
               </h1>
@@ -302,24 +306,16 @@ export default function LoginPage() {
         </div>
 
         {/* ════ RIGHT — Form panel ═══════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 relative"
-          style={{
-            background:
-              'radial-gradient(900px 500px at 100% -10%, rgba(21,101,192,0.06), transparent 60%),' +
-              'radial-gradient(700px 420px at -10% 110%, rgba(46,125,50,0.06), transparent 60%),' +
-              '#ffffff',
-          }}>
+        <div className="flex-1 flex flex-col justify-center items-center bg-white px-6 py-12 relative">
           <div className="absolute top-0 left-0 right-0 h-[3px]"
             style={{ background: 'linear-gradient(90deg, #1565C0 0%, #1769C8 50%, #2B8C29 100%)' }} />
 
-          {/* Glass form card */}
-          <div className="w-full max-w-[360px] fade-up rounded-2xl bg-white/70 backdrop-blur-xl border border-white/60 px-6 py-7"
-            style={{ boxShadow: '0 20px 60px rgba(15,23,42,0.08), 0 2px 8px rgba(15,23,42,0.04)' }}>
+          <div className="w-full max-w-[340px] fade-up">
 
             {/* Mobile branding — same Pragati mark, no image */}
             <div className="flex flex-col items-center mb-8 lg:hidden">
               <PragatiMark size={56} />
-              <div className="font-display text-2xl font-bold text-slate-900 mt-3">Pragati</div>
+              <div className="text-2xl font-black text-slate-900 mt-3 tracking-tight">Pragati</div>
             </div>
 
             {/* First-run banner */}
@@ -336,77 +332,108 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Heading */}
-            <div className="mb-7 form-swap" key={(pinMode ? 'pin' : mode) + '-h'}>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                {pinMode ? `Welcome back, ${device!.name.split(' ')[0]}` : (mode === 'login' ? 'Welcome back' : 'Set up workspace')}
-              </h2>
-              <p className="text-sm text-slate-400 mt-1 leading-snug">
-                {pinMode
-                  ? 'Enter your quick PIN to continue.'
-                  : (mode === 'login' ? 'Sign in to continue.' : 'Create the first lead account.')}
-              </p>
-            </div>
+            {/* ── Quick-PIN unlock (trusted device) ─────────────────────── */}
+            {mode === 'unlock' && (
+              <div className="form-swap" key="unlock">
 
-            {pinMode ? (
-              <form onSubmit={submitPin} className="space-y-4 form-swap" key="pin-form">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Quick PIN
-                  </label>
+                {/* Avatar + name */}
+                <div className="flex flex-col items-center text-center mb-7">
+                  <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-2xl font-black text-white mb-4 select-none"
+                    style={{ background: 'linear-gradient(135deg, #1565C0 0%, #1a237e 100%)', boxShadow: '0 8px 24px rgba(21,101,192,0.32)' }}>
+                    {getInitials(deviceName)}
+                  </div>
+                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.18em] mb-1">Welcome back</p>
+                  <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
+                    {deviceName || 'You'}
+                  </h2>
+                  <p className="text-sm text-slate-400 mt-1.5 leading-snug">
+                    Enter your Quick PIN to continue
+                  </p>
+                </div>
+
+                {/* 4-box PIN input — clicking any box focuses the hidden input */}
+                <div className="relative flex justify-center gap-3 mb-4 cursor-text"
+                  onClick={() => pinInputRef.current?.focus()}>
+                  {[0, 1, 2, 3].map(i => (
+                    <div key={i}
+                      className="w-[54px] h-[62px] rounded-2xl border-2 flex items-center justify-center transition-all duration-200"
+                      style={{
+                        borderColor: pin.length === i ? '#1565C0'
+                                   : pin.length > i  ? '#93c5fd'
+                                   : '#e2e8f0',
+                        background:  pin.length > i  ? '#eff6ff'
+                                   : pin.length === i ? '#f0f9ff'
+                                   : 'white',
+                        boxShadow:   pin.length === i ? '0 0 0 3px rgba(21,101,192,0.13)' : 'none',
+                        transform:   pin.length > i  ? 'scale(1.04)' : 'scale(1)',
+                      }}>
+                      {pin.length > i && (
+                        <div className="w-3 h-3 rounded-full bg-blue-600" />
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Invisible input layered over the boxes — captures all keystrokes */}
                   <input
-                    className="input text-center text-2xl font-bold tracking-[0.5em] font-mono"
+                    ref={pinInputRef}
+                    autoFocus
                     type="password"
                     inputMode="numeric"
-                    autoComplete="one-time-code"
-                    autoFocus
-                    maxLength={6}
-                    pattern="\d{4,6}"
-                    placeholder="••••"
+                    pattern="\d*"
+                    maxLength={4}
                     value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                    disabled={loading}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      setPin(v);
+                      setErr('');
+                      if (v.length === 4) unlock(v);
+                    }}
+                    className="absolute inset-0 opacity-0 w-full h-full cursor-text"
+                    style={{ fontSize: 0 }}
                     aria-label="Quick PIN"
                   />
                 </div>
 
                 {err && (
                   <div role="alert" aria-live="assertive"
-                    className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft">
+                    className="mt-1 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft">
                     <span aria-hidden="true" className="font-bold leading-none mt-0.5">!</span>
                     <span>{err}</span>
                   </div>
                 )}
 
-                <button type="submit" disabled={loading || pin.length < 4} aria-busy={loading}
-                  className="btn-primary w-full justify-center py-3 text-sm font-bold group mt-1"
-                  style={{ boxShadow: '0 4px 14px rgba(21,101,192,0.35)' }}>
-                  {loading ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
-                      <span>Signing in…</span>
-                    </>
-                  ) : (
-                    <>
-                      Sign in with PIN
-                      <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                    </>
-                  )}
-                </button>
+                {loading && (
+                  <div className="mt-3 flex items-center justify-center gap-2 text-sm text-slate-400 fade-in-soft">
+                    <span className="w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+                    Unlocking…
+                  </div>
+                )}
 
-                <div className="flex items-center justify-between text-[11px] pt-1">
-                  <button type="button"
-                    onClick={() => { setUsePin(false); setErr(''); setPin(''); }}
-                    className="font-semibold text-slate-500 hover:text-blue-600 transition-colors">
-                    Use password instead
-                  </button>
-                  <button type="button"
-                    onClick={forgetDevice}
-                    className="font-semibold text-slate-400 hover:text-slate-700 transition-colors">
-                    Not {device!.name.split(' ')[0]}? Forget this device
+                <div className="mt-6 flex flex-col items-center gap-1.5">
+                  <button onClick={usePasswordInstead} type="button"
+                    className="text-sm text-slate-400 hover:text-blue-600 font-medium transition-colors">
+                    Sign in with password instead
                   </button>
                 </div>
-              </form>
-            ) : (
+              </div>
+            )}
+
+            {/* Heading */}
+            {mode !== 'unlock' && (
+            <div className="mb-7 form-swap" key={mode + '-h'}>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                {mode === 'login' ? 'Welcome back' : 'Set up workspace'}
+              </h2>
+              <p className="text-sm text-slate-400 mt-1 leading-snug">
+                {mode === 'login'
+                  ? 'Sign in to continue.'
+                  : 'Create the first lead account.'}
+              </p>
+            </div>
+            )}
+
+            {mode !== 'unlock' && (
             <form onSubmit={submit} className="space-y-4 form-swap" key={mode + '-f'}>
               {mode === 'setup' && (
                 <>
@@ -461,13 +488,6 @@ export default function LoginPage() {
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   value={password} onChange={e => setPassword(e.target.value)} />
                 {mode === 'setup' && <StrengthMeter password={password} />}
-                {mode === 'login' && (
-                  <div className="text-right mt-1.5">
-                    <a href="/forgot-password" className="text-[11px] font-semibold text-slate-400 hover:text-blue-600 transition-colors">
-                      Forgot password?
-                    </a>
-                  </div>
-                )}
               </div>
 
               {err && (
@@ -500,6 +520,7 @@ export default function LoginPage() {
             </form>
             )}
 
+            {mode !== 'unlock' && (
             <p className="mt-5 text-center text-sm text-slate-400">
               {mode === 'setup' ? (
                 <>
@@ -513,6 +534,7 @@ export default function LoginPage() {
                 </span>
               )}
             </p>
+            )}
           </div>
         </div>
 

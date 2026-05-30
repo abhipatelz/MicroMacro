@@ -4,8 +4,75 @@ import { api } from '@/lib/client/api';
 import { Avatar, RoleBadge } from '@/components/ui';
 import { ActivityGraph } from '@/components/ActivityGraph';
 import {
-  User, Bell, Lock, ShieldCheck, Copy, Check, RefreshCw, X, Activity,
+  User, Bell, Lock, ShieldCheck, Copy, Check, RefreshCw, X, Activity, KeyRound,
 } from 'lucide-react';
+
+/* ── Quick PIN management ─────────────────────────────────────────────────── */
+function QuickPinSection() {
+  const [hasPin, setHasPin]   = useState<boolean | null>(null);
+  const [currentPin, setCur]  = useState('');
+  const [pin, setPin]         = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving]   = useState(false);
+  const [msg, setMsg]         = useState('');
+  const [err, setErr]         = useState('');
+
+  useEffect(() => {
+    api<{ hasPin: boolean }>('/auth/pin').then(d => setHasPin(d.hasPin)).catch(() => setHasPin(false));
+  }, []);
+
+  const valid = /^\d{4}$/.test(pin);
+  const matches = pin === confirm;
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(''); setMsg('');
+    if (!valid) { setErr('PIN must be exactly 4 digits.'); return; }
+    if (!matches) { setErr('The two PINs don’t match.'); return; }
+    setSaving(true);
+    try {
+      await api('/auth/pin', { method: 'POST', body: { pin, ...(hasPin ? { currentPin } : {}) } });
+      setMsg('Quick PIN updated.');
+      setHasPin(true); setCur(''); setPin(''); setConfirm('');
+    } catch (e: any) { setErr(e.message || 'Could not update your PIN.'); }
+    finally { setSaving(false); }
+  }
+
+  const box = "input text-center font-bold tracking-[0.4em]";
+
+  return (
+    <div id="quick-pin" className="scroll-mt-6">
+      <Section icon={KeyRound} title="Quick PIN" subtitle="A 4-digit code to resume an idle session on this device.">
+        <form onSubmit={save} className="space-y-3.5">
+          {hasPin && (
+            <Field label="Current PIN">
+              <input type="password" inputMode="numeric" maxLength={4} className={box}
+                value={currentPin} onChange={e => setCur(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" />
+            </Field>
+          )}
+          <Field label={hasPin ? 'New PIN' : 'PIN'}>
+            <input type="password" inputMode="numeric" maxLength={4} className={box}
+              value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" />
+          </Field>
+          <Field label="Confirm PIN">
+            <input type="password" inputMode="numeric" maxLength={4}
+              className={`${box} ${confirm && !matches ? 'border-red-300' : ''}`}
+              value={confirm} onChange={e => setConfirm(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" />
+          </Field>
+          {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
+          {msg && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">✓ {msg}</div>}
+          <button type="submit" className="btn-primary w-full justify-center" disabled={saving || !valid || !matches || (!!hasPin && currentPin.length !== 4)}>
+            {saving ? 'Saving…' : hasPin ? 'Change PIN' : 'Set PIN'}
+          </button>
+          <p className="text-[11px] text-slate-400 leading-snug">
+            Forgot it? Just sign in with your password — it always works — then set a new PIN here.
+            Your password is always required on a new device.
+          </p>
+        </form>
+      </Section>
+    </div>
+  );
+}
 
 /* ── Section wrapper ──────────────────────────────────────────────────────── */
 function Section({ icon: Icon, title, subtitle, children }: {
@@ -165,7 +232,6 @@ export default function SettingsPage() {
   const [user, setUser]   = useState<any>(null);
 
   const [name, setName]           = useState('');
-  const [username, setUsername]   = useState('');
   const [employeeId, setEmpId]    = useState('');
   const [identitySaving, setIdentitySaving] = useState(false);
   const [identityMsg, setIdentityMsg] = useState('');
@@ -187,49 +253,11 @@ export default function SettingsPage() {
   const [recoveryKeyBusy, setRecoveryKeyBusy] = useState(false);
   const [generatedKey, setGeneratedKey]       = useState<string | null>(null);
 
-  // Quick PIN section state.
-  const [pin, setPin]           = useState('');
-  const [pinConfirm, setPinCnf] = useState('');
-  const [pinBusy, setPinBusy]   = useState(false);
-  const [pinMsg, setPinMsg]     = useState('');
-  const [pinErr, setPinErr]     = useState('');
-
-  async function savePin(e: React.FormEvent) {
-    e.preventDefault();
-    setPinMsg(''); setPinErr('');
-    if (!/^\d{4,6}$/.test(pin)) { setPinErr('PIN must be 4–6 digits.'); return; }
-    if (pin !== pinConfirm) { setPinErr("PINs don't match."); return; }
-    setPinBusy(true);
-    try {
-      await api('/auth/pin', { method: 'POST', body: { pin } });
-      setPinMsg(user?.pinSet ? 'Quick PIN updated.' : 'Quick PIN saved — you can sign in with it next time on this device.');
-      setPin(''); setPinCnf('');
-      const d: any = await api('/users/me');
-      setUser(d.user);
-    } catch (err: any) {
-      setPinErr(err.message || 'Failed to save PIN.');
-    } finally { setPinBusy(false); }
-  }
-
-  async function removePin() {
-    if (!window.confirm('Remove your quick PIN? You will need your full password to sign in again.')) return;
-    setPinBusy(true);
-    try {
-      await api('/auth/pin', { method: 'DELETE' });
-      setPinMsg('Quick PIN removed.');
-      const d: any = await api('/users/me');
-      setUser(d.user);
-    } catch (err: any) {
-      setPinErr(err.message || 'Failed to remove PIN.');
-    } finally { setPinBusy(false); }
-  }
-
   useEffect(() => {
     api('/users/me').then((d: any) => {
       const u = d.user;
       setUser(u);
       setName(u.name || '');
-      setUsername(u.username || '');
       setEmpId(u.employeeId || '');
       setNA(u.notifTaskAssigned  ?? true);
       setNDS(u.notifTaskDueSoon  ?? true);
@@ -254,20 +282,15 @@ export default function SettingsPage() {
     }
   }
 
-  const isPM = (user?.role === 'pm' || user?.role === 'lead' || user?.role === 'admin');
-
-  const locked = !!user?.profileLocked;
+  const isPM = (user?.role === 'lead' || user?.role === 'admin');
 
   async function saveIdentity(e?: React.FormEvent) {
     e?.preventDefault();
     setIdentityMsg(''); setIdentitySaving(true);
     try {
-      await api('/users/me', { method: 'PATCH', body: { name, username: username.toLowerCase(), employeeId } });
-      setIdentityMsg('Saved — these are now locked.');
-      // Refresh so the form flips to read-only.
-      const d: any = await api('/users/me');
-      setUser(d.user);
-      setTimeout(() => setIdentityMsg(''), 3000);
+      await api('/users/me', { method: 'PATCH', body: { name } });
+      setIdentityMsg('Saved');
+      setTimeout(() => setIdentityMsg(''), 2500);
     } catch (err: any) { setIdentityMsg(err.message || 'Save failed.'); }
     finally { setIdentitySaving(false); }
   }
@@ -308,182 +331,116 @@ export default function SettingsPage() {
   return (
     <div className="max-w-4xl pb-12 space-y-5">
 
-      {/* ── Hero profile card ─────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 px-7 py-6 flex items-center gap-5"
-        style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.05), 0 1px 2px rgba(15,23,42,0.03)' }}>
-        <div className="shrink-0">
-          <Avatar name={user.name} size={64} />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight truncate">{user.name}</h1>
-            <RoleBadge role={user.role} />
+      {/* ── Hero profile card — gradient banner with avatar overlap ────── */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
+        style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.06), 0 4px 16px rgba(15,23,42,0.04)' }}>
+        <div className="h-24" style={{ background: 'linear-gradient(135deg, #1a56db 0%, #1e3a8a 55%, #312e81 100%)' }} />
+        <div className="px-7 pb-5 flex items-end gap-5" style={{ marginTop: -40 }}>
+          <div className="shrink-0">
+            <div className="p-1 bg-white rounded-2xl"
+              style={{ boxShadow: '0 0 0 3px rgba(255,255,255,0.85), 0 4px 14px rgba(15,23,42,0.18)' }}>
+              <Avatar name={user.name} size={72} />
+            </div>
           </div>
-          <div className="mt-1 text-xs text-slate-400 font-mono">@{user.username || user.email}</div>
+          <div className="flex-1 min-w-0 pb-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">{user.name}</h1>
+              <RoleBadge role={user.role} />
+            </div>
+            <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+              <span className="font-mono">@{user.username || user.email}</span>
+              {user.email && user.username && (
+                <><span className="text-slate-200">·</span><span>{user.email}</span></>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── 2-column: Identity + (Notifications + Security) ─────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      {/* ── Activity — full width, star feature ─────────────────────────── */}
+      <Section icon={Activity} title="Activity" subtitle="Everything you do on Pragati — logins, projects, and completed work.">
+        <ActivityGraph />
+      </Section>
 
-        {/* Left: Identity form */}
-        <div className="lg:col-span-3">
-          <Section icon={User} title="Personal details"
-            subtitle={locked
-              ? 'Your identity is set. Ask an admin if something needs to change.'
-              : 'Set these once — they lock after you save. Choose carefully.'}>
-            {locked ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <ReadonlyField label="Full name" value={user.name} />
-                <ReadonlyField label="Username" value={`@${user.username || user.email}`} />
-                <ReadonlyField label="Employee ID" value={user.employeeId || '—'} />
-                <ReadonlyField label="Role" value={isPM ? 'Team Leader' : 'Individual Contributor'} />
-              </div>
-            ) : (
+      {/* ── Two-column grid ──────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+
+        {/* Left column: identity + notifications */}
+        <div className="space-y-5">
+
+          <div id="profile" className="scroll-mt-6">
+            <Section icon={User} title="Personal details" subtitle="Your name as it appears across Pragati.">
               <form onSubmit={saveIdentity} className="space-y-4">
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 leading-snug">
-                  Heads up: your name, username and employee ID can be set <strong>once</strong>.
-                  After you save, only an admin can change them.
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Full name">
-                    <input className="input" value={name} onChange={e => setName(e.target.value)} required />
-                  </Field>
-                  <Field label="Username">
-                    <input className="input font-mono lowercase" value={username}
-                      onChange={e => setUsername(e.target.value.toLowerCase())}
-                      placeholder="firstname.lastname"
-                      pattern="[a-z][a-z0-9_.]{1,28}[a-z0-9_]" required />
-                  </Field>
-                  <Field label="Employee ID">
-                    <input className="input" value={employeeId} onChange={e => setEmpId(e.target.value)} placeholder="e.g. 100245" />
-                  </Field>
-                  <ReadonlyField label="Role" value={isPM ? 'Team Leader' : 'Individual Contributor'} />
-                </div>
+                <Field label="Full name">
+                  <input className="input" value={name} onChange={e => setName(e.target.value)} required />
+                </Field>
+                <ReadonlyField label="Username" value={`@${user.username || user.email}`} />
+                <ReadonlyField label="Employee ID" value={employeeId || '—'} />
+                <ReadonlyField label="Role" value={user.role === 'admin' ? 'Admin' : isPM ? 'Team Lead' : 'Individual Contributor'} />
                 <div className="flex items-center gap-3 pt-1">
                   <button type="submit" className="btn-primary" disabled={identitySaving}>
-                    {identitySaving ? 'Saving…' : 'Save & lock'}
+                    {identitySaving ? 'Saving…' : 'Save changes'}
                   </button>
-                  {identityMsg && <span className="text-xs text-green-600 font-medium">{identityMsg}</span>}
+                  {identityMsg && <span className="text-xs text-green-600 font-medium">✓ {identityMsg}</span>}
                 </div>
               </form>
-            )}
-          </Section>
-
-          {/* Activity heatmap — sits in the left column, beside the Security
-              card on the right (#7). */}
-          <div className="mt-5">
-            <Section icon={Activity} title="Activity" subtitle="Your completed tasks over the last year.">
-              <ActivityGraph />
             </Section>
           </div>
+
+          <div id="notifications" className="scroll-mt-6">
+            <Section icon={Bell} title="Notifications" subtitle="What shows up on your dashboard.">
+              <div className={notifSaving ? 'opacity-60 pointer-events-none transition-opacity' : 'transition-opacity'}>
+                <Toggle label="Task assigned to me"  description="When a PM assigns you a new task."
+                  checked={notifTaskAssigned} onChange={v => { setNA(v); saveNotif('notifTaskAssigned', v); }} />
+                <Toggle label="Due in 24 hours"       description="Morning reminder before a deadline."
+                  checked={notifTaskDueSoon}  onChange={v => { setNDS(v); saveNotif('notifTaskDueSoon', v); }} />
+                <Toggle label="Task overdue"          description="When a task passes its due date."
+                  checked={notifTaskOverdue}  onChange={v => { setNO(v); saveNotif('notifTaskOverdue', v); }} />
+                <Toggle label="Project updates"       description="When a project you're on changes status."
+                  checked={notifProjectUpdate} onChange={v => { setNPU(v); saveNotif('notifProjectUpdate', v); }} />
+              </div>
+              <p className="text-[11px] text-slate-400 mt-3 leading-snug">
+                These appear on your dashboard — Pragati never sends email.
+              </p>
+            </Section>
+          </div>
+
         </div>
 
-        {/* Right: Notifications + Security stacked */}
-        <div className="lg:col-span-2 space-y-5">
+        {/* Right column: security + PIN + admin recovery key */}
+        <div className="space-y-5">
 
-          {/* Notifications */}
-          <div id="notifications" className="scroll-mt-6">
-          <Section icon={Bell} title="Notifications" subtitle="What shows up on your dashboard.">
-            <div className={notifSaving ? 'opacity-60 pointer-events-none transition-opacity' : 'transition-opacity'}>
-              <Toggle label="Task assigned to me"  description="When a PM assigns you a new task."
-                checked={notifTaskAssigned} onChange={v => { setNA(v); saveNotif('notifTaskAssigned', v); }} />
-              <Toggle label="Due in 24 hours"       description="Morning reminder before a deadline."
-                checked={notifTaskDueSoon}  onChange={v => { setNDS(v); saveNotif('notifTaskDueSoon', v); }} />
-              <Toggle label="Task overdue"          description="When a task passes its due date."
-                checked={notifTaskOverdue}  onChange={v => { setNO(v); saveNotif('notifTaskOverdue', v); }} />
-              <Toggle label="Project updates"       description="When a project you're on changes status."
-                checked={notifProjectUpdate} onChange={v => { setNPU(v); saveNotif('notifProjectUpdate', v); }} />
-            </div>
-            <p className="text-[11px] text-slate-400 mt-3 leading-snug">
-              These appear on your dashboard — Pragati never sends email.
-            </p>
-          </Section>
-          </div>
-
-          {/* Security */}
           <div id="security" className="scroll-mt-6">
-          <Section icon={Lock} title="Security" subtitle="Change your login password.">
-            <form onSubmit={savePw} className="space-y-3.5">
-              <Field label="Current password">
-                <input type="password" className="input" autoComplete="current-password"
-                  value={current} onChange={e => setCurrent(e.target.value)} placeholder="••••••••" />
-              </Field>
-              <Field label="New password">
-                <input type="password" className="input" autoComplete="new-password"
-                  value={next} onChange={e => setNext(e.target.value)} placeholder="Min 8 characters" />
-                <StrengthMeter password={next} />
-              </Field>
-              <Field label="Confirm password">
-                <input type="password"
-                  className={`input ${confirm && !pwMatches ? 'border-red-300 focus:border-red-400' : ''}`}
-                  autoComplete="new-password"
-                  value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repeat password" />
-                {confirm && !pwMatches && <p className="text-[11px] text-red-500 mt-1">Passwords don't match.</p>}
-              </Field>
-              {pwErr && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{pwErr}</div>}
-              {pwMsg && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">✓ {pwMsg}</div>}
-              <button type="submit" className="btn-primary w-full justify-center"
-                disabled={!current || !pwStrong || !pwMatches || pwSaving}>
-                {pwSaving ? 'Updating…' : 'Update password'}
-              </button>
-            </form>
-          </Section>
-          </div>
-
-          {/* Quick PIN — skip the full password on a remembered device */}
-          <div id="quick-pin" className="scroll-mt-6">
-          <Section icon={Lock} title="Quick PIN"
-            subtitle={user?.pinSet
-              ? 'Your quick PIN is set. Sign in with it on any device you log in from.'
-              : 'Set a 4–6 digit PIN to sign back in without your full password on this device.'}>
-            <form onSubmit={savePin} className="space-y-3.5">
-              <Field label={user?.pinSet ? 'New PIN' : 'Choose a PIN'}>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  autoComplete="new-password"
-                  className="input text-center text-lg font-mono tracking-[0.4em]"
-                  maxLength={6}
-                  pattern="\d{4,6}"
-                  placeholder="••••"
-                  value={pin}
-                  onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
-                />
-              </Field>
-              <Field label="Confirm PIN">
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  autoComplete="new-password"
-                  className="input text-center text-lg font-mono tracking-[0.4em]"
-                  maxLength={6}
-                  pattern="\d{4,6}"
-                  placeholder="••••"
-                  value={pinConfirm}
-                  onChange={e => setPinCnf(e.target.value.replace(/\D/g, ''))}
-                />
-              </Field>
-              {pinErr && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{pinErr}</div>}
-              {pinMsg && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">✓ {pinMsg}</div>}
-              <div className="flex gap-2">
-                <button type="submit" className="btn-primary flex-1 justify-center"
-                  disabled={pinBusy || pin.length < 4 || pin !== pinConfirm}>
-                  {pinBusy ? 'Saving…' : (user?.pinSet ? 'Update PIN' : 'Save PIN')}
+            <Section icon={Lock} title="Security" subtitle="Change your login password.">
+              <form onSubmit={savePw} className="space-y-3.5">
+                <Field label="Current password">
+                  <input type="password" className="input" autoComplete="current-password"
+                    value={current} onChange={e => setCurrent(e.target.value)} placeholder="••••••••" />
+                </Field>
+                <Field label="New password">
+                  <input type="password" className="input" autoComplete="new-password"
+                    value={next} onChange={e => setNext(e.target.value)} placeholder="Min 8 characters" />
+                  <StrengthMeter password={next} />
+                </Field>
+                <Field label="Confirm password">
+                  <input type="password"
+                    className={`input ${confirm && !pwMatches ? 'border-red-300 focus:border-red-400' : ''}`}
+                    autoComplete="new-password"
+                    value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repeat password" />
+                  {confirm && !pwMatches && <p className="text-[11px] text-red-500 mt-1">Passwords don't match.</p>}
+                </Field>
+                {pwErr && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{pwErr}</div>}
+                {pwMsg && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">✓ {pwMsg}</div>}
+                <button type="submit" className="btn-primary w-full justify-center"
+                  disabled={!current || !pwStrong || !pwMatches || pwSaving}>
+                  {pwSaving ? 'Updating…' : 'Update password'}
                 </button>
-                {user?.pinSet && (
-                  <button type="button" onClick={removePin} disabled={pinBusy}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors">
-                    Remove
-                  </button>
-                )}
-              </div>
-            </form>
-          </Section>
+              </form>
+            </Section>
           </div>
 
-          {/* Admin recovery key — admins only */}
+          <QuickPinSection />
+
           {user.role === 'admin' && (
             <div id="recovery-key" className="scroll-mt-6">
               <Section icon={ShieldCheck} title="Recovery key"
@@ -516,6 +473,7 @@ export default function SettingsPage() {
               </Section>
             </div>
           )}
+
         </div>
       </div>
 

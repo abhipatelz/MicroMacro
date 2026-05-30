@@ -22,6 +22,7 @@ export default async function AuthedLayout({ children }: { children: React.React
         role: user.role,
         title: user.title || '',
         mustChangePassword: user.mustChangePassword,
+        hasPin: user.hasPin,
       }}
       initialDark={initialDark}
     >

@@ -5,18 +5,18 @@ import { cookies } from 'next/headers';
 import { connectDB } from './db';
 import { User } from '@/models/User';
 
-// Roles:
-//   'employee' — legacy role; can still be assigned tasks but cannot sign in.
-//   'pm'       — legacy lead role, retained for backwards compat with existing
-//                records and JWTs issued before the rename.
-//   'lead'     — current name for the team-lead role. Phase-1 login is
-//                restricted to this role (plus legacy 'pm').
-export type Role = 'employee' | 'pm' | 'lead' | 'admin';
+// Product roles:
+//   'admin'    — workspace owner / administrator.
+//   'lead'     — team lead.
+//   'employee' — individual contributor.
+// Legacy rows may still contain 'pm'; normalize it to 'lead' at every boundary.
+export type Role = 'employee' | 'lead' | 'admin';
+export type StoredRole = Role | 'pm';
 
 export interface JwtPayload {
   sub: string;
   email: string;
-  role: Role;
+  role: StoredRole;
   name: string;
   title?: string;
   mustChangePassword?: boolean;
@@ -25,6 +25,10 @@ export interface JwtPayload {
   // verify (they simply skip the corresponding check — see validateSession).
   sv?: number;
   sid?: string;
+  // Runtime-only (never signed): whether the user has a Quick PIN configured.
+  // Populated by validateSession from the DB so the UI can enforce the
+  // mandatory-PIN-setup gate without a second round-trip.
+  hasPin?: boolean;
 }
 
 /** A fresh, unguessable session identifier for one login. */
@@ -32,17 +36,23 @@ export function newSessionId(): string {
   return crypto.randomBytes(16).toString('hex');
 }
 
-// True for the lead/pm/admin roles — anyone who can lead a team or manage the
-// workspace satisfies this gate. Use `isAdmin()` when you specifically want
+export function normalizeRole(role?: string | null): Role {
+  if (role === 'admin') return 'admin';
+  if (role === 'lead' || role === 'pm') return 'lead';
+  return 'employee';
+}
+
+// True for team lead/admin roles. Use `isAdmin()` when you specifically want
 // to surface admin-only affordances.
 export function isLead(role?: string | null): boolean {
-  return role === 'lead' || role === 'pm' || role === 'admin';
+  const r = normalizeRole(role);
+  return r === 'lead' || r === 'admin';
 }
 
 // The 'admin' role is a single super-user with full visibility across every
 // team and project, used by the workspace owner for management + demo.
 export function isAdmin(role?: string | null): boolean {
-  return role === 'admin';
+  return normalizeRole(role) === 'admin';
 }
 
 // Any role allowed to mutate shared records (create / edit / delete
@@ -94,6 +104,11 @@ function getSecret(): string {
 }
 
 const COOKIE = 'pragati_token';
+// The trusted-device cookie. Set ONLY after a full password sign-in; its
+// presence (and validity) is what permits a Quick-PIN unlock. It deliberately
+// outlives the session token so a user can PIN back in the next working day.
+const DEVICE_COOKIE = 'pragati_device';
+const DEVICE_TRUST_DAYS = 30;
 
 export function signToken(payload: JwtPayload): string {
   return jwt.sign(payload, getSecret(), { expiresIn: '7d' });
@@ -101,6 +116,43 @@ export function signToken(payload: JwtPayload): string {
 
 export function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, getSecret()) as JwtPayload;
+}
+
+/* ── Trusted-device token ──────────────────────────────────────────────────
+   A signed, httpOnly cookie that marks THIS browser as one that has already
+   completed a full password login for `sub`. It carries no privileges on its
+   own — it only gates whether the PIN-unlock endpoint will even look at a PIN.
+   `typ:'device'` keeps it from ever being mistaken for a session token. */
+interface DeviceToken { sub: string; typ: 'device'; iat?: number; exp?: number; }
+
+export function signDeviceToken(userId: string): string {
+  return jwt.sign({ sub: userId, typ: 'device' }, getSecret(), { expiresIn: `${DEVICE_TRUST_DAYS}d` });
+}
+
+export function verifyDeviceToken(token: string): DeviceToken | null {
+  try {
+    const d = jwt.verify(token, getSecret()) as DeviceToken;
+    return d.typ === 'device' ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setDeviceCookie(response: NextResponse, userId: string) {
+  response.cookies.set(DEVICE_COOKIE, signDeviceToken(userId), {
+    ...COOKIE_BASE,
+    maxAge: 60 * 60 * 24 * DEVICE_TRUST_DAYS,
+  });
+}
+
+export function clearDeviceCookie(response: NextResponse) {
+  response.cookies.set(DEVICE_COOKIE, '', { ...COOKIE_BASE, maxAge: 0 });
+}
+
+export function getDeviceUserId(req: NextRequest): string | null {
+  const tok = req.cookies.get(DEVICE_COOKIE)?.value;
+  if (!tok) return null;
+  return verifyDeviceToken(tok)?.sub || null;
 }
 
 const COOKIE_BASE = {
@@ -137,53 +189,6 @@ export function getTokenFromRequest(req: NextRequest): string | null {
   return null;
 }
 
-/* ── Quick PIN device cookie ────────────────────────────────────────────
-   pragati_device is a long-lived (90d) signed cookie that tells the login
-   page "this device is recognised as user X". It carries NO authority on
-   its own — it only unlocks the PIN sign-in form. The user must still
-   prove they know the PIN (or fall back to password) to mint a real
-   auth token.
-
-   Kept separate from the session cookie so that logging out (which clears
-   pragati_token) does not forget the device — that's the whole point of
-   the quick PIN. */
-const DEVICE_COOKIE = 'pragati_device';
-const DEVICE_MAX_AGE = 60 * 60 * 24 * 90; // 90 days
-
-export interface DevicePayload {
-  kind: 'device';
-  sub:  string;   // user id this device is bound to
-  name: string;   // display name (so we can greet the user before sign-in)
-}
-
-export function signDeviceToken(payload: Omit<DevicePayload, 'kind'>): string {
-  return jwt.sign({ kind: 'device', ...payload }, getSecret(), { expiresIn: '90d' });
-}
-
-export function verifyDeviceToken(token: string): DevicePayload | null {
-  try {
-    const p = jwt.verify(token, getSecret()) as DevicePayload;
-    if (p?.kind !== 'device' || !p.sub) return null;
-    return p;
-  } catch {
-    return null;
-  }
-}
-
-export function setDeviceCookie(response: NextResponse, token: string) {
-  response.cookies.set(DEVICE_COOKIE, token, { ...COOKIE_BASE, maxAge: DEVICE_MAX_AGE });
-}
-
-export function clearDeviceCookie(response: NextResponse) {
-  response.cookies.set(DEVICE_COOKIE, '', { ...COOKIE_BASE, maxAge: 0 });
-}
-
-export function readDeviceFromRequest(req: NextRequest): DevicePayload | null {
-  const c = req.cookies.get(DEVICE_COOKIE)?.value;
-  if (!c) return null;
-  return verifyDeviceToken(c);
-}
-
 /**
  * Verify a JWT *and* confirm it still represents a live session by checking
  * the database. A token is rejected when:
@@ -202,7 +207,7 @@ export async function validateSession(payload: JwtPayload): Promise<JwtPayload |
   await connectDB();
   const user = await User.findById(
     payload.sub,
-    'role mustChangePassword sessionVersion activeSessionId name title email',
+    'role mustChangePassword sessionVersion activeSessionId name title email pinHash',
   ).lean();
   if (!user) return null;
 
@@ -212,11 +217,12 @@ export async function validateSession(payload: JwtPayload): Promise<JwtPayload |
 
   return {
     ...payload,
-    role: u.role,
+    role: normalizeRole(u.role),
     name: u.name ?? payload.name,
     title: u.title ?? payload.title,
     email: u.email ?? payload.email,
     mustChangePassword: !!u.mustChangePassword,
+    hasPin: !!u.pinHash,
   };
 }
 
@@ -254,10 +260,10 @@ export async function requireUser(req: NextRequest) {
   return { error: null, user };
 }
 
-export async function requireRole(req: NextRequest, ...roles: JwtPayload['role'][]) {
+export async function requireRole(req: NextRequest, ...roles: Role[]) {
   const { user, error } = await requireUser(req);
   if (error) return { user: null as unknown as JwtPayload, error };
-  if (!roles.includes(user.role)) {
+  if (!roles.includes(normalizeRole(user.role))) {
     return {
       error: NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 }),
       user

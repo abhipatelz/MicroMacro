@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { Task } from '@/models/Task';
-import { requireRole, isAdmin } from '@/lib/auth';
+import { requireRole, isAdmin, isLead } from '@/lib/auth';
 import { u } from '@/lib/serialize';
 import { handleError, readBody } from '@/lib/http';
 import { logOperation } from '@/lib/audit';
@@ -15,8 +15,8 @@ const Body = z.object({
   // The admin can move anyone between Contributor (employee) and Team Lead.
   // 'admin' is intentionally NOT assignable here — there is a single
   // workspace admin (the owner), provisioned via env/bootstrap, never
-  // through a generic PATCH. 'pm' is accepted only for legacy records.
-  role:       z.enum(['employee', 'lead', 'pm']).optional(),
+  // through a generic PATCH.
+  role:       z.enum(['employee', 'lead']).optional(),
   title:      z.string().max(120).optional(),
   name:       z.string().max(120).optional(),
   department: z.string().max(120).optional(),
@@ -67,17 +67,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
     }
 
-    // When an admin changes *another* user's account, force them to re-auth
-    // and set a new password on next login (21 CFR Part 11 access control):
-    //   • bump sessionVersion → every existing token for them is invalidated
-    //     (they're logged out wherever they're signed in), and
-    //   • set mustChangePassword → they must pick a new password to continue.
-    // Editing your own account here (admins can) does not lock you out.
+    // When an admin changes *another* user's account, force re-auth by bumping
+    // sessionVersion (invalidates all existing tokens) and clearing activeSessionId.
+    // mustChangePassword is NOT set here — that only happens at reset-password.
     const isSelfEdit = caller.sub === params.id;
     const mutation: Record<string, any> = isSelfEdit
       ? { $set: body }
       : {
-          $set: { ...body, mustChangePassword: true, activeSessionId: null },
+          $set: { ...body, activeSessionId: null },
           $inc: { sessionVersion: 1 },
         };
 
@@ -122,7 +119,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       );
     }
 
-    if (target.role === 'pm' || target.role === 'lead' || target.role === 'admin') {
+    if (isLead((target as any).role)) {
       const leadCount = await User.countDocuments({ role: { $in: ['pm', 'lead', 'admin'] } });
       if (leadCount <= 1) {
         return NextResponse.json({ error: 'Cannot remove the last lead.' }, { status: 409 });

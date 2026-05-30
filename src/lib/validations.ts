@@ -121,6 +121,10 @@ export const ProjectCreateSchema = z.object({
   // GxP impact is a regulatory classification — explicitly enumerated, never
   // free text. Drives downstream validation effort and approval routing.
   gxpImpact: GxpImpactEnum.optional(),
+  // A personal project is a private, owner-only workspace (not a GxP record).
+  // It is excluded from every cross-user rollup, team view and audit log, so it
+  // carries no compliance weight — explicitly flagged here, never inferred.
+  isPersonal: z.boolean().optional(),
   useTemplate: z.boolean().default(true),
   customPhases: z
     .array(

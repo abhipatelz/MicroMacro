@@ -14,7 +14,7 @@ export async function DELETE(
   { params }: { params: { id: string; userId: string } }
 ) {
   try {
-    const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user } = await requireRole(req, 'lead', 'admin');
     if (error) return error;
     await connectDB();
     const denied = await guardTeamOwner(params.id, user.sub, user.role);

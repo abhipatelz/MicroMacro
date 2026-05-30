@@ -5,6 +5,7 @@ import { Project } from '@/models/Project';
 import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
+import { NOT_PERSONAL } from '@/lib/leadScope';
 
 export const runtime = 'nodejs';
 
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     const [tasks, allProjects] = await Promise.all([
       Task.find({ assigneeId: userId }).lean(),
-      Project.find({}).select('_id code name lifecycle').lean()
+      Project.find({ $or: [NOT_PERSONAL, { ownerId: userId }] }).select('_id code name lifecycle').lean()
     ]);
     const pMap = new Map(allProjects.map((p) => [String(p._id), p]));
 

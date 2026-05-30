@@ -7,7 +7,7 @@ import {
   LIFECYCLE_LABELS, STATUS_COLORS,
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
-import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
+import { useIsLead } from '@/components/CurrentUserContext';
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
   ChevronDown, TrendingUp, Clock, Sparkles, ArrowRight, UserPlus, Plus,
@@ -139,48 +139,15 @@ export default function DashboardClient({
   }, [visibleTasks]);
 
   const firstName  = (dash.user.name || '').split(' ')[0] || 'there';
-  const today      = new Date();
-  const dateLabel  = today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-  const totalOpen     = visibleTasks.filter(t => t.status !== 'done').length;
-  const totalOverdue  = visibleTasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < today).length;
 
   return (
     <div className="pb-12 max-w-[1440px]">
 
-      {/* ── Greeting hero ───────────────────────────────────────────────── */}
-      <div className="brand-mesh mb-6 rounded-3xl border border-slate-200/70 px-6 py-5 overflow-hidden relative">
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles size={14} className="text-blue-500" />
-          {/* Date + greeting are intentionally client-local (browser TZ) and
-             will differ from the UTC server render near a day boundary —
-             suppressHydrationWarning lets React patch to the client value
-             without logging a mismatch. */}
-          <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700/90" suppressHydrationWarning>
-            {dateLabel}
-          </span>
-        </div>
+      {/* ── Greeting ────────────────────────────────────────────────────── */}
+      <div className="mb-6 pt-1">
         <h1 className="text-3xl font-black tracking-tight leading-tight">
           <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}, {firstName}.</span>
         </h1>
-        {/* At-a-glance status line — replaces the old generic tagline with
-           the numbers a lead actually wants the moment they land. */}
-        <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
-          {ongoingProjects.length === 0 ? (
-            <>No active projects yet — your board fills in as you create them.</>
-          ) : (
-            <>
-              <span className="font-semibold text-slate-800">{ongoingProjects.length}</span>
-              {' '}active {ongoingProjects.length === 1 ? 'project' : 'projects'} ·{' '}
-              <span className="font-semibold text-slate-800">{totalOpen}</span>
-              {' '}open {totalOpen === 1 ? 'task' : 'tasks'}
-              {totalOverdue > 0 ? (
-                <> · <span className="font-semibold text-red-600">{totalOverdue} overdue</span> need attention.</>
-              ) : (
-                <> · <span className="font-semibold text-emerald-600">nothing overdue.</span></>
-              )}
-            </>
-          )}
-        </p>
       </div>
 
       {isFirstRun ? (
@@ -188,18 +155,24 @@ export default function DashboardClient({
       ) : (
         <>
           {/* ── Summary strip ──────────────────────────────────────────── */}
-          <div className="flex flex-wrap gap-2.5 mb-6">
-            <SummaryChip label="Ongoing projects" value={ongoingProjects.length} accent="blue"  href="/projects" />
-            <SummaryChip label="Open tasks"       value={totalOpen}              accent="slate" href="/projects" />
-            <SummaryChip label="Overdue"          value={totalOverdue}           accent={totalOverdue > 0 ? 'red' : 'slate'} href="/projects" />
-            <SummaryChip label={dash.teamCount === 1 ? 'Team' : 'Teams'} value={dash.teamCount} accent="green" href="/teams" />
-          </div>
+          {(() => {
+            const totalOpen    = visibleTasks.filter(t => t.status !== 'done').length;
+            const totalOverdue = visibleTasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date()).length;
+            return (
+              <div className="flex flex-wrap gap-2.5 mb-6">
+                <SummaryChip label="Ongoing projects" value={ongoingProjects.length} accent="blue"  href="/projects" />
+                <SummaryChip label="Open tasks"       value={totalOpen}              accent="slate" href="/projects" />
+                <SummaryChip label="Overdue"          value={totalOverdue}           accent={totalOverdue > 0 ? 'red' : 'slate'} href="/projects" />
+                <SummaryChip label={dash.teamCount === 1 ? 'Team' : 'Teams'} value={dash.teamCount} accent="green" href="/teams" />
+              </div>
+            );
+          })()}
         </>
       )}
 
-      {/* ── Main layout: 2/3 projects · 1/3 actions+contributors ──────── */}
+      {/* ── Main layout: Projects (left) · Actions (right, same row) ───── */}
       {!isFirstRun && (
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
 
           {/* Left column — Projects */}
           <ProjectsColumn
@@ -207,11 +180,10 @@ export default function DashboardClient({
             tasksByProject={tasksByProject}
           />
 
-          {/* Right column — Actions + Contributors. The Contributors panel
-              (other people's progress) is for leads/admins only; an IC never
-              sees their teammates' workload. */}
-          <div className="space-y-4 xl:sticky xl:top-4 xl:self-start xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto pr-1">
+          {/* Right column — Actions + "My tasks" (for leads: also Contributors). */}
+          <div className="space-y-4 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto pr-1">
             <ActionsPanel tasks={visibleTasks} />
+            <MyTasksPanel tasks={visibleTasks} myId={myId} />
             {isLead && <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />}
           </div>
         </div>
@@ -369,18 +341,14 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
 function ProjectsColumn({
   projects, tasksByProject,
 }: { projects: DashProject[]; tasksByProject: Map<string, TeamTask[]> }) {
-  const isAdmin = useIsAdmin();
   const isLead  = useIsLead();
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <FolderKanban size={14} className="text-slate-400" />
-          {/* Never "Projects you lead" — a lead's team can own projects
-             created by someone else. "Your team's projects" is accurate;
-             admin sees the whole workspace. */}
           <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-            {isAdmin ? 'All projects' : 'Your team’s projects'}
+            Your team’s projects
           </h2>
           <span className="text-[10px] text-slate-300 font-semibold">{projects.length}</span>
         </div>
@@ -581,6 +549,86 @@ function TaskTableRow({ t }: { t: TeamTask }) {
           : <span className="text-slate-300 text-xs">—</span>}
       </td>
     </tr>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  MY TASKS PANEL — tasks assigned to the current user (all roles)           */
+/* ────────────────────────────────────────────────────────────────────────── */
+function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
+  const myTasks = tasks.filter(t => t.assigneeId === myId && t.status !== 'done');
+  const myDone  = tasks.filter(t => t.assigneeId === myId && t.status === 'done').length;
+  const myOverdue = myTasks.filter(t => {
+    const due = t.ccTcd || t.dueDate;
+    return due && new Date(due) < new Date();
+  }).length;
+
+  if (myTasks.length === 0 && myDone === 0) return null;
+
+  return (
+    <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
+      style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+        <CheckCircle2 size={13} className="text-slate-400" />
+        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">My tasks</h3>
+        <span className="ml-auto text-[10px] font-bold text-slate-300">{myTasks.length} open</span>
+        {myOverdue > 0 && (
+          <span className="text-[10px] font-bold text-red-400">{myOverdue} overdue</span>
+        )}
+      </div>
+      {myTasks.length === 0 ? (
+        <div className="py-7 text-center">
+          <CheckCircle2 size={18} className="mx-auto text-emerald-300 mb-1.5" />
+          <div className="text-[11px] text-slate-400">All caught up — {myDone} done.</div>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-50 max-h-72 overflow-y-auto">
+          {myTasks.slice(0, 15).map(t => {
+            const due = t.ccTcd || t.dueDate;
+            const dueIn = daysUntil(due);
+            const overdue = due && new Date(due) < new Date() && t.status !== 'done';
+            return (
+              <li key={t.id}>
+                <Link href={`/tasks/${t.id}`}
+                  className="block px-4 py-2.5 hover:bg-slate-50 transition-colors group">
+                  <div className="flex items-start gap-2">
+                    <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_COLORS[t.status] ? '' : 'bg-slate-300'}`}
+                      style={{ background: t.status === 'in_progress' ? '#3B82F6' : t.status === 'review' ? '#8B5CF6' : t.status === 'blocked' ? '#EF4444' : '#94A3B8' }} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-medium text-slate-700 line-clamp-1 group-hover:text-blue-700">
+                        {t.title}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 flex-wrap">
+                        <span className="font-semibold">{t.projectCode}</span>
+                        {due && (
+                          <>
+                            <span>·</span>
+                            <span className={overdue ? 'text-red-500 font-semibold' : ''}>
+                              {dueIn === null ? formatDate(due)
+                                : dueIn < 0 ? `${Math.abs(dueIn)}d overdue`
+                                : dueIn === 0 ? 'today'
+                                : `in ${dueIn}d`}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${STATUS_COLORS[t.status] || 'bg-slate-100 text-slate-500'}`}>
+                      {STATUS_LABEL[t.status] || t.status}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+          {myTasks.length > 15 && (
+            <li className="px-4 py-2 text-[10px] text-slate-400 border-t border-slate-50">
+              +{myTasks.length - 15} more — <Link href="/my-day" className="text-blue-600 font-semibold">view in My Day →</Link>
+            </li>
+          )}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -786,15 +834,16 @@ function ContributorsPanel({
   people, tasksByAssignee,
 }: { people: DashPerson[]; tasksByAssignee: Map<string, TeamTask[]> }) {
   const [expanded, setExpanded] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false); // collapsed by default
+
   if (people.length === 0) {
     return (
       <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
         style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+        <div className="px-4 py-3 flex items-center gap-2">
           <UsersIcon size={13} className="text-slate-400" />
           <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Individual Contributors</h3>
         </div>
-        <div className="py-8 text-center text-xs text-slate-400">No team members yet.</div>
       </section>
     );
   }
@@ -805,20 +854,31 @@ function ContributorsPanel({
   const inner = (
     <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+      <div
+        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 select-none transition-colors"
+        onClick={() => setPanelOpen(o => !o)}
+      >
         <UsersIcon size={13} className="text-slate-400" />
         <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
           Individual Contributors
         </h3>
         <span className="ml-auto text-[10px] text-slate-300 font-semibold">{people.length}</span>
-        {!expanded && <ExpandButton onClick={() => setExpanded(true)} />}
+        {!expanded && (
+          <span onClick={e => e.stopPropagation()}>
+            <ExpandButton onClick={() => setExpanded(true)} />
+          </span>
+        )}
+        <ChevronDown size={12} className="text-slate-400 transition-transform duration-200"
+          style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
       </div>
 
-      <ul className="divide-y divide-slate-50">
-        {sorted.map(p => (
-          <ContributorRow key={p.id} person={p} tasks={tasksByAssignee.get(p.id) || []} />
-        ))}
-      </ul>
+      {panelOpen && (
+        <ul className="divide-y divide-slate-50 border-t border-slate-100">
+          {sorted.map(p => (
+            <ContributorRow key={p.id} person={p} tasks={tasksByAssignee.get(p.id) || []} />
+          ))}
+        </ul>
+      )}
     </section>
   );
 

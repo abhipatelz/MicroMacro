@@ -6,6 +6,7 @@ import { Task } from '@/models/Task';
 import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
+import { NOT_PERSONAL } from '@/lib/leadScope';
 import mongoose from 'mongoose';
 
 export const runtime = 'nodejs';
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     // ── Everything in parallel — one DB round trip per query ─────────────
     const [tasks, allProjects, summaryAgg, statusAgg, orgData] = await Promise.all([
       Task.find({ assigneeId: userId }).sort({ status: 1, dueDate: 1 }).lean(),
-      Project.find({}).select('_id code name lifecycle status').lean(),
+      Project.find({ $or: [NOT_PERSONAL, { ownerId: userId }] }).select('_id code name lifecycle status').lean(),
       // Summary aggregation
       Task.aggregate([
         { $match: { assigneeId: oid } },
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
         { $group: { _id: '$status', c: { $sum: 1 } } }
       ]),
       // Lead org stats — anyone with workspace-management access (lead/pm/admin)
-      (jwtUser.role === 'pm' || jwtUser.role === 'lead' || jwtUser.role === 'admin')
+      (jwtUser.role === 'lead' || jwtUser.role === 'admin')
         ? Task.aggregate([
             { $facet: {
                 open:          [{ $match: { status: { $ne: 'done' } } }, { $count: 'n' }],

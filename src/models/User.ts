@@ -11,9 +11,8 @@ const UserSchema = new Schema(
     username:     { type: String, unique: true, sparse: true, lowercase: true, trim: true },
     name:         { type: String, required: true },
     passwordHash: { type: String, required: true },
-    // 'pm' kept in the enum for backwards compat with existing records;
-    // new lead promotions use 'lead'. 'admin' is the single super-user
-    // configured via the ADMIN_EMAIL env var. See src/lib/auth.ts.
+    // Product roles are admin, lead, and employee (individual contributor).
+    // 'pm' is accepted only as a legacy alias and normalized to 'lead' by auth.
     role:         { type: String, enum: ['employee', 'pm', 'lead', 'admin'], default: 'employee' },
 
     // ── Identity fields ─────────────────────────────────────────────────
@@ -53,13 +52,6 @@ const UserSchema = new Schema(
     // once at generation time and never stored. Only meaningful on admins.
     securityKeyHash: { type: String, default: null },
 
-    // ── Quick PIN ───────────────────────────────────────────────────────
-    // bcrypt hash of the user's 4–6 digit quick PIN. When set, a returning
-    // visitor on a recognised device (pragati_device cookie) can sign in
-    // with just the PIN instead of their full password. Null = no PIN
-    // configured; user must enter their password as normal.
-    pinHash: { type: String, default: null },
-
     // ── Session control ─────────────────────────────────────────────────
     // sessionVersion is embedded in every JWT we sign. Bumping it instantly
     // invalidates every token previously issued for this user — used to
@@ -79,6 +71,17 @@ const UserSchema = new Schema(
     // a lead can't sign in.
     failedLoginAttempts: { type: Number, default: 0 },
     lockedAt:            { type: Date,   default: null },
+
+    // ── Quick PIN (device-bound convenience unlock) ─────────────────────
+    // A 4-digit PIN that re-unlocks the app on a device that has ALREADY
+    // completed a full username+password sign-in (a trusted-device cookie).
+    // It is NEVER a substitute for the password on a new device — the first
+    // sign-in on any device always requires the full credential, preserving
+    // 21 CFR Part 11 §11.10(d) access control. The PIN is bcrypt-hashed,
+    // never stored in clear, and locks after too many wrong tries.
+    pinHash:            { type: String, default: null },
+    pinSetAt:           { type: Date,   default: null },
+    pinFailedAttempts:  { type: Number, default: 0 },
 
     // ── Onboarding tour ─────────────────────────────────────────────────
     // Defaults to true so existing users don't see the tour on first

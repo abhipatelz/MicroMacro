@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user } = await requireRole(req, 'lead', 'admin');
     if (error) return error;
     await connectDB();
     const t = await Task.findById(params.id);

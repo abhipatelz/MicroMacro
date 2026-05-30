@@ -3,14 +3,14 @@ import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { AuditLog } from '@/models/AuditLog';
-import { requireUser } from '@/lib/auth';
+import { requireRole } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 
 export const runtime = 'nodejs';
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireUser(req);
+    const { error } = await requireRole(req, 'lead', 'admin');
     if (error) return error;
     await connectDB();
 
@@ -19,22 +19,21 @@ export async function GET(req: NextRequest) {
     const year = Math.min(Math.max(parseInt(searchParams.get('year') || '') || currentYear, 2020), currentYear + 1);
     const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
     const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
-    const userOid = new mongoose.Types.ObjectId(user!.sub);
+
+    let userOid: mongoose.Types.ObjectId;
+    try { userOid = new mongoose.Types.ObjectId(params.id); }
+    catch { return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 }); }
 
     const [activityRows, totalDone, streak40, projectHeroCount] = await Promise.all([
-      // All audit log entries by this user per day
       AuditLog.aggregate([
         { $match: { actorId: userOid, createdAt: { $gte: startDate, $lt: endDate } } },
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
       ]),
-      // Total tasks completed ever
       Task.countDocuments({ assigneeId: userOid, status: 'done' }),
-      // Activity days in last 40 days for streak
       AuditLog.aggregate([
         { $match: { actorId: userOid, createdAt: { $gte: new Date(Date.now() - 40 * 86400000) } } },
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } } } },
       ]).then((r: any[]) => new Set(r.map(x => x._id as string))),
-      // Tasks done in completed projects
       Task.aggregate([
         { $match: { assigneeId: userOid, status: 'done' } },
         { $lookup: { from: 'projects', localField: 'projectId', foreignField: '_id', as: 'proj' } },
@@ -46,18 +45,15 @@ export async function GET(req: NextRequest) {
     const days: Record<string, number> = {};
     for (const r of activityRows) days[r._id] = r.count;
 
-    // Streak
     let streak = 0;
     const today = new Date();
     for (let i = 0; i < 40; i++) {
       const d = new Date(today); d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      if (streak40.has(key)) streak++;
+      if (streak40.has(d.toISOString().slice(0, 10))) streak++;
       else if (i > 0) break;
     }
 
-    // Badges
-    const badges: string[] = ['first_step']; // always earned
+    const badges: string[] = ['first_step'];
     if (totalDone >= 1) badges.push('task_rookie');
     if (totalDone >= 10) badges.push('task_achiever');
     if (totalDone >= 50) badges.push('task_performer');

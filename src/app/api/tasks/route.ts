@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
-import { requireUser, isLead } from '@/lib/auth';
+import { isLead, requireUser } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
 import { TaskCreateSchema } from '@/lib/validations';
@@ -14,21 +14,21 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
+    // Any authenticated user may add tasks to a personal project they own;
+    // shared (GxP) projects still require team-lead / admin authority.
     const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
     const body = await readBody(req, TaskCreateSchema);
 
     const scope = await getLeadScope(user!.sub, user!.role);
-    const project = await Project.findOne({ _id: body.projectId, ...projectsVisibleFilter(scope) }).select('_id ownerId').lean();
+    const project = await Project.findOne({ _id: body.projectId, ...projectsVisibleFilter(scope) })
+      .select('_id isPersonal personal ownerId').lean();
     if (!project) return NextResponse.json({ error: 'Project not found or not accessible' }, { status: 404 });
-    // Non-leads may only add tasks to a project they own (their personal project).
-    const ownsProject = String((project as any).ownerId || '') === String(user!.sub);
-    if (!isLead(user!.role) && !ownsProject) {
-      return NextResponse.json(
-        { error: 'You can only add tasks to projects you lead or own.' },
-        { status: 403 },
-      );
+
+    const ownsPersonal = ((project as any).isPersonal || (project as any).personal) && String((project as any).ownerId) === user!.sub;
+    if (!ownsPersonal && !isLead(user!.role)) {
+      return NextResponse.json({ error: 'Only team leaders can add tasks to shared projects' }, { status: 403 });
     }
     const task = await Task.create({
       projectId: body.projectId,
@@ -65,11 +65,14 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    await logOperation({
-      action: 'task.create', category: 'task', actor: user,
-      targetType: 'task', targetId: String(task._id), targetLabel: task.title,
-      summary: `Created task "${task.title}"`, meta: { projectId: String(body.projectId) },
-    });
+    // Tasks inside a personal project stay out of the cross-user audit trail.
+    if (!(project as any).isPersonal) {
+      await logOperation({
+        action: 'task.create', category: 'task', actor: user,
+        targetType: 'task', targetId: String(task._id), targetLabel: task.title,
+        summary: `Created task "${task.title}"`, meta: { projectId: String(body.projectId) },
+      });
+    }
 
     return NextResponse.json(taskS(task));
   } catch (e) {

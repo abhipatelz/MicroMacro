@@ -117,12 +117,12 @@ export function Tag({ children, className = '' }: { children: ReactNode; classNa
 }
 
 /* ── Role badge — the only thing we show for a person besides their name.
-   No job titles or designations anywhere: a person is a Team Leader
+   No job titles or designations anywhere: a person is a Team Lead
    (green), an Individual Contributor (blue), or the Admin (amber). */
 export const ROLE_LABEL: Record<string, string> = {
   admin:    'Admin',
-  pm:       'Team Leader',
-  lead:     'Team Leader',
+  pm:       'Team Lead',
+  lead:     'Team Lead',
   employee: 'Individual Contributor',
 };
 const ROLE_BADGE_CLASS: Record<string, string> = {

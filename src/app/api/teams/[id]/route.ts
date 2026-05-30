@@ -50,7 +50,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     return NextResponse.json({
       ...teamS(t),
-      members: users.map(u),
+      // Admin users are workspace owners, not team contributors — exclude from
+      // the member list so they don't inflate workload or count displays.
+      members: users.filter((m: any) => m.role !== 'admin').map(u),
       projects: projects.map((p) => {
         const agg = projectAgg.get(String(p._id));
         return projectS(p, {
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user } = await requireRole(req, 'lead', 'admin');
     if (error) return error;
     await connectDB();
 
@@ -105,7 +107,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error, user } = await requireRole(req, 'pm', 'lead', 'admin');
+    const { error, user } = await requireRole(req, 'lead', 'admin');
     if (error) return error;
     await connectDB();
 

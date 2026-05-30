@@ -68,7 +68,7 @@ export default function TeamsPage() {
     api<any>('/auth/me').then((d) => setMe(d.user));
   }, []);
 
-  const canManage = (me?.role === 'pm' || me?.role === 'lead' || me?.role === 'admin');
+  const canManage = (me?.role === 'lead' || me?.role === 'admin');
   const uMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
 
   const filtered = teams.filter((t) => {
@@ -424,7 +424,7 @@ function TeamFormModal({
                 <option value="">— No owner —</option>
                 {/* Only team leads can own a team; the admin is never listed. */}
                 {users
-                  .filter((u) => u.role === 'pm' || u.role === 'lead')
+                  .filter((u) => u.role === 'lead')
                   .map((u) => (
                     <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
@@ -478,11 +478,11 @@ function TeamFormModal({
                         <div className="text-sm font-medium text-slate-800 truncate">
                           {u.name}
                           {isLead && (
-                            <span className="ml-2 text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Team Leader</span>
+                            <span className="ml-2 text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Team Lead</span>
                           )}
                         </div>
                         <div className="text-[11px] text-slate-400 truncate">
-                          {(u.role === 'pm' || u.role === 'lead') ? 'Team Leader' : u.role === 'admin' ? 'Admin' : 'Individual Contributor'}
+                          {(u.role === 'lead') ? 'Team Lead' : u.role === 'admin' ? 'Admin' : 'Individual Contributor'}
                         </div>
                       </div>
                       <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${

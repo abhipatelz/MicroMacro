@@ -1,8 +1,33 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { api } from '@/lib/client/api';
 import { Avatar, RoleBadge } from '@/components/ui';
-import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2, ScrollText } from 'lucide-react';
+import { ActivityGraph } from '@/components/ActivityGraph';
+import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2, BarChart3 } from 'lucide-react';
+
+/* ── Activity peek modal — team leaders click a teammate to see how they're
+   tracking: contribution graph, streak and badges (read-only, no private
+   project data is exposed). ─────────────────────────────────────────────── */
+function ActivityModal({ user, onClose }: { user: any; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[640px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 mb-5">
+          <Avatar name={user.name} size={44} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-black text-slate-900 truncate">{user.name}</h3>
+              <RoleBadge role={user.role} />
+            </div>
+            <div className="text-xs text-slate-400 mt-0.5">Performance overview</div>
+          </div>
+          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-2 mt-0.5"><X size={18} /></button>
+        </div>
+        <ActivityGraph userId={user.id} name={user.name} />
+      </div>
+    </div>
+  );
+}
 
 /* ── role display helpers ─────────────────────────────────────────────── */
 const ROLE_COLOR: Record<string, string> = {
@@ -461,22 +486,11 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
   const [editUser, setEditUser] = useState<any | null>(null);
   const [removeConfirm, setRemoveConfirm] = useState<any | null>(null);
   const [removing, setRemoving] = useState(false);
-  const [audit, setAudit] = useState<any[] | null>(null);
-
-  const isAdmin = me?.role === 'admin';
-
-  function refreshAudit() {
-    if (isAdmin) api<any[]>('/audit?limit=100').then(setAudit).catch(() => setAudit([]));
-  }
-  // Operations log is admin-only; load it once on mount.
-  useEffect(() => { refreshAudit(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  const [activityUser, setActivityUser] = useState<any | null>(null);
 
   // Background refresh after a mutation. The initial render uses the
   // server-provided list, so no fetch fires on mount.
-  function load() {
-    api<any[]>('/users').then(setUsers).catch(() => {});
-    refreshAudit();
-  }
+  function load() { api<any[]>('/users').then(setUsers).catch(() => {}); }
 
   async function confirmRoleChange() {
     if (!roleConfirm) return;
@@ -512,41 +526,10 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
     if (!confirm(`Unlock ${user.name}'s account?\nTheir existing password still works; the failed-attempt counter is reset to zero.`)) return;
     setSaving(user.id);
     try {
-      await api(`/users/${user.id}`, { method: 'PATCH', body: { locked: false } });
+      await api(`/users/${user.id}/unlock`, { method: 'POST' });
       await load();
     } catch (e: any) {
       setRoleErr(e.message || 'Failed to unlock account.');
-    } finally {
-      setSaving(null);
-    }
-  }
-
-  // Operations lock — suspend an account so the person can't sign in until
-  // an admin lifts it. The opposite of unlockAccount.
-  async function lockAccount(user: any) {
-    if (!confirm(`Lock ${user.name}'s account?\nThey will be unable to sign in until you unlock it. Existing sessions are not revoked.`)) return;
-    setSaving(user.id);
-    try {
-      await api(`/users/${user.id}`, { method: 'PATCH', body: { locked: true } });
-      await load();
-    } catch (e: any) {
-      setRoleErr(e.message || 'Failed to lock account.');
-    } finally {
-      setSaving(null);
-    }
-  }
-
-  // Force the person to set a brand-new password the next time they sign in,
-  // without changing their current one. Useful for handing over a legacy
-  // account that never went through the first-login flow.
-  async function forcePasswordChange(user: any) {
-    if (!confirm(`Require ${user.name} to set a new password on their next sign-in?`)) return;
-    setSaving(user.id);
-    try {
-      await api(`/users/${user.id}`, { method: 'PATCH', body: { mustChangePassword: true } });
-      await load();
-    } catch (e: any) {
-      setRoleErr(e.message || 'Failed to update account.');
     } finally {
       setSaving(null);
     }
@@ -585,10 +568,9 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
     setTimeout(() => setJustAdded(null), 4000);
   }
 
-  const admins = users.filter((u) => u.role === 'admin');
-  const pms = users.filter((u) => u.role === 'pm' || u.role === 'lead');
+  const pms = users.filter((u) => u.role === 'lead' || u.role === 'admin');
   const ics = users.filter((u) => u.role === 'employee');
-  const isPM = (me?.role === 'pm' || me?.role === 'lead' || me?.role === 'admin');
+  const isPM = (me?.role === 'lead' || me?.role === 'admin');
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -607,6 +589,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
       )}
       {creds && <CredentialsModal {...creds} onClose={() => setCreds(null)} />}
       {editUser && <EditUserModal user={editUser} onClose={() => setEditUser(null)} onSaved={load} />}
+      {activityUser && <ActivityModal user={activityUser} onClose={() => setActivityUser(null)} />}
       {removeConfirm && (
         <RemoveConfirmDialog
           user={removeConfirm}
@@ -660,65 +643,38 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{roleErr}</div>
       )}
 
-      {/* Administrator — the single workspace owner, set apart from leads */}
-      {admins.length > 0 && (
-        <div className="card overflow-hidden" style={{ borderColor: 'rgba(245,158,11,0.35)' }}>
-          <div className="px-5 py-3.5 border-b border-amber-100 bg-amber-50/60 flex items-center gap-2">
-            <Shield size={14} className="text-amber-500" />
-            <h2 className="text-sm font-bold text-slate-700">Administrator</h2>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {admins.map((u) => (
-              <div key={u.id} className="flex items-center gap-3 px-5 py-4 flex-wrap">
-                <Avatar name={u.name} size={36} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-800 text-sm leading-tight">
-                    {u.name}{me?.id === u.id && <span className="text-slate-400 font-normal"> · you</span>}
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
-                  <span className="tag border border-amber-200 bg-amber-50 text-amber-700 font-semibold">Admin</span>
-                  {me?.id === u.id && (
-                    <a href="/settings"
-                      className="text-xs text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200">
-                      Change password
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="px-5 py-3 border-t border-amber-100 bg-amber-50/30 text-[11px] text-slate-500 leading-relaxed">
-            The administrator is the single workspace owner — this account can’t be locked, demoted, or deleted.
-            Forgot the password? Recover it from the secure setup page at <span className="font-mono">/bootstrap</span> using your bootstrap token.
-          </div>
-        </div>
-      )}
-
-      {/* Team Leads */}
+      {/* PM section */}
       <div className="card overflow-hidden">
         <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
           <Shield size={14} className="text-blue-500" />
-          <h2 className="text-sm font-bold text-slate-700">Team Leads</h2>
+          <h2 className="text-sm font-bold text-slate-700">Team Leads &amp; Admin</h2>
           <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 ml-1">{pms.length}</span>
         </div>
         {pms.length === 0 ? (
-          <div className="px-5 py-5 text-sm text-slate-400">No team leads yet.</div>
+          <div className="px-5 py-5 text-sm text-slate-400">No leads yet.</div>
         ) : (
           <div className="divide-y divide-slate-50">
             {pms.map((u) => (
-              <div key={u.id} className="flex items-center gap-3 px-5 py-4 flex-wrap">
-                <Avatar name={u.name} size={36} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-800 text-sm leading-tight">{u.name}</div>
-                  <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
+              <div key={u.id} className="flex items-center gap-3 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => isPM && setActivityUser(u)}
+                  disabled={!isPM}
+                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isPM ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
+                  title={isPM ? `View ${u.name}'s activity` : undefined}>
+                  <Avatar name={u.name} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
+                      {u.name}
+                      {isPM && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
+                  </div>
+                </button>
                 <RoleBadge role={u.role} />
                 {u.lockedAt && (
                   <span className="tag border text-xs font-semibold border-rose-200 bg-rose-50 text-rose-700"
-                        title={`Sign-in suspended — locked at ${new Date(u.lockedAt).toLocaleString()}`}>
+                        title={`Locked at ${new Date(u.lockedAt).toLocaleString()} after too many failed sign-ins`}>
                     Locked
                   </span>
                 )}
@@ -747,24 +703,6 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                     Reset password
                   </button>
                 )}
-                {isPM && me?.id !== u.id && u.role !== 'admin' && (
-                  <button
-                    className="text-xs text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
-                    onClick={() => forcePasswordChange(u)}
-                    disabled={saving === u.id}
-                    title="Require a new password on their next sign-in">
-                    Force password
-                  </button>
-                )}
-                {isPM && me?.id !== u.id && u.role !== 'admin' && !u.lockedAt && (
-                  <button
-                    className="text-xs text-slate-500 hover:text-rose-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-200"
-                    onClick={() => lockAccount(u)}
-                    disabled={saving === u.id}
-                    title="Suspend this account — they can't sign in until you unlock it">
-                    Lock
-                  </button>
-                )}
                 {/* Demote a lead to contributor. Never offered for the
                    admin row or the admin's own row. */}
                 {me?.id !== u.id && u.role !== 'admin' && (
@@ -775,7 +713,6 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                     Make contributor
                   </button>
                 )}
-                </div>
               </div>
             ))}
           </div>
@@ -797,17 +734,26 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         ) : (
           <div className="divide-y divide-slate-50">
             {ics.map((u) => (
-              <div key={u.id} className="flex items-center gap-3 px-5 py-4 flex-wrap">
-                <Avatar name={u.name} size={36} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-800 text-sm leading-tight">{u.name}</div>
-                  <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
+              <div key={u.id} className="flex items-center gap-3 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => isPM && setActivityUser(u)}
+                  disabled={!isPM}
+                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isPM ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
+                  title={isPM ? `View ${u.name}'s activity` : undefined}>
+                  <Avatar name={u.name} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
+                      {u.name}
+                      {isPM && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
+                  </div>
+                </button>
                 <RoleBadge role={u.role} />
                 {u.lockedAt && (
                   <span className="tag border text-xs font-semibold border-rose-200 bg-rose-50 text-rose-700"
-                        title={`Sign-in suspended — locked at ${new Date(u.lockedAt).toLocaleString()}`}>
+                        title={`Locked at ${new Date(u.lockedAt).toLocaleString()} after too many failed sign-ins`}>
                     Locked
                   </span>
                 )}
@@ -833,22 +779,6 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   Reset password
                 </button>
                 <button
-                  className="text-xs text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
-                  onClick={() => forcePasswordChange(u)}
-                  disabled={saving === u.id}
-                  title="Require a new password on their next sign-in">
-                  Force password
-                </button>
-                {!u.lockedAt && (
-                  <button
-                    className="text-xs text-slate-500 hover:text-rose-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-200"
-                    onClick={() => lockAccount(u)}
-                    disabled={saving === u.id}
-                    title="Suspend this account — they can't sign in until you unlock it">
-                    Lock
-                  </button>
-                )}
-                <button
                   className="text-xs text-blue-600 hover:text-blue-800 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
                   onClick={() => setRoleConfirm({ user: u, targetRole: 'lead' })}
                   disabled={saving === u.id}>
@@ -859,73 +789,11 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   onClick={() => setRemoveConfirm(u)} title="Remove member">
                   <Trash2 size={13} />
                 </button>
-                </div>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* Operations log — admin-only append-only audit trail of who did what */}
-      {isAdmin && (
-        <div className="card overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
-            <ScrollText size={14} className="text-slate-500" />
-            <h2 className="text-sm font-bold text-slate-700">Operations log</h2>
-            {audit && <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 ml-1">{audit.length}</span>}
-            <span className="ml-auto text-[11px] text-slate-400">Newest first · most recent 100</span>
-          </div>
-          {audit === null ? (
-            <div className="divide-y divide-slate-50">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="px-5 py-3 flex items-center gap-3">
-                  <div className="skeleton h-3 w-40" />
-                  <div className="skeleton h-3 w-20 ml-auto" />
-                </div>
-              ))}
-            </div>
-          ) : audit.length === 0 ? (
-            <div className="px-5 py-6 text-sm text-slate-400 text-center">No operations recorded yet.</div>
-          ) : (
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-50">
-              {audit.map((e) => (
-                <div key={e.id} className="px-5 py-2.5 flex items-start gap-3 text-sm">
-                  <span className={`mt-0.5 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded shrink-0 ${auditTone(e.action)}`}>
-                    {e.action.split('.')[0]}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-slate-700 leading-snug">
-                      <span className="font-semibold">{e.actorName}</span>{' '}
-                      <span className="text-slate-500">{e.summary}</span>
-                    </div>
-                  </div>
-                  <span className="text-[11px] text-slate-400 shrink-0 whitespace-nowrap" title={new Date(e.createdAt).toLocaleString()}>
-                    {timeAgo(e.createdAt)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
-}
-
-// Compact relative time for the operations log ("3m ago", "2h ago", …).
-function timeAgo(iso: string): string {
-  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-  if (s < 60) return 'just now';
-  const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24); if (d < 30) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
-
-function auditTone(action: string): string {
-  const head = action.split('.')[0];
-  if (head === 'user')    return 'bg-blue-50 text-blue-700';
-  if (head === 'project') return 'bg-purple-50 text-purple-700';
-  if (head === 'team')    return 'bg-emerald-50 text-emerald-700';
-  return 'bg-slate-100 text-slate-600';
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { AuditLog } from '@/models/AuditLog';
+import { Project } from '@/models/Project';
 import { requireRole } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 
@@ -21,10 +22,40 @@ export async function GET(req: NextRequest) {
     const filter: Record<string, any> = {};
     if (category && category !== 'all') filter.category = category;
 
-    const rows = await AuditLog.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
+    const [rows, personalProjects] = await Promise.all([
+      AuditLog.find(filter).sort({ createdAt: -1 }).limit(limit).lean(),
+      Project.find({ $or: [{ isPersonal: true }, { code: /^PRSN-/ }] }, '_id').lean(),
+    ]);
+
+    // Never surface personal project data in the operational audit trail —
+    // personal projects are private to their owners, and should not appear in
+    // a cross-user admin view even in log form.
+    const personalIds = new Set(personalProjects.map((p: any) => String(p._id)));
+    let visible = rows.filter((r: any) => {
+      if (r.targetType === 'project' && personalIds.has(r.targetId)) return false;
+      if (r.targetType === 'task' && r.meta?.projectId && personalIds.has(String(r.meta.projectId))) return false;
+      return true;
+    });
+
+    // Batch-check task entries without meta.projectId (e.g. legacy update/delete logs)
+    const orphanIds = visible
+      .filter((r: any) => r.targetType === 'task' && !r.meta?.projectId && r.targetId)
+      .map((r: any) => r.targetId);
+    if (orphanIds.length > 0) {
+      const { Task } = await import('@/models/Task');
+      const taskDocs = await Task.find({ _id: { $in: orphanIds } }, 'projectId').lean();
+      const tpMap = new Map(taskDocs.map((t: any) => [String(t._id), String((t as any).projectId)]));
+      visible = visible.filter((r: any) => {
+        if (r.targetType === 'task' && !r.meta?.projectId) {
+          const pid = tpMap.get(String(r.targetId));
+          return !pid || !personalIds.has(pid);
+        }
+        return true;
+      });
+    }
 
     return NextResponse.json(
-      rows.map((r: any) => ({
+      visible.map((r: any) => ({
         id: String(r._id),
         action: r.action,
         category: r.category,

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { useCurrentUser } from '@/components/CurrentUserContext';
-import { Download, Trash2 } from 'lucide-react';
+import { Download, Trash2, Printer } from 'lucide-react';
 import {
   Card,
   Avatar,
@@ -14,7 +14,7 @@ import {
   formatDate,
   TaskLink
 } from '@/components/ui';
-import { downloadTeamReport } from './report';
+import { downloadTeamReport, printTeamReport } from './report';
 
 const FUNCTION_LABEL: Record<string, string> = {
   general: 'General',
@@ -37,7 +37,7 @@ export default function TeamDetailPage() {
   const [adding, setAdding] = useState(false);
   const [newMember, setNewMember] = useState('');
   const me = useCurrentUser();
-  const isLead = me?.role === 'lead' || me?.role === 'pm' || me?.role === 'admin';
+  const isLead = me?.role === 'lead' || me?.role === 'admin';
   // An IC's team view is personal: they see their own micro-tasks only and
   // none of their teammates' progress. Default them straight to micro-tasks.
   const [view, setView] = useState<'progress' | 'microtasks' | 'projects'>(isLead ? 'progress' : 'microtasks');
@@ -123,15 +123,24 @@ export default function TeamDetailPage() {
           {team.description && <p className="text-slate-600 mt-1">{team.description}</p>}
           <p className="text-sm text-slate-500 mt-1">Function: {team.function}</p>
         </div>
-        {/* #9 — team owner / admin can download a presentable team report. */}
+        {/* #9 — team owner / admin can export a presentable team report. */}
         {isOwnerOrAdmin && (
-          <button
-            onClick={() => downloadTeamReport(team, progress, board)}
-            className="shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-            title="Download a printable report of this team's projects and progress"
-          >
-            <Download size={15} /> Download report
-          </button>
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              onClick={() => printTeamReport(team, progress, board)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-brand-700 hover:bg-brand-800 transition-colors"
+              title="Open a print-ready report — save as PDF or print for a meeting"
+            >
+              <Printer size={15} /> Print / PDF
+            </button>
+            <button
+              onClick={() => downloadTeamReport(team, progress, board)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              title="Download a self-contained HTML report of this team's projects and progress"
+            >
+              <Download size={15} /> Download
+            </button>
+          </div>
         )}
       </div>
 

@@ -10,8 +10,9 @@ import {
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
+import { useIsDark } from '@/lib/client/useIsDark';
 import { weightedProgress } from '@/lib/progress';
-import { Download, GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { chimeIfEnabled } from '@/lib/sound';
 
 const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
@@ -28,12 +29,13 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string; bo
 const COLUMN_WIDTH = 230;
 const COLUMN_GAP   = 12;
 
-function KanbanBoard({ tasks, onDropReorder }: {
+function KanbanBoard({ tasks, onDropReorder, isLead, onDelete }: {
   tasks: any[];
-  // Persists a drop: moves taskId to toStatus (if changed) and writes the new
-  // order of that column (orderedIds).
   onDropReorder: (taskId: string, toStatus: string, orderedIds: string[]) => void;
+  isLead: boolean;
+  onDelete: (taskId: string) => void;
 }) {
+  const dark = useIsDark();
   const [localTasks, setLocalTasks] = useState<any[]>(tasks);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   // Where the dragged card would land: a column + the insertion index within it.
@@ -168,7 +170,7 @@ function KanbanBoard({ tasks, onDropReorder }: {
         type="button"
         aria-label="Scroll left"
         onClick={() => scrollByCols(-1)}
-        className={`hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 w-9 h-9 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 shadow-md transition-all ${
+        className={`hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 w-9 h-9 items-center justify-center rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 shadow-md transition-all ${
           canLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -180,7 +182,7 @@ function KanbanBoard({ tasks, onDropReorder }: {
         type="button"
         aria-label="Scroll right"
         onClick={() => scrollByCols(1)}
-        className={`hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-20 w-9 h-9 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 shadow-md transition-all ${
+        className={`hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-20 w-9 h-9 items-center justify-center rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 shadow-md transition-all ${
           canRight ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -198,15 +200,13 @@ function KanbanBoard({ tasks, onDropReorder }: {
         const isOver = dragOver?.col === col;
         const isDragging = !!draggingId;
         return (
-          <div key={col} className={`shrink-0 flex flex-col rounded-xl transition-all duration-150 border-2 ${
-              isOver ? '' : 'bg-slate-50 dark:bg-white/[0.03] border-slate-200/70 dark:border-white/10'
-            }`}
+          <div key={col} className="shrink-0 flex flex-col rounded-xl transition-all duration-150"
             style={{
               width: COLUMN_WIDTH,
               scrollSnapAlign: 'start',
-              ...(isOver
-                ? { background: meta.bg, borderColor: meta.border, boxShadow: `0 0 0 3px ${meta.border}` }
-                : {}),
+              background: isOver ? (dark ? 'rgba(255,255,255,0.04)' : meta.bg) : (dark ? 'rgba(255,255,255,0.02)' : '#f8fafc'),
+              border: `2px solid ${isOver ? meta.border : (dark ? 'rgba(255,255,255,0.08)' : '#e9eef5')}`,
+              boxShadow: isOver ? `0 0 0 3px ${meta.border}` : undefined,
             }}
             onDragOver={e => handleColDragOver(e, col)}
             onDrop={e => handleDrop(e, col)}
@@ -230,11 +230,13 @@ function KanbanBoard({ tasks, onDropReorder }: {
                     onDragStart={e => handleDragStart(e, t.id)}
                     onDragEnd={handleDragEnd}
                     onDragOver={e => handleCardDragOver(e, col, index)}
-                    className="group relative bg-white rounded-lg border transition-all duration-150 cursor-grab active:cursor-grabbing"
+                    className="group relative rounded-lg border transition-all duration-150 cursor-grab active:cursor-grabbing"
                     style={{
-                      ...(isDraggingThis
-                        ? { borderColor: meta.color, boxShadow: `0 8px 24px rgba(0,0,0,0.15), 0 0 0 2px ${meta.color}` }
-                        : { boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }),
+                      background: dark ? '#1e293b' : '#ffffff',
+                      borderColor: isDraggingThis ? meta.color : (dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
+                      boxShadow: isDraggingThis
+                        ? `0 8px 24px rgba(0,0,0,0.15), 0 0 0 2px ${meta.color}`
+                        : '0 1px 3px rgba(0,0,0,0.06)',
                       opacity: isDraggingThis ? 0.5 : isDragging ? 0.85 : 1,
                       transform: isDraggingThis ? 'rotate(1.5deg) scale(1.02)' : undefined,
                     }}
@@ -242,8 +244,18 @@ function KanbanBoard({ tasks, onDropReorder }: {
                     <div className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 transition-opacity" style={{ color: meta.color }}>
                       <GripVertical size={12} />
                     </div>
+                    {isLead && (
+                      <button
+                        onClick={e => { e.stopPropagation(); e.preventDefault(); onDelete(t.id); }}
+                        draggable={false}
+                        aria-label="Delete task"
+                        className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
                     <Link href={`/tasks/${t.id}`} className="block p-3 pl-4" onClick={e => isDragging && e.preventDefault()}>
-                      <div className="text-xs font-semibold text-slate-800 leading-snug line-clamp-2">{t.title}</div>
+                      <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2">{t.title}</div>
                       {(t.gxpCritical || t.requiresQaSignoff || (t.priority && t.priority !== 'low')) && (
                         <div className="mt-1.5 flex gap-1 flex-wrap">
                           {t.gxpCritical && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-100">Compliance</span>}
@@ -258,7 +270,7 @@ function KanbanBoard({ tasks, onDropReorder }: {
                       </div>
                       {t.subtaskCount > 0 && (
                         <div className="mt-2">
-                          <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
+                          <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                             <div className="h-full rounded-full transition-all" style={{ width: `${Math.round((t.subtasksDone / t.subtaskCount) * 100)}%`, background: meta.color }} />
                           </div>
                           <div className="text-[9px] text-slate-400 mt-0.5">{t.subtasksDone}/{t.subtaskCount} subtasks</div>
@@ -274,10 +286,8 @@ function KanbanBoard({ tasks, onDropReorder }: {
                 <div className="h-0.5 rounded-full" style={{ background: meta.color }} />
               )}
               {colTasks.length === 0 && (
-                <div className={`rounded-lg border-2 border-dashed flex items-center justify-center h-16 transition-all duration-150 text-center px-2 ${
-                    isOver ? '' : 'border-slate-200 dark:border-white/10'
-                  }`}
-                  style={isOver ? { borderColor: meta.color, background: meta.bg } : {}}>
+                <div className="rounded-lg border-2 border-dashed flex items-center justify-center h-16 transition-all duration-150 text-center px-2"
+                  style={{ borderColor: isOver ? meta.color : (dark ? 'rgba(255,255,255,0.12)' : '#e2e8f0'), background: isOver ? (dark ? 'rgba(255,255,255,0.04)' : meta.bg) : 'transparent' }}>
                   <span className="text-xs leading-tight" style={{ color: isOver ? meta.color : '#94a3b8' }}>
                     {isOver ? 'Drop here' : isDragging ? 'Move card here' : 'No tasks'}
                   </span>
@@ -461,12 +471,15 @@ export default function ProjectDetailPage() {
   const [users, setUsers]     = useState<any[]>([]);
   const [me, setMe]           = useState<any>(null);
   const [view, setView]       = useState<'phases' | 'board'>('phases');
+  // The owner of a personal project may fully manage it even as an IC — that
+  // is the whole point of a private workspace. Everywhere we'd gate on isLead
+  // for task management, we gate on canManage instead.
+  const canManage = isLead || !!(project?.isPersonal && me && project?.ownerId === me.id);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen]           = useState(false);
   const [blockCompleteOpen, setBlockComplete] = useState(false);
   const [savingStatus, setSavingStatus]       = useState(false);
   const [pendingTaskIds, setPendingTaskIds]   = useState<Set<string>>(new Set());
-  const [dragId, setDragId] = useState<string | null>(null);
   const { showToast, ToastEl } = useToast();
 
   async function load() {
@@ -544,11 +557,6 @@ export default function ProjectDetailPage() {
   const overdue = tasks.filter((t: any) => t.dueDate && new Date(t.dueDate) < today && t.status !== 'done').length;
   const openTaskCount = tasks.filter((t: any) => t.status !== 'done').length;
 
-  // The owner of a project (e.g. the creator of a personal project) can
-  // manage it and its tasks even when they aren't a team lead.
-  const isOwner = !!(me && project.ownerId && String(project.ownerId) === String(me.id));
-  const canManage = isLead || isOwner;
-
   async function updateStatus(newStatus: string) {
     if (newStatus === 'completed' && openTaskCount > 0) {
       setBlockComplete(true);
@@ -617,20 +625,19 @@ export default function ProjectDetailPage() {
     }
   }
 
-  // Drag-and-drop reorder: move `draggedId` to where `targetId` sits within
-  // the same phase, then persist the whole phase order.
-  async function reorderDrop(phaseId: string | null, draggedId: string, targetId: string) {
-    if (draggedId === targetId) return;
+  // Move a task up/down within its phase. Computes the phase's new order
+  // and persists it (position = index) via the reorder endpoint.
+  async function reorderInPhase(phaseId: string | null, taskId: string, dir: -1 | 1) {
     const phaseTasks = tasks
       .filter((t: any) => (t.phaseId || null) === (phaseId || null))
       .slice()
       .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
-    const from = phaseTasks.findIndex((t: any) => t.id === draggedId);
-    const to   = phaseTasks.findIndex((t: any) => t.id === targetId);
-    if (from < 0 || to < 0) return;
-    const [moved] = phaseTasks.splice(from, 1);
-    phaseTasks.splice(to, 0, moved);
+    const idx = phaseTasks.findIndex((t: any) => t.id === taskId);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= phaseTasks.length) return;
+    [phaseTasks[idx], phaseTasks[swap]] = [phaseTasks[swap], phaseTasks[idx]];
     const orderedIds = phaseTasks.map((t: any) => t.id);
+    // Optimistic: reflect the new positions locally right away.
     setProject((p: any) => ({
       ...p,
       tasks: (p.tasks || []).map((t: any) =>
@@ -641,6 +648,17 @@ export default function ProjectDetailPage() {
     } catch (e: any) {
       showToast(e.message || 'Could not reorder', 'err');
       load();
+    }
+  }
+
+  async function deleteTask(taskId: string) {
+    if (!confirm('Delete this task permanently? This cannot be undone.')) return;
+    try {
+      await api(`/tasks/${taskId}`, { method: 'DELETE' });
+      showToast('Task deleted');
+      load();
+    } catch (e: any) {
+      showToast(e.message || 'Delete failed', 'err');
     }
   }
 
@@ -669,13 +687,12 @@ export default function ProjectDetailPage() {
       <div className="flex items-start justify-between gap-6 flex-wrap">
         {/* Left — identity, description, then status directly below it */}
         <div className="min-w-0 flex-1">
-          <div className="text-xs text-slate-400 font-mono">{project.code}</div>
+          <div className="text-xs text-slate-400 font-mono">{project.isPersonal ? 'Personal · private to you' : project.code}</div>
           <h1 className="text-2xl font-bold mt-0.5">{project.name}</h1>
           <div className="flex flex-wrap gap-2 mt-2">
-            {project.personal && (
-              <span className="tag border border-blue-200 bg-blue-50 text-blue-700 font-semibold"
-                    title="Personal project — only visible to you">
-                Personal
+            {project.isPersonal && (
+              <span className="tag border border-violet-200 bg-violet-50 text-violet-700 font-semibold inline-flex items-center gap-1.5">
+                <Lock size={11} /> Private
               </span>
             )}
             {project.archived && (
@@ -684,14 +701,14 @@ export default function ProjectDetailPage() {
                 <Archive size={11} /> Archived
               </span>
             )}
-            <LifecycleTag lifecycle={project.lifecycle} />
+            {!project.isPersonal && <LifecycleTag lifecycle={project.lifecycle} />}
             <PriorityTag priority={project.priority} />
           </div>
           {project.description && <p className="mt-2 text-sm text-slate-600 max-w-3xl">{project.description}</p>}
 
           {/* Status — directly under the description */}
           <div className="flex items-center gap-2 mt-3">
-            {canManage ? (
+            {isLead ? (
               <StatusPillRow
                 value={project.status}
                 onChange={updateStatus}
@@ -744,7 +761,7 @@ export default function ProjectDetailPage() {
                 <Archive size={13} /> {project.archived ? 'Restore' : 'Archive'}
               </button>
             )}
-            {(isAdmin || (isOwner && project.personal)) && (
+            {(isAdmin || (project?.isPersonal && me && project.ownerId === me.id)) && (
               <button onClick={() => setDeleteOpen(true)}
                 className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
                 <Trash2 size={13} /> Delete
@@ -812,15 +829,10 @@ export default function ProjectDetailPage() {
                 </div>
                 <ProgressBar value={pctP} className="mb-3" />
                 <div className="divide-y divide-slate-100">
-                  {ts.map((t: any) => {
+                  {ts.map((t: any, ti: number) => {
                     const canEdit = canManage || (me && t.assigneeId === me.id);
                     return (
-                    <div key={t.id}
-                      onDragOver={canManage ? (e) => e.preventDefault() : undefined}
-                      onDrop={canManage ? () => { if (dragId) reorderDrop(ph.id, dragId, t.id); setDragId(null); } : undefined}
-                      className={`py-2.5 flex items-center gap-2.5 text-sm group transition-colors ${
-                        dragId === t.id ? 'opacity-40' : ''
-                      }`}>
+                    <div key={t.id} className="py-2.5 flex items-center gap-2.5 text-sm group">
                       {canEdit ? (
                         <StatusSelect
                           value={t.status}
@@ -840,9 +852,9 @@ export default function ProjectDetailPage() {
                           {t.subtaskCount > 0 && ` · ${t.subtasksDone}/${t.subtaskCount} subtasks`}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end max-w-[48%] sm:max-w-none">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {t.pendingWith && t.status !== 'done' && (
-                          <span className="tag bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1 max-w-[120px] truncate"
+                          <span className="tag bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1"
                                 title={`Waiting on ${t.pendingWith}`}>
                             ⏳ {t.pendingWith}
                           </span>
@@ -853,21 +865,12 @@ export default function ProjectDetailPage() {
                           : <span className="tag bg-purple-50 text-purple-700 border border-purple-200">Sign-off</span>
                         )}
                         <PriorityTag priority={t.priority} />
-                        {t.dueDate && (
-                          <span className="text-xs text-slate-400 sm:w-16 text-right">{formatDate(t.dueDate)}</span>
-                        )}
-                        {/* Drag handle — leads (or the project owner) grab
-                           this to reshuffle tasks within the phase. */}
+                        <span className="text-xs text-slate-400 w-16 text-right">{formatDate(t.dueDate)}</span>
                         {canManage && (
-                          <span
-                            draggable
-                            onDragStart={() => setDragId(t.id)}
-                            onDragEnd={() => setDragId(null)}
-                            title="Drag to reorder"
-                            className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 shrink-0"
-                          >
-                            <GripVertical size={15} />
-                          </span>
+                          <button onClick={() => deleteTask(t.id)} aria-label="Delete task"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 rounded transition-all">
+                            <Trash2 size={13} />
+                          </button>
                         )}
                       </div>
                     </div>
@@ -902,9 +905,9 @@ export default function ProjectDetailPage() {
                       {t.subtaskCount > 0 && ` · ${t.subtasksDone}/${t.subtaskCount} subtasks`}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end max-w-[48%] sm:max-w-none">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {t.pendingWith && t.status !== 'done' && (
-                      <span className="tag bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1 max-w-[120px] truncate"
+                      <span className="tag bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1"
                             title={`Waiting on ${t.pendingWith}`}>
                         ⏳ {t.pendingWith}
                       </span>
@@ -915,7 +918,13 @@ export default function ProjectDetailPage() {
                       : <span className="tag bg-purple-50 text-purple-700 border border-purple-200">Sign-off</span>
                     )}
                     <PriorityTag priority={t.priority} />
-                    <span className="text-xs text-slate-400 sm:w-16 text-right">{formatDate(t.dueDate)}</span>
+                    <span className="text-xs text-slate-400 w-16 text-right">{formatDate(t.dueDate)}</span>
+                    {canManage && (
+                      <button onClick={() => deleteTask(t.id)} aria-label="Delete task"
+                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 rounded transition-all">
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
                 );
@@ -931,7 +940,7 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
-      {view === 'board' && <KanbanBoard tasks={tasks} onDropReorder={dropReorder} />}
+      {view === 'board' && <KanbanBoard tasks={tasks} onDropReorder={dropReorder} isLead={canManage} onDelete={deleteTask} />}
 
       {/* Modals */}
       {blockCompleteOpen && (

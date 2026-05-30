@@ -16,16 +16,12 @@ export function u(user: any) {
     email: user.email,
     username: user.username || null,
     name: user.name,
-    role: user.role,
+    role: user.role === 'pm' ? 'lead' : user.role,
     employeeId: user.employeeId || '',
-    profileLocked: !!user.profileLockedAt,
     // Lock state — surfaced on the People page so admin/lead can see
     // who can't sign in and click Unlock. Not credential data.
     lockedAt: user.lockedAt || null,
     failedLoginAttempts: user.failedLoginAttempts || 0,
-    // True once the user has set a quick PIN — surfaced so Settings can
-    // show "Change PIN" vs "Set PIN" without exposing the hash itself.
-    pinSet: !!user.pinHash,
   };
 }
 
@@ -67,7 +63,8 @@ export function project(p: any, extras: Any = {}) {
     archived:   !!p.archived,
     archivedAt: p.archivedAt || null,
     archivedBy: id(p.archivedBy),
-    personal:   !!p.personal,
+    isPersonal: !!(p.isPersonal || p.personal),
+    personal: !!(p.isPersonal || p.personal),
     createdAt: p.createdAt,
     ...extras
   };

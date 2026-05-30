@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { signToken, setAuthCookie, configuredAdminEmail, newSessionId, signDeviceToken, setDeviceCookie } from '@/lib/auth';
+import { signToken, setAuthCookie, setDeviceCookie, configuredAdminEmail, newSessionId } from '@/lib/auth';
 import { readBody, handleError } from '@/lib/http';
 import { u } from '@/lib/serialize';
 import { rateLimit } from '@/lib/rateLimit';
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
     const token = signToken({
       sub:   String(user._id),
       email: user.email,
-      role:  user.role as any,
+      role:  user.role === 'pm' ? 'lead' : user.role as any,
       name:  user.name,
       title: user.title || '',
       mustChangePassword: !!user.mustChangePassword,
@@ -186,12 +186,11 @@ export async function POST(req: NextRequest) {
       summary: securityKeyOk ? 'Signed in with recovery key' : 'Signed in',
     });
 
-    const res = NextResponse.json({ token, user: u(user) });
+    const res = NextResponse.json({ token, user: u(user), hasPin: !!(user as any).pinHash });
     setAuthCookie(res, token);
-    // Mark this device as "recognised" for the user, so a return visit can
-    // sign in with just the quick PIN (if they later set one). The cookie
-    // alone grants no access — the PIN is still required.
-    setDeviceCookie(res, signDeviceToken({ sub: String(user._id), name: user.name }));
+    // Mark this device as trusted so the user can re-enter with a Quick PIN
+    // next time (a full password login is what earns that trust).
+    setDeviceCookie(res, String(user._id));
     return res;
   } catch (e) {
     return handleError(e);
