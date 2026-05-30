@@ -570,7 +570,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
 
   const pms = users.filter((u) => u.role === 'lead' || u.role === 'admin');
   const ics = users.filter((u) => u.role === 'contributor');
-  const isPM = (me?.role === 'lead' || me?.role === 'admin');
+  const isLeadOrAdmin = (me?.role === 'lead' || me?.role === 'admin');
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -658,15 +658,15 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
               <div key={u.id} className="flex items-center gap-3 px-5 py-4">
                 <button
                   type="button"
-                  onClick={() => isPM && setActivityUser(u)}
-                  disabled={!isPM}
-                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isPM ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
-                  title={isPM ? `View ${u.name}'s activity` : undefined}>
+                  onClick={() => isLeadOrAdmin && setActivityUser(u)}
+                  disabled={!isLeadOrAdmin}
+                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isLeadOrAdmin ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
+                  title={isLeadOrAdmin ? `View ${u.name}'s activity` : undefined}>
                   <Avatar name={u.name} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
                       {u.name}
-                      {isPM && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
+                      {isLeadOrAdmin && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
                     </div>
                     <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
                   </div>
@@ -678,14 +678,14 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                     Locked
                   </span>
                 )}
-                {isPM && (
+                {isLeadOrAdmin && (
                   <button
                     className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                     onClick={() => setEditUser(u)} title="Edit profile">
                     <Pencil size={13} />
                   </button>
                 )}
-                {isPM && u.lockedAt && (
+                {isLeadOrAdmin && u.lockedAt && (
                   <button
                     className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-rose-50 transition-colors border border-rose-200"
                     onClick={() => unlockAccount(u)}
@@ -694,7 +694,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                     Unlock
                   </button>
                 )}
-                {isPM && (
+                {isLeadOrAdmin && (
                   <button
                     className="text-xs text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
                     onClick={() => resetPassword(u)}
@@ -737,15 +737,15 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
               <div key={u.id} className="flex items-center gap-3 px-5 py-4">
                 <button
                   type="button"
-                  onClick={() => isPM && setActivityUser(u)}
-                  disabled={!isPM}
-                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isPM ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
-                  title={isPM ? `View ${u.name}'s activity` : undefined}>
+                  onClick={() => isLeadOrAdmin && setActivityUser(u)}
+                  disabled={!isLeadOrAdmin}
+                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isLeadOrAdmin ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
+                  title={isLeadOrAdmin ? `View ${u.name}'s activity` : undefined}>
                   <Avatar name={u.name} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
                       {u.name}
-                      {isPM && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
+                      {isLeadOrAdmin && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
                     </div>
                     <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
                   </div>

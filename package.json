@@ -23,7 +23,6 @@
     "e2e:report": "playwright show-report"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.91.1",
     "@google/generative-ai": "^0.24.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",

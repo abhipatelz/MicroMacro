@@ -38,10 +38,17 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // gzip/br compression of server responses (HTML, JSON, JS).
+  compress: true,
+  // Don't leak the framework version header.
+  poweredByHeader: false,
   experimental: {
     serverComponentsExternalPackages: isProd
       ? ['mongoose']
-      : ['mongoose', 'mongodb-memory-server']
+      : ['mongoose', 'mongodb-memory-server'],
+    // Transform barrel imports (e.g. lucide-react) into direct per-icon
+    // imports at build time. Harmless win; lucide-react is imported in 26 files.
+    optimizePackageImports: ['lucide-react'],
   },
   eslint: { ignoreDuringBuilds: true },
   async headers() {

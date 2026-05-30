@@ -29,7 +29,7 @@ We do not want contributions that hedge. A clear "I think this is wrong because 
 - Features that add complexity without removing more complexity elsewhere
 - Changes that introduce external AI API calls (the on-premise constraint is a core principle)
 - UI library additions — we use Tailwind and Lucide; keep it that way
-- Changes to the role model without a very clear justification (two roles is deliberate)
+- Changes to the role model without a very clear justification (the three roles — contributor, lead, admin — are deliberate)
 
 ---
 
@@ -38,7 +38,7 @@ We do not want contributions that hedge. A clear "I think this is wrong because 
 ```bash
 # Fork and clone
 git clone https://github.com/<your-fork>/MicroMacro.git
-cd "MicroMacro/PM Tool/MicroMacro"
+cd MicroMacro
 
 # Install
 npm install

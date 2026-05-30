@@ -4,10 +4,12 @@
 
 ## What it is
 
-A lightweight project + task tracker built for a small group of QA-IT
-team leads in pharma. One role does the heavy lifting (**team lead**)
-plus a single **admin** for password resets. No employee logins, no
-clients, no marketing pages — just leads, their teams, their projects.
+A lightweight project + task tracker built for QA-IT teams in pharma.
+Three roles, invite-only — no public sign-ups, no marketing pages:
+
+- **Contributor** — works the tasks assigned to them; private My Day + personal projects.
+- **Team Lead** — creates teams, projects and tasks; assigns work; tracks progress.
+- **Admin** — full workspace control, user management, operations/audit log.
 
 ## Run locally
 
