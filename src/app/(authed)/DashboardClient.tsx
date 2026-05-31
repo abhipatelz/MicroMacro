@@ -155,8 +155,8 @@ export default function DashboardClient({
     <div className="pb-12 max-w-[1440px]">
 
       {/* ── Greeting ────────────────────────────────────────────────────── */}
-      <div className="mb-6 pt-1">
-        <h1 className="text-3xl font-black tracking-tight leading-tight">
+      <div className="mb-5 sm:mb-6 pt-1">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">
           <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}, {firstName}.</span>
         </h1>
       </div>
@@ -192,7 +192,10 @@ export default function DashboardClient({
           />
 
           {/* Right column — Actions + "My tasks" (for leads: also Contributors). */}
-          <div className="space-y-4 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto pr-1">
+          {/* `lg:pt-7` (≈ section header height + its mb-3) drops the first card
+              so its top edge lines up with the first project card on the left,
+              instead of floating above the "Your team's projects" heading. */}
+          <div className="space-y-4 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto pr-1 lg:pt-7">
             <ActionsPanel tasks={visibleTasks} />
             <MyTasksPanel tasks={visibleTasks} myId={myId} />
             {/* Layout parity — the right column always carries three panels
@@ -362,15 +365,15 @@ function ProjectsColumn({
   const isLead  = useIsLead();
   return (
     <section>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <FolderKanban size={14} className="text-slate-400" />
-          <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <FolderKanban size={14} className="text-slate-400 shrink-0" />
+          <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 truncate">
             Your team’s projects
           </h2>
-          <span className="text-[10px] text-slate-300 font-semibold">{projects.length}</span>
+          <span className="text-[10px] text-slate-300 font-semibold shrink-0">{projects.length}</span>
         </div>
-        <Link href="/projects" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+        <Link href="/projects" className="text-xs font-semibold text-blue-600 hover:text-blue-700 shrink-0 whitespace-nowrap">
           All projects →
         </Link>
       </div>
@@ -577,11 +580,14 @@ function ProjectRow({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            {/* On mobile the title claims the full first line and wraps to two
+                lines rather than truncating to "BOT Automa…"; the code + badges
+                flow onto the next line. */}
             <Link href={`/projects/${project.id}`} onClick={e => e.stopPropagation()}
-              className="text-sm font-bold text-slate-800 hover:text-blue-700 truncate">
+              className="text-sm font-bold text-slate-800 hover:text-blue-700 basis-full sm:basis-auto sm:min-w-0 line-clamp-2 sm:truncate">
               {project.name}
             </Link>
-            <span className="text-[10px] font-bold text-slate-300 tracking-wider">{project.code}</span>
+            <span className="text-[10px] font-bold text-slate-300 tracking-wider shrink-0">{project.code}</span>
             {cat && (
               <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
                 {cat}
@@ -609,7 +615,7 @@ function ProjectRow({
           </div>
         </div>
 
-        <div className="w-28 shrink-0">
+        <div className="w-14 sm:w-28 shrink-0">
           <ProgressBar value={pct} />
           <div className="text-[10px] text-slate-400 mt-1 text-right font-semibold">{pct}%</div>
         </div>

@@ -114,22 +114,24 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <SlidersHorizontal size={13} className="text-slate-400 shrink-0" />
-            <select className="select text-sm w-auto" value={team} onChange={(e) => setTeam(e.target.value)}>
+          {/* Filters stack full-width on mobile (so a long team name never
+              overflows the card) and sit inline from sm: up. */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <SlidersHorizontal size={13} className="text-slate-400 shrink-0 hidden sm:block" />
+            <select className="select text-sm w-full sm:w-auto" value={team} onChange={(e) => setTeam(e.target.value)}>
               <option value="">All teams</option>
               {teams.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
-            <select className="select text-sm w-auto" value={lc} onChange={(e) => setLc(e.target.value)}>
+            <select className="select text-sm w-full sm:w-auto" value={lc} onChange={(e) => setLc(e.target.value)}>
               <option value="">All lifecycles</option>
               {lifecycles.map((l) => (
                 <option key={l.key} value={l.key}>{l.label}</option>
               ))}
             </select>
             {tab === 'all' && (
-              <select className="select text-sm w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <select className="select text-sm w-full sm:w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="">All statuses</option>
                 <option value="planning">Planning</option>
                 <option value="in_progress">In progress</option>
@@ -193,7 +195,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                     <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: healthColor }}
                       title={overdueRatio > 0.3 ? 'Critical' : overdueRatio > 0 ? 'At risk' : 'Healthy'} />
                   </div>
-                  <div className="font-bold text-slate-900 truncate group-hover:text-blue-700 transition-colors leading-tight">
+                  <div className="font-bold text-slate-900 line-clamp-2 group-hover:text-blue-700 transition-colors leading-tight">
                     {p.name}
                   </div>
                   {p.description && (

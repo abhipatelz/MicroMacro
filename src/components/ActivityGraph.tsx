@@ -16,9 +16,33 @@ import { Flame, Trophy, Clock3 } from 'lucide-react';
  * beneath. Fully responsive — the columns stack on narrow screens.
  */
 
-// Weighted-score colour scale (a normal task ≈ 5–7 pts/day).
-function cellColor(n: number): string {
-  if (!n) return '#ebedf0';
+/* Track the live theme so the heatmap palette can flip with it. The cells use
+   inline background styles (can't be themed with a `.dark` selector), so we
+   read the `dark` class off <html> and re-render when it toggles. Previously
+   the light-mode hexes leaked into dark mode, painting a wall of white cells. */
+function useIsDark() {
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const el = document.documentElement;
+    const update = () => setDark(el.classList.contains('dark'));
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
+
+// Weighted-score colour scale (a normal task ≈ 5–7 pts/day). Dark mode uses
+// GitHub's dark heatmap greens on a faint translucent empty cell.
+function cellColor(n: number, dark: boolean): string {
+  if (!n) return dark ? 'rgba(255,255,255,0.06)' : '#ebedf0';
+  if (dark) {
+    if (n <= 5)  return '#0e4429';
+    if (n <= 12) return '#006d32';
+    if (n <= 22) return '#26a641';
+    return '#39d353';
+  }
   if (n <= 5) return '#9be9a8';
   if (n <= 12) return '#40c463';
   if (n <= 22) return '#30a14e';
@@ -97,6 +121,7 @@ export function ActivityGraph({ userId, name }: { userId?: string; name?: string
   const [year, setYear] = useState(currentYear);
   const [data, setData] = useState<ActivityData | null>(null);
   const [loading, setLoading] = useState(true);
+  const dark = useIsDark();
 
   const who = userId ? `users/${userId}/activity` : 'users/me/activity';
 
@@ -237,7 +262,7 @@ export function ActivityGraph({ userId, name }: { userId?: string; name?: string
                         <div
                           key={cell.key}
                           title={`${count} point${count === 1 ? '' : 's'} · ${cell.key}`}
-                          style={{ width: 11, height: 11, borderRadius: 2, background: cellColor(count) }}
+                          style={{ width: 11, height: 11, borderRadius: 2, background: cellColor(count, dark) }}
                         />
                       );
                     })}
@@ -248,7 +273,7 @@ export function ActivityGraph({ userId, name }: { userId?: string; name?: string
               <div className="flex items-center gap-1.5 mt-2 justify-end">
                 <span className="text-[9px] text-slate-400">Less</span>
                 {[0, 4, 10, 18, 28].map((n) => (
-                  <div key={n} style={{ width: 10, height: 10, borderRadius: 2, background: cellColor(n) }} />
+                  <div key={n} style={{ width: 10, height: 10, borderRadius: 2, background: cellColor(n, dark) }} />
                 ))}
                 <span className="text-[9px] text-slate-400">More</span>
               </div>
