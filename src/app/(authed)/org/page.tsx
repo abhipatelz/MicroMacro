@@ -104,6 +104,11 @@ export default function CommandCentrePage() {
             </div>
           </div>
 
+          {/* The fixed 7-column grid would overflow a phone, so the whole
+              table scrolls horizontally inside this wrapper on small screens
+              while staying full-width on desktop. */}
+          <div className="overflow-x-auto">
+          <div className="min-w-[680px]">
           {/* Column headers */}
           <div className="grid px-5 py-2 border-b border-slate-100 bg-slate-50/40"
                style={{ gridTemplateColumns: '12px 2fr 100px 1fr 80px 60px 70px', gap: '0 12px' }}>
@@ -162,6 +167,8 @@ export default function CommandCentrePage() {
               })}
             </div>
           )}
+          </div>
+          </div>
 
           <div className="px-5 py-2 border-t border-slate-100 bg-slate-50/40 flex justify-between items-center">
             <span className="text-xs text-slate-400">{filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''}</span>
