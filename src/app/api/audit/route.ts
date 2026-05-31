@@ -17,15 +17,29 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category');
-    const limit = Math.min(Number(searchParams.get('limit')) || 150, 500);
+    const limit = Math.min(Number(searchParams.get('limit')) || 100, 500);
+    // Cursor pagination: fetch entries strictly older than this ISO timestamp.
+    const before = searchParams.get('before');
 
     const filter: Record<string, any> = {};
     if (category && category !== 'all') filter.category = category;
+    if (before) {
+      const d = new Date(before);
+      if (!Number.isNaN(d.getTime())) filter.createdAt = { $lt: d };
+    }
 
     const [rows, personalProjects] = await Promise.all([
       AuditLog.find(filter).sort({ createdAt: -1 }).limit(limit).lean(),
       Project.find({ $or: [{ isPersonal: true }, { code: /^PRSN-/ }] }, '_id').lean(),
     ]);
+
+    // Next-page cursor is derived from the RAW result (before personal-project
+    // filtering) so a heavily-filtered page still advances correctly. Null once
+    // fewer than `limit` raw rows come back — that's the end of the trail.
+    const rawLast = rows.length === limit ? (rows[rows.length - 1] as any).createdAt : null;
+    const nextBefore = rawLast
+      ? (rawLast instanceof Date ? rawLast.toISOString() : String(rawLast))
+      : null;
 
     // Never surface personal project data in the operational audit trail —
     // personal projects are private to their owners, and should not appear in
@@ -54,8 +68,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json(
-      visible.map((r: any) => ({
+    return NextResponse.json({
+      rows: visible.map((r: any) => ({
         id: String(r._id),
         action: r.action,
         category: r.category,
@@ -66,7 +80,8 @@ export async function GET(req: NextRequest) {
         summary: r.summary || '',
         createdAt: r.createdAt,
       })),
-    );
+      nextBefore,
+    });
   } catch (e) {
     return handleError(e);
   }

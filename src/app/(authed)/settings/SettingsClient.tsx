@@ -31,8 +31,8 @@ function ProfileAvatar({
   return (
     <div className="relative group cursor-pointer" onClick={onClick} title="Change avatar">
       {inner}
-      <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
-        style={{ fontSize: size * 0.22, fontWeight: 600 }}>
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+        style={{ fontSize: size * 0.22, fontWeight: 600, borderRadius: Math.max(4, Math.round(size * 0.28)) }}>
         Edit
       </div>
     </div>

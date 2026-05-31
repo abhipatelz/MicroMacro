@@ -412,7 +412,7 @@ export default function LoginPage() {
                         background: 'radial-gradient(circle, rgba(21,101,192,0.28) 0%, transparent 70%)',
                         animation: 'glow-pulse 3.4s ease-in-out infinite',
                       }} />
-                    <div className="relative w-[72px] h-[72px] rounded-full flex items-center justify-center text-2xl font-black text-white select-none logo-float"
+                    <div className="relative w-[72px] h-[72px] rounded-[20px] flex items-center justify-center text-2xl font-black text-white select-none logo-float"
                       style={{ background: 'linear-gradient(135deg, #1565C0 0%, #1a237e 100%)', boxShadow: '0 8px 24px rgba(21,101,192,0.32)' }}>
                       {getInitials(deviceName)}
                     </div>

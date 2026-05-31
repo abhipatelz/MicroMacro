@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUserFromCookie, normalizeRole } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
+import { Notification } from '@/models/Notification';
 import AppShell from '@/components/AppShell';
 
 export default async function AuthedLayout({ children }: { children: React.ReactNode }) {
@@ -13,7 +14,7 @@ export default async function AuthedLayout({ children }: { children: React.React
   // signed), so pull them off the User document for SSR. Keeps the avatar in
   // the sidebar in sync with the editor without a client-side refetch.
   await connectDB();
-  const [dbUser, avatarRows] = await Promise.all([
+  const [dbUser, avatarRows, initialUnread] = await Promise.all([
     User.findById(user.sub)
       .select('avatarLetter avatarBg avatarFont soundDropEnabled')
       .lean(),
@@ -22,6 +23,9 @@ export default async function AuthedLayout({ children }: { children: React.React
     // resolve. Only rows with a custom background count as customised, so the
     // payload stays tiny.
     User.find({ avatarBg: { $nin: [null, ''] } }, '_id avatarLetter avatarBg avatarFont').lean(),
+    // Unread notification count, seeded into the bell so the badge is right on
+    // first paint instead of popping in after the first client poll.
+    Notification.countDocuments({ userId: user.sub, read: false }),
   ]);
 
   const initialAvatars: Record<string, { letter: string; bg: string; font: number }> = {};
@@ -56,6 +60,7 @@ export default async function AuthedLayout({ children }: { children: React.React
       }}
       initialDark={initialDark}
       initialAvatars={initialAvatars}
+      initialUnread={initialUnread}
     >
       {children}
     </AppShell>

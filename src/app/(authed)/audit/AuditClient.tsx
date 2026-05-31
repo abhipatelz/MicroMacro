@@ -48,20 +48,40 @@ function fmt(ts: string): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleString();
 }
 
-export default function AuditClient({ initialRows }: { initialRows: LogRow[] }) {
+interface AuditPage { rows: LogRow[]; nextBefore: string | null }
+
+export default function AuditClient({ initialRows, initialNextBefore = null }: { initialRows: LogRow[]; initialNextBefore?: string | null }) {
   const isAdmin = useIsAdmin();
   const [rows, setRows] = useState<LogRow[]>(initialRows);
+  const [nextBefore, setNextBefore] = useState<string | null>(initialNextBefore);
   const [category, setCategory] = useState('all');
   const [busy, setBusy] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   // Skip the first effect run per category — initial data already comes from SSR.
   const skipNext = useRef(true);
 
   function load() {
     setBusy(true);
-    api<LogRow[]>(`/audit?category=${category}`)
-      .then(setRows)
-      .catch(() => setRows([]))
+    api<AuditPage>(`/audit?category=${category}`)
+      .then((res) => { setRows(res.rows); setNextBefore(res.nextBefore); })
+      .catch(() => { setRows([]); setNextBefore(null); })
       .finally(() => setBusy(false));
+  }
+
+  function loadMore() {
+    if (!nextBefore || loadingMore) return;
+    setLoadingMore(true);
+    api<AuditPage>(`/audit?category=${category}&before=${encodeURIComponent(nextBefore)}`)
+      .then((res) => {
+        // De-dupe defensively in case a row sits exactly on the cursor boundary.
+        setRows((prev) => {
+          const seen = new Set(prev.map((r) => r.id));
+          return [...prev, ...res.rows.filter((r) => !seen.has(r.id))];
+        });
+        setNextBefore(res.nextBefore);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   }
 
   useEffect(() => {
@@ -158,6 +178,16 @@ export default function AuditClient({ initialRows }: { initialRows: LogRow[] }) 
           </div>
         )}
       </div>
+
+      {nextBefore && (
+        <div className="flex justify-center">
+          <button onClick={loadMore} disabled={loadingMore}
+            className="btn-secondary flex items-center gap-1.5 text-xs">
+            <RefreshCw size={13} className={loadingMore ? 'animate-spin' : ''} />
+            {loadingMore ? 'Loading…' : 'Load older activity'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

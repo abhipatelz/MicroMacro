@@ -231,13 +231,13 @@ function TeamCard({
           <span className="text-[11px] text-slate-400 italic">No members yet</span>
         ) : (
           visibleMembers.map((m) => (
-            <div key={m.id} className="ring-2 ring-white rounded-full" title={m.name}>
+            <div key={m.id} className="ring-2 ring-white rounded-[7px]" title={m.name}>
               <UserAvatar userId={m.id} name={m.name} size={26} />
             </div>
           ))
         )}
         {extra > 0 && (
-          <div className="w-[26px] h-[26px] rounded-full ring-2 ring-white bg-slate-100 text-[10px] font-bold text-slate-500 flex items-center justify-center">
+          <div className="w-[26px] h-[26px] rounded-[7px] ring-2 ring-white bg-slate-100 text-[10px] font-bold text-slate-500 flex items-center justify-center">
             +{extra}
           </div>
         )}

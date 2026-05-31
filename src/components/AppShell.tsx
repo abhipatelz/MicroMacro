@@ -61,7 +61,7 @@ function useDarkMode(initialDark: boolean): [boolean, () => void] {
 }
 
 /* ── Main shell ─────────────────────────────────────────────────────── */
-export default function AppShell({ user, initialDark, initialAvatars, children }: { user: CurrentUser; initialDark: boolean; initialAvatars?: Record<string, { letter: string; bg: string; font: number }>; children: React.ReactNode }) {
+export default function AppShell({ user, initialDark, initialAvatars, initialUnread = 0, children }: { user: CurrentUser; initialDark: boolean; initialAvatars?: Record<string, { letter: string; bg: string; font: number }>; initialUnread?: number; children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
 
@@ -359,7 +359,9 @@ export default function AppShell({ user, initialDark, initialAvatars, children }
         <div className="px-2 py-3 border-t shrink-0 flex flex-col items-center gap-1.5 relative"
           style={{ borderColor: dark ? 'rgba(255,255,255,0.05)' : '#e8edf4' }}>
           {AccountMenu}
-          <NotificationBell dark={dark} openUp />
+          {/* Notifications are intentionally NOT shown on the collapsed rail —
+              the bell + count live in the expanded sidebar; hover/expand to
+              reach them. Keeps the narrow rail uncluttered. */}
           {/* No standalone sign-out here when collapsed — it lives inside the
               account menu (tap the avatar), keeping the rail uncluttered. */}
           <button type="button" title="Account menu" aria-label="Account menu"
@@ -399,8 +401,10 @@ export default function AppShell({ user, initialDark, initialAvatars, children }
             </div>
           </button>
 
-          {/* Notifications — opens upward so it's never clipped at the bottom */}
-          <NotificationBell dark={dark} openUp />
+          {/* Notifications — opens upward so it's never clipped at the bottom.
+              Seeded with the SSR unread count so the badge is correct on first
+              paint instead of popping in after the first poll. */}
+          <NotificationBell dark={dark} openUp initialUnread={initialUnread} />
 
           {/* Sign out */}
           <button type="button" onClick={() => setConfirmLogout(true)} title="Sign out"

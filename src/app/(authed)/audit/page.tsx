@@ -12,11 +12,17 @@ export default async function AuditPage() {
 
   await connectDB();
 
-  const limit = 150;
+  const limit = 100;
   const [rows, personalProjects] = await Promise.all([
     AuditLog.find({}).sort({ createdAt: -1 }).limit(limit).lean(),
     Project.find({ $or: [{ isPersonal: true }, { code: /^PRSN-/ }] }, '_id').lean(),
   ]);
+
+  // Cursor for the first "Load more" — from the raw page, so it matches the API.
+  const rawLast = rows.length === limit ? (rows[rows.length - 1] as any).createdAt : null;
+  const initialNextBefore = rawLast
+    ? (rawLast instanceof Date ? rawLast.toISOString() : String(rawLast))
+    : null;
 
   // Never surface personal project data in the operational audit trail.
   const personalIds = new Set(personalProjects.map((p: any) => String(p._id)));
@@ -55,5 +61,5 @@ export default async function AuditPage() {
     createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
   }));
 
-  return <AuditClient initialRows={initialRows} />;
+  return <AuditClient initialRows={initialRows} initialNextBefore={initialNextBefore} />;
 }

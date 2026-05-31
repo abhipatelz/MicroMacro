@@ -49,13 +49,15 @@ function timeAgo(iso: string): string {
  * goes UP, it chimes (respecting the user's sound mute). Clicking an item
  * marks it read and deep-links to the task.
  */
-export function NotificationBell({ dark = false, openUp = false }: { dark?: boolean; openUp?: boolean }) {
+export function NotificationBell({ dark = false, openUp = false, initialUnread = 0 }: { dark?: boolean; openUp?: boolean; initialUnread?: number }) {
   const router = useRouter();
   const [items, setItems]   = useState<Notif[]>([]);
-  const [unread, setUnread] = useState(0);
+  // Seed from the SSR count so the badge is correct on first paint rather than
+  // appearing only after the first /notifications poll resolves.
+  const [unread, setUnread] = useState(initialUnread);
   const [open, setOpen]     = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const prevUnread = useRef<number | null>(null);
+  const prevUnread = useRef<number | null>(initialUnread);
 
   // Notification preferences now live here (moved off the profile page) so they
   // sit right next to the notifications they govern.
@@ -195,8 +197,8 @@ export function NotificationBell({ dark = false, openUp = false }: { dark?: bool
                 >
                   <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${n.read ? 'bg-transparent' : 'bg-blue-500'}`} />
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-semibold text-slate-800 leading-tight">{n.title}</span>
-                    {n.body && <span className="block text-xs text-slate-500 truncate mt-0.5">{n.body}</span>}
+                    <span className="block text-[13px] font-semibold text-slate-800 leading-snug">{n.title}</span>
+                    {n.body && <span className="block text-xs text-slate-500 line-clamp-2 mt-0.5 leading-snug">{n.body}</span>}
                     <span className="block text-[11px] text-slate-400 mt-0.5">{timeAgo(n.createdAt)}</span>
                   </span>
                 </button>

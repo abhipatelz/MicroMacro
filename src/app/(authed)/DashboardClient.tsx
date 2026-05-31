@@ -987,7 +987,9 @@ function ContributorsPanel({
   people, tasksByAssignee,
 }: { people: DashPerson[]; tasksByAssignee: Map<string, TeamTask[]> }) {
   const [expanded, setExpanded] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(false); // collapsed by default
+  // Open by default — the member list + their task counts come from props, so
+  // there's nothing to lazy-load; collapsing it just made the card look empty.
+  const [panelOpen, setPanelOpen] = useState(true);
 
   if (people.length === 0) {
     return (
