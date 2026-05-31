@@ -61,7 +61,7 @@ function useDarkMode(initialDark: boolean): [boolean, () => void] {
 }
 
 /* ── Main shell ─────────────────────────────────────────────────────── */
-export default function AppShell({ user, initialDark, children }: { user: CurrentUser; initialDark: boolean; children: React.ReactNode }) {
+export default function AppShell({ user, initialDark, initialAvatars, children }: { user: CurrentUser; initialDark: boolean; initialAvatars?: Record<string, { letter: string; bg: string; font: number }>; children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
 
@@ -417,7 +417,10 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
 
   return (
     <CurrentUserProvider user={user}>
-    <AvatarRegistryProvider seed={{ id: user.id, letter: user.avatarLetter, bg: user.avatarBg, font: user.avatarFont }}>
+    <AvatarRegistryProvider
+      seed={{ id: user.id, letter: user.avatarLetter, bg: user.avatarBg, font: user.avatarFont }}
+      initial={initialAvatars}
+    >
     {/* Fixed-height app shell: the shell itself never scrolls (overflow-hidden),
         so the sidebar stays put — only <main> scrolls. This is what keeps the
         sidebar pinned regardless of how far the page content scrolls. */}
