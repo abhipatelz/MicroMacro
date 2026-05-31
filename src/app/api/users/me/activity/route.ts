@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
     const userOid = new mongoose.Types.ObjectId(user!.sub);
 
-    const [activityRows, totalDone, streak40, projectHeroCount] = await Promise.all([
+    const [activityRows, totalDone, streak40, projectHeroCount, recentRows] = await Promise.all([
       // All audit log entries by this user per day
       AuditLog.aggregate([
         { $match: { actorId: userOid, createdAt: { $gte: startDate, $lt: endDate } } },
@@ -41,7 +41,22 @@ export async function GET(req: NextRequest) {
         { $match: { 'proj.status': 'completed', 'proj.isPersonal': { $ne: true } } },
         { $count: 'c' },
       ]).then((r: any[]) => r[0]?.c || 0),
+      // A readable feed of this user's most recent contributions, so the
+      // activity card shows *what* they did, not just a heatmap.
+      AuditLog.find({ actorId: userOid })
+        .sort({ createdAt: -1 })
+        .limit(15)
+        .select('action category summary createdAt')
+        .lean(),
     ]);
+
+    const recent = (recentRows as any[]).map((r) => ({
+      id:        String(r._id),
+      action:    r.action || '',
+      category:  r.category || 'general',
+      summary:   r.summary || '',
+      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
+    }));
 
     const days: Record<string, number> = {};
     for (const r of activityRows) days[r._id] = r.count;
@@ -66,7 +81,7 @@ export async function GET(req: NextRequest) {
     if (streak >= 3) badges.push('streak_3');
     if (streak >= 7) badges.push('streak_7');
 
-    return NextResponse.json({ year, days, badges, streak, totalTasksDone: totalDone });
+    return NextResponse.json({ year, days, badges, streak, totalTasksDone: totalDone, recent });
   } catch (e) {
     return handleError(e);
   }

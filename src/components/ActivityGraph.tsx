@@ -34,13 +34,42 @@ const BADGES: Record<string, BadgeDef> = {
 };
 const BADGE_ORDER = ['first_step', 'task_rookie', 'task_achiever', 'task_performer', 'task_champion', 'project_hero', 'streak_3', 'streak_7'];
 
+type Contribution = {
+  id: string;
+  action: string;
+  category: string;
+  summary: string;
+  createdAt: string | null;
+};
+
 type ActivityData = {
   year: number;
   days: Record<string, number>;
   badges: string[];
   streak: number;
   totalTasksDone: number;
+  recent?: Contribution[];
 };
+
+/* Map an audit category to an emoji + tint for the contributions feed. */
+const CONTRIB_META: Record<string, { icon: string; tint: string }> = {
+  task:    { icon: '✅', tint: '#0ea5e9' },
+  project: { icon: '🚀', tint: '#ef4444' },
+  team:    { icon: '👥', tint: '#8b5cf6' },
+  auth:    { icon: '🔑', tint: '#16a34a' },
+  user:    { icon: '🪪', tint: '#f59e0b' },
+  general: { icon: '•',  tint: '#94a3b8' },
+};
+
+function contribTimeAgo(iso: string | null): string {
+  if (!iso) return '';
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24); if (d < 30) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
 
 export function ActivityGraph({ userId, name }: { userId?: string; name?: string }) {
   const currentYear = new Date().getFullYear();
@@ -199,6 +228,36 @@ export function ActivityGraph({ userId, name }: { userId?: string; name?: string
           </p>
         )}
       </div>
+
+      {/* Recent contributions — a readable feed of what was actually done
+          (tasks completed, projects created, tasks assigned, logins…), so the
+          activity reads as a record of accomplishment, not just a heatmap. */}
+      {!loading && (data?.recent?.length ?? 0) > 0 && (
+        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Recent contributions</h4>
+          <ul className="space-y-1.5">
+            {data!.recent!.map((c) => {
+              const meta = CONTRIB_META[c.category] || CONTRIB_META.general;
+              return (
+                <li key={c.id} className="flex items-start gap-2.5">
+                  <span
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[11px]"
+                    style={{ background: `${meta.tint}14` }}
+                  >
+                    {meta.icon}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs text-slate-700 dark:text-slate-300 leading-snug">
+                      {c.summary || c.action.replace(/[._]/g, ' ')}
+                    </span>
+                    <span className="ml-1.5 text-[10px] text-slate-400">· {contribTimeAgo(c.createdAt)}</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
