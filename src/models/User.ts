@@ -127,6 +127,14 @@ const UserSchema = new Schema(
   { timestamps: true }
 );
 
+// Indexes for the cross-user listings (People directory, Teams, admin views)
+// that filter on role or active state. Without these, those queries collection-
+// scan every user — fine at a handful of rows, but a measurable stall at the
+// ~200-user scale this workspace runs at. `email`/`username` already carry
+// unique indexes from their field definitions above.
+UserSchema.index({ role: 1 });
+UserSchema.index({ active: 1 });
+
 export type UserDoc = InferSchemaType<typeof UserSchema> & { _id: mongoose.Types.ObjectId };
 
 export const User: Model<UserDoc> =
