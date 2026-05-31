@@ -23,8 +23,10 @@ const CreateTemplate = z.object({
   phases: z.array(PhaseSchema).default([]),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { error } = await requireUser(req);
+    if (error) return error;
     await connectDB();
     const templates = await WorkflowTemplate.find().sort({ createdAt: -1 }).lean();
     return NextResponse.json(

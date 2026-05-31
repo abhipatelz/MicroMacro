@@ -282,25 +282,37 @@ export default function NewProjectPage() {
     api<CustomTemplate[]>('/workflow-templates').then(setCustomTemplates).catch(() => {});
   }, []);
 
+  // Only fetch built-in lifecycle data when no custom template is active.
+  // selectCustomTemplate sets customTemplateId before (possibly) changing
+  // form.lifecycle to 'generic', so checking customTemplateId here prevents
+  // the effect from overwriting the custom phases on the same render batch.
   useEffect(() => {
-    if (!form.lifecycle) return;
-    // When a built-in lifecycle is picked, clear any selected custom template
-    setCustomTemplateId(null);
+    if (!form.lifecycle || customTemplateId) return;
     api<any>(`/lifecycles?key=${form.lifecycle}`).then(t => {
       setTemplateInfo(t);
       setPhases(phasesFromTemplate(t));
     }).catch(() => {});
-  }, [form.lifecycle]);
+  }, [form.lifecycle, customTemplateId]);
 
   function up<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm(f => ({ ...f, [k]: v }));
   }
 
+  // Selecting a built-in lifecycle clears any active custom template first so
+  // the effect above is free to fetch the template data.
+  function selectBuiltInLifecycle(value: string) {
+    setCustomTemplateId(null);
+    setTemplateInfo(null);
+    up('lifecycle', value);
+  }
+
   function selectCustomTemplate(t: CustomTemplate) {
     setCustomTemplateId(t.id);
-    // Clear the built-in lifecycle selection (use generic as the stored value)
-    setForm(f => ({ ...f, lifecycle: 'generic' }));
     setTemplateInfo(null);
+    // Keep lifecycle as 'generic' so the submission payload stays valid.
+    // Because customTemplateId is set first (in the same batch), the
+    // useEffect above skips the fetch and leaves the custom phases intact.
+    setForm(f => ({ ...f, lifecycle: 'generic' }));
     setPhases(phasesFromCustomTemplate(t));
   }
 
@@ -529,7 +541,7 @@ export default function NewProjectPage() {
                       const active = !customTemplateId && form.lifecycle === opt.value;
                       return (
                         <button key={opt.value} type="button"
-                          onClick={() => up('lifecycle', opt.value)}
+                          onClick={() => selectBuiltInLifecycle(opt.value)}
                           className="text-left px-3 py-2 rounded-lg text-xs transition-all border"
                           style={{
                             background:   active ? '#EFF6FF' : '#fff',
