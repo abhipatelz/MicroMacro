@@ -5,6 +5,7 @@ import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
 import { BirdsEyeLoader } from '@/components/BirdsEyeLoader';
 import { ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { AVATAR_FONTS, avatarFg } from '@/components/ui';
 
 function getInitials(name: string) {
   if (!name) return '?';
@@ -127,6 +128,9 @@ export default function LoginPage() {
   // Quick-PIN unlock: shown when this device previously completed a full
   // sign-in and the user has a PIN set.
   const [deviceName, setDeviceName] = useState('');
+  // Monogram avatar for the trusted device, so the greeting matches the
+  // avatar the user picked in settings rather than plain initials.
+  const [deviceAvatar, setDeviceAvatar] = useState<{ letter: string; bg: string; font: number }>({ letter: '', bg: '', font: 0 });
   const [pin, setPin] = useState('');
   const pinInputRef = useRef<HTMLInputElement>(null);
 
@@ -136,10 +140,11 @@ export default function LoginPage() {
     }).catch(() => {});
     // If this is a trusted device with a PIN, greet the user and offer the
     // PIN pad instead of the full form.
-    api<{ trusted: boolean; name?: string; hasPin?: boolean; locked?: boolean }>('/auth/device')
+    api<{ trusted: boolean; name?: string; hasPin?: boolean; locked?: boolean; avatarLetter?: string; avatarBg?: string; avatarFont?: number }>('/auth/device')
       .then(d => {
         if (d.trusted && d.hasPin && !d.locked) {
           setDeviceName(d.name || '');
+          setDeviceAvatar({ letter: d.avatarLetter || '', bg: d.avatarBg || '', font: d.avatarFont ?? 0 });
           setMode('unlock');
         }
       })
@@ -412,9 +417,15 @@ export default function LoginPage() {
                         background: 'radial-gradient(circle, rgba(21,101,192,0.28) 0%, transparent 70%)',
                         animation: 'glow-pulse 3.4s ease-in-out infinite',
                       }} />
-                    <div className="relative w-[72px] h-[72px] rounded-full flex items-center justify-center text-2xl font-black text-white select-none logo-float"
-                      style={{ background: 'linear-gradient(135deg, #1565C0 0%, #1a237e 100%)', boxShadow: '0 8px 24px rgba(21,101,192,0.32)' }}>
-                      {getInitials(deviceName)}
+                    <div className="relative w-[72px] h-[72px] rounded-full flex items-center justify-center text-2xl select-none logo-float"
+                      style={{
+                        background: deviceAvatar.bg || 'linear-gradient(135deg, #1565C0 0%, #1a237e 100%)',
+                        color: deviceAvatar.bg ? avatarFg(deviceAvatar.bg) : '#ffffff',
+                        fontFamily: (AVATAR_FONTS[deviceAvatar.font] || AVATAR_FONTS[0]).family,
+                        fontWeight: (AVATAR_FONTS[deviceAvatar.font] || AVATAR_FONTS[0]).weight,
+                        boxShadow: '0 8px 24px rgba(21,101,192,0.32)',
+                      }}>
+                      {(deviceAvatar.letter || getInitials(deviceName)).slice(0, 2).toUpperCase()}
                     </div>
                   </div>
                   <p className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.18em] mb-1 fade-up-1">Welcome back</p>

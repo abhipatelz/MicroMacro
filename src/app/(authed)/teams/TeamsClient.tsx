@@ -336,7 +336,7 @@ function TeamFormModal({
         className="bg-white rounded-2xl shadow-2xl w-full max-w-xl modal-in overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative px-5 py-5 text-white overflow-hidden"
+        <div className="relative px-5 py-5 text-white overflow-hidden rounded-t-2xl"
           style={{ background: 'linear-gradient(135deg, #0f4fb8 0%, #1769c8 45%, #2b8c47 100%)' }}>
           <div aria-hidden className="absolute inset-0 opacity-20"
             style={{
