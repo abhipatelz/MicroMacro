@@ -424,7 +424,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
       <aside
         className={`
-          relative shrink-0 flex flex-col
+          shrink-0 flex flex-col
           fixed inset-y-0 left-0 z-50
           lg:sticky lg:top-0 lg:h-screen
           transition-[transform,width] duration-300 ease-in-out
