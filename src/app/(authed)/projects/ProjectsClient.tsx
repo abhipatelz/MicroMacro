@@ -1,70 +1,10 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { LifecycleTag, StatusTag, formatDate } from '@/components/ui';
 import { useIsLead } from '@/components/CurrentUserContext';
-import { Plus, Search, SlidersHorizontal, Lock, X } from 'lucide-react';
-
-/* Lightweight creator for a *personal* project — a private, owner-only
-   workspace any user can spin up. No lifecycle, team, or compliance metadata:
-   just a name (and optional note) so it stays a frictionless private list. */
-function NewPersonalProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
-
-  async function go(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setSaving(true); setErr('');
-    try {
-      const p = await api<{ id: string }>('/projects', {
-        method: 'POST',
-        body: { name: name.trim(), description: description.trim() || undefined, isPersonal: true, useTemplate: false },
-      });
-      onCreated(p.id);
-    } catch (e: any) {
-      setErr(e.message || 'Could not create your personal project.');
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onClose}>
-      <form onSubmit={go} className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-md modal-in" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center"><Lock size={15} className="text-violet-500" /></div>
-            <div>
-              <div className="text-base font-bold text-slate-900">New personal project</div>
-            </div>
-          </div>
-          <button type="button" onClick={onClose} className="text-slate-300 hover:text-slate-500"><X size={18} /></button>
-        </div>
-        <div className="mt-4 space-y-3">
-          <div>
-            <label className="label">Name</label>
-            <input autoFocus className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. My learning plan" maxLength={200} />
-          </div>
-          <div>
-            <label className="label">Notes <span className="text-slate-300 font-normal">(optional)</span></label>
-            <textarea className="input resize-none" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={5000} />
-          </div>
-          {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">{err}</div>}
-        </div>
-        <div className="flex gap-2 mt-5">
-          <button type="button" onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
-          <button type="submit" disabled={saving || !name.trim()} className="btn-primary flex-1 justify-center">
-            {saving ? 'Creating…' : 'Create'}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
+import { Plus, Search, SlidersHorizontal, Lock } from 'lucide-react';
 
 interface InitialData {
   projects:   any[];
@@ -74,8 +14,6 @@ interface InitialData {
 
 export default function ProjectsClient({ initialData }: { initialData: InitialData }) {
   const isLead = useIsLead();
-  const router = useRouter();
-  const [showPersonal, setShowPersonal] = useState(false);
   const [projects, setProjects] = useState<any[]>(initialData.projects);
   const teams       = initialData.teams;
   const lifecycles  = initialData.lifecycles;
@@ -140,14 +78,12 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
           <p className="text-xs text-slate-400 mt-1">All quality projects across teams &amp; lifecycles.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button onClick={() => setShowPersonal(true)} className="btn-secondary gap-2">
-            <Lock size={14} /> New personal
-          </button>
-          {isLead && (
-            <Link href="/projects/new" className="btn-primary gap-2">
-              <Plus size={15} /> New project
-            </Link>
-          )}
+          {/* Single create flow for every user — the form on /projects/new
+              has the "Personal" toggle, so contributors and leads share the
+              same entry point. */}
+          <Link href="/projects/new" className="btn-primary gap-2">
+            <Plus size={15} /> New project
+          </Link>
         </div>
       </div>
 
@@ -318,26 +254,13 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
             {q || team || lc || status ? 'No projects match those filters.' : 'Create your first project to get started.'}
           </div>
           {!q && !team && !lc && !status && (
-            <div className="flex items-center justify-center gap-2">
-              <button onClick={() => setShowPersonal(true)} className="btn-secondary text-sm gap-2 inline-flex">
-                <Lock size={14} /> New personal project
-              </button>
-              {isLead && (
-                <Link href="/projects/new" className="btn-primary text-sm gap-2 inline-flex">
-                  <Plus size={14} /> New project
-                </Link>
-              )}
-            </div>
+            <Link href="/projects/new" className="btn-primary text-sm gap-2 inline-flex">
+              <Plus size={14} /> New project
+            </Link>
           )}
         </div>
       )}
 
-      {showPersonal && (
-        <NewPersonalProjectModal
-          onClose={() => setShowPersonal(false)}
-          onCreated={(id) => router.push(`/projects/${id}`)}
-        />
-      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
-import { ArrowLeft, ArrowRight, Delete, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
 
 function getInitials(name: string) {
   if (!name) return '?';
@@ -97,6 +97,7 @@ export default function LoginPage() {
   const [title, setTitle] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   // Quick-PIN unlock: shown when this device previously completed a full
   // sign-in and the user has a PIN set.
@@ -425,45 +426,9 @@ export default function LoginPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-2.5 mt-5 mb-2">
-                  {['1','2','3','4','5','6','7','8','9'].map((digit) => (
-                    <button
-                      key={digit}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => appendPin(digit)}
-                      className="h-12 rounded-2xl border border-slate-200 bg-white text-lg font-black text-slate-800 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 active:scale-[0.98] disabled:opacity-50"
-                    >
-                      {digit}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={usePasswordInstead}
-                    className="h-12 rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 flex items-center justify-center transition-all hover:bg-slate-100 disabled:opacity-50"
-                    aria-label="Use password instead"
-                  >
-                    <ArrowLeft size={17} />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => appendPin('0')}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white text-lg font-black text-slate-800 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 active:scale-[0.98] disabled:opacity-50"
-                  >
-                    0
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading || pin.length === 0}
-                    onClick={() => { setPin((p) => p.slice(0, -1)); setErr(''); }}
-                    className="h-12 rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 flex items-center justify-center transition-all hover:bg-slate-100 disabled:opacity-40"
-                    aria-label="Delete digit"
-                  >
-                    <Delete size={17} />
-                  </button>
-                </div>
+                {/* Keypad removed by design — just type the PIN. The 4-box
+                    indicator above lights up as digits are entered and the
+                    form auto-submits on the 4th character. */}
 
                 {err && (
                   <div role="alert" aria-live="assertive"
@@ -553,10 +518,21 @@ export default function LoginPage() {
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                   Password
                 </label>
-                <input className="input" type="password" required minLength={mode === 'setup' ? 8 : 1}
-                  placeholder={mode === 'setup' ? 'Min 8 characters' : '••••••••'}
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  value={password} onChange={e => setPassword(e.target.value)} />
+                <div className="relative">
+                  <input className="input pr-10" type={showPw ? 'text' : 'password'} required minLength={mode === 'setup' ? 8 : 1}
+                    placeholder={mode === 'setup' ? 'Min 8 characters' : '••••••••'}
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    value={password} onChange={e => setPassword(e.target.value)} />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    tabIndex={-1}
+                    aria-label={showPw ? 'Hide password' : 'Show password'}
+                  >
+                    {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
                 {mode === 'setup' && <StrengthMeter password={password} />}
               </div>
 

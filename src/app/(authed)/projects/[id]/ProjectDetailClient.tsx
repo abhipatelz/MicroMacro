@@ -696,7 +696,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       <div className="flex items-start justify-between gap-6 flex-wrap">
         {/* Left — identity, description, then status directly below it */}
         <div className="min-w-0 flex-1">
-          <div className="text-xs text-slate-400 font-mono">{project.isPersonal ? 'Personal · private to you' : project.code}</div>
+          <div className="text-xs text-slate-400 font-mono">{project.isPersonal ? 'Personal' : project.code}</div>
           <h1 className="text-2xl font-bold mt-0.5">{project.name}</h1>
           <div className="flex flex-wrap gap-2 mt-2">
             {project.isPersonal && (

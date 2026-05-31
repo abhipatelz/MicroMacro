@@ -88,7 +88,7 @@ export default function TeamsPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900">Teams</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Quality Informatics functions — owners, members and the projects they ship.
+            Cross-functional groups — people, projects, and shared accountability.
           </p>
         </div>
         {canManage && (

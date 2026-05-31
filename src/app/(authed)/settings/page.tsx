@@ -419,7 +419,7 @@ export default function SettingsPage() {
                   Pragati profile
                 </div>
                 <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                  <h1 className="brand-shimmer-text text-2xl font-black leading-tight tracking-tight sm:text-3xl">{user.name}</h1>
+                  <h1 className="text-2xl font-black leading-tight tracking-tight text-white sm:text-3xl">{user.name}</h1>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/75">
                   {user.username && <span className="font-mono break-all">@{user.username}</span>}
@@ -481,7 +481,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </Field>
-                <ReadonlyField label="Username" value={`@${user.username || user.email}`} />
+                <ReadonlyField label="Username" value={user.username ? `@${user.username}` : '—'} />
                 <ReadonlyField label="Member ID" value={employeeId || '—'} />
                 <ReadonlyField label="Role" value={roleText} />
                 <div className="flex items-center gap-3 pt-1">

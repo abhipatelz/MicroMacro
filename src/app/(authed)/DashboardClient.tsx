@@ -12,7 +12,7 @@ import { useIsLead } from '@/components/CurrentUserContext';
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
   ChevronDown, TrendingUp, Clock, Sparkles, ArrowRight, UserPlus, Plus,
-  Maximize2, X,
+  Maximize2, X, GripVertical,
 } from 'lucide-react';
 
 // Lazy-loaded — only ships when the user actually sees the tour.
@@ -399,73 +399,120 @@ function ProjectsColumn({
 }
 
 
-function DashboardTaskFlow({ tasks, canMove }: { tasks: TeamTask[]; canMove: boolean }) {
+/* Inline vertical task list inside an expanded project row. Leads can drag
+   the GripVertical handle to reorder rows; the new order is persisted via
+   /api/projects/[id]/reorder-tasks. The dashboard is intentionally NOT a
+   Kanban — it's a quick reorderable list so a lead can re-prioritise from
+   the bird's-eye view without bouncing into the project. */
+function DashboardTaskFlow({ projectId, tasks, canMove }: {
+  projectId: string;
+  tasks: TeamTask[];
+  canMove: boolean;
+}) {
   const [local, setLocal] = useState(tasks);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overId,     setOverId]     = useState<string | null>(null);
   useEffect(() => setLocal(tasks), [tasks]);
 
-  async function drop(status: string) {
+  function onDragStart(e: React.DragEvent, id: string) {
+    if (!canMove) return;
+    setDraggingId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  }
+  function onDragOverRow(e: React.DragEvent, overTaskId: string) {
     if (!canMove || !draggingId) return;
-    const task = local.find((t) => t.id === draggingId);
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (overId !== overTaskId) setOverId(overTaskId);
+  }
+  async function onDropRow(e: React.DragEvent, targetId: string) {
+    e.preventDefault();
+    setOverId(null);
+    if (!canMove || !draggingId || draggingId === targetId) { setDraggingId(null); return; }
+
+    const next = local.slice();
+    const from = next.findIndex((t) => t.id === draggingId);
+    const to   = next.findIndex((t) => t.id === targetId);
+    if (from < 0 || to < 0) { setDraggingId(null); return; }
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setLocal(next);
     setDraggingId(null);
-    if (!task || task.status === status) return;
-    setLocal((rows) => rows.map((t) => t.id === task.id ? { ...t, status } : t));
+
     try {
-      await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status } });
+      await api(`/projects/${projectId}/reorder-tasks`, {
+        method: 'POST',
+        body: { orderedIds: next.map((t) => t.id) },
+      });
     } catch {
-      setLocal(tasks);
+      setLocal(tasks); // server rejected → snap back
     }
   }
 
   const visible = local.slice(0, 20);
+
   return (
-    <div className="overflow-x-auto kanban-scroll p-3">
-      <div className="flex gap-3 min-w-max">
-        {STATUSES.map((status) => {
-          const meta = FLOW_META[status];
-          const rows = visible.filter((t) => t.status === status);
-          return (
-            <div
-              key={status}
-              onDragOver={(e) => { if (canMove) e.preventDefault(); }}
-              onDrop={() => drop(status)}
-              className="w-52 shrink-0 rounded-xl border p-2 transition-colors"
-              style={{ background: meta.bg, borderColor: meta.border }}
+    <ul className="divide-y divide-slate-100">
+      {visible.map((t) => {
+        const meta = FLOW_META[t.status] || FLOW_META.todo;
+        const dragging = draggingId === t.id;
+        const over     = overId === t.id;
+        return (
+          <li
+            key={t.id}
+            onDragOver={(e) => onDragOverRow(e, t.id)}
+            onDrop={(e) => onDropRow(e, t.id)}
+            className={`relative flex items-center gap-3 px-3 py-2 transition-colors ${
+              dragging ? 'opacity-50' : ''
+            } ${over ? 'bg-blue-50/60' : 'hover:bg-slate-50/60'}`}
+          >
+            {/* Drop indicator: a thin blue line above the row being hovered. */}
+            {over && !dragging && (
+              <span aria-hidden className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-blue-500" />
+            )}
+
+            {/* Drag handle — only leads (and personal-project owners on the
+                server) can reorder, so it shows up only for them. */}
+            {canMove ? (
+              <span
+                draggable
+                onDragStart={(e) => onDragStart(e, t.id)}
+                onDragEnd={() => { setDraggingId(null); setOverId(null); }}
+                className="shrink-0 cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500"
+                title="Drag to reorder"
+                aria-label="Reorder task"
+              >
+                <GripVertical size={14} />
+              </span>
+            ) : (
+              <span className="shrink-0 w-3.5" />
+            )}
+
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: meta.color }} aria-hidden />
+
+            <Link
+              href={`/tasks/${t.id}`}
+              className="flex-1 min-w-0 text-xs leading-snug text-slate-800 hover:text-blue-700"
+              onClick={(e) => draggingId && e.preventDefault()}
             >
-              <div className="mb-2 flex items-center justify-between px-1">
-                <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: meta.color }}>{meta.label}</span>
-                <span className="rounded-full bg-white/75 px-1.5 py-0.5 text-[10px] font-black" style={{ color: meta.color }}>{rows.length}</span>
-              </div>
-              <div className="space-y-2 min-h-16">
-                {rows.map((t) => (
-                  <Link
-                    key={t.id}
-                    href={`/tasks/${t.id}`}
-                    draggable={canMove}
-                    onDragStart={(e) => { if (!canMove) return; setDraggingId(t.id); e.dataTransfer.setData('text/plain', t.id); }}
-                    onDragEnd={() => setDraggingId(null)}
-                    className={`block rounded-lg border border-slate-200 bg-white p-2 shadow-sm transition-all hover:border-blue-200 hover:shadow ${canMove ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                    onClick={(e) => draggingId && e.preventDefault()}
-                  >
-                    <div className="line-clamp-2 text-xs font-semibold leading-snug text-slate-800">{t.title}</div>
-                    <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-400">
-                      <span className="truncate">{t.assigneeName || 'Unassigned'}</span>
-                      <span className="shrink-0">{formatDate(t.ccTcd || t.dueDate)}</span>
-                    </div>
-                  </Link>
-                ))}
-                {rows.length === 0 && <div className="rounded-lg border border-dashed border-slate-200 bg-white/50 p-3 text-center text-[11px] text-slate-400">No tasks</div>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              <span className="line-clamp-1 font-semibold">{t.title}</span>
+              <span className="mt-0.5 flex items-center gap-2 text-[10px] text-slate-400">
+                <span className="font-medium" style={{ color: meta.color }}>{meta.label}</span>
+                <span>·</span>
+                <span className="truncate">{t.assigneeName || 'Unassigned'}</span>
+                {(t.ccTcd || t.dueDate) && <span>· {formatDate(t.ccTcd || t.dueDate)}</span>}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
       {local.length > 20 && (
-        <div className="px-1 pt-2 text-[10px] text-slate-400">
-          Showing 20 of {local.length} tasks — open the project for the full Kanban board.
-        </div>
+        <li className="px-3 py-2 text-[10px] text-slate-400">
+          Showing 20 of {local.length} tasks — open the project for the full board.
+        </li>
       )}
-    </div>
+    </ul>
   );
 }
 
@@ -552,7 +599,7 @@ function ProjectRow({
               <div className="text-xs text-slate-400">No tasks yet for this project.</div>
             </div>
           ) : (
-            <DashboardTaskFlow tasks={sortedTasks} canMove={isLead} />
+            <DashboardTaskFlow projectId={project.id} tasks={sortedTasks} canMove={isLead} />
           )}
         </div>
       )}

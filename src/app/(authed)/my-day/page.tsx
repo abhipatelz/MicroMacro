@@ -122,11 +122,11 @@ export default function MyDayPage() {
 
       <div className="space-y-1.5">
         {open.map((n) => (
-          <div key={n.id} className={`group flex min-w-0 gap-3 bg-white border border-slate-200/80 rounded-xl px-3.5 py-3 fluid-card ${editingId === n.id ? 'items-start' : 'items-center'}`}>
+          <div key={n.id} className="group flex items-start min-w-0 gap-3 bg-white border border-slate-200/80 rounded-xl px-3.5 py-3 fluid-card">
             <button
               onClick={() => toggle(n)}
               aria-label="Mark done"
-              className={`w-5 h-5 rounded-md border border-slate-300 hover:border-emerald-400 flex items-center justify-center shrink-0 transition-colors ${editingId === n.id ? 'mt-1' : ''}`}
+              className="w-5 h-5 rounded-md border border-slate-300 hover:border-emerald-400 flex items-center justify-center shrink-0 transition-colors mt-0.5"
             />
             {editingId === n.id ? (
               <textarea
@@ -164,18 +164,18 @@ export default function MyDayPage() {
               </span>
             )}
             {n.promotedTaskId ? (
-              <a href={`/tasks/${n.promotedTaskId}`} className="text-[11px] font-semibold text-emerald-600 shrink-0">→ tracked</a>
+              <a href={`/tasks/${n.promotedTaskId}`} className="text-[11px] font-semibold text-emerald-600 shrink-0 mt-0.5">→ tracked</a>
             ) : isLead && editingId !== n.id ? (
               <button
                 onClick={() => setPromote(n)}
                 title="Add to a project as a tracked task"
-                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 Add to project <ArrowRight size={12} />
               </button>
             ) : null}
             <button onClick={() => remove(n)} aria-label="Delete"
-              className="text-slate-300 hover:text-red-500 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              className="text-slate-300 hover:text-red-500 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
               <Trash2 size={14} />
             </button>
           </div>

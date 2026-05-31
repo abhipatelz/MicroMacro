@@ -251,12 +251,14 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
       <div className="flex items-center gap-2.5 px-4 h-14 shrink-0 border-b overflow-hidden"
         style={{ borderColor: dark ? 'rgba(255,255,255,0.07)' : '#e8edf4' }}>
         <Link href="/" className={`flex items-center gap-2.5 ${showCollapsed ? 'justify-center w-full' : 'flex-1 min-w-0'}`}>
-          <PragatiMark size={showCollapsed ? 28 : 30} flat />
-          {!showCollapsed && (
-            <span className={`font-black text-[20px] tracking-tight leading-none whitespace-nowrap ${dark ? 'text-white' : 'text-slate-900'}`}>
-              Pragati
-            </span>
-          )}
+          {/* Constant size — the mark used to scale 28↔30 on every collapse,
+              causing a brief squeeze. The wordmark fades out instead. */}
+          <PragatiMark size={30} flat />
+          <span className={`font-black text-[20px] tracking-tight leading-none whitespace-nowrap transition-opacity duration-150 ${dark ? 'text-white' : 'text-slate-900'} ${
+            showCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
+          }`}>
+            Pragati
+          </span>
         </Link>
         {!showCollapsed && (
           <div className="ml-auto flex items-center gap-1 shrink-0">
