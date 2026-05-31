@@ -381,35 +381,39 @@ export default function LoginPage() {
                   </p>
                 </div>
 
-                {/* 4-box PIN input — keyboard plus touch keypad, so it works on every device */}
-                <div className="relative flex justify-center gap-3 mb-4 cursor-text"
+                {/* 4-box PIN input — no manual on-screen keypad; use keyboard/OS keypad only. */}
+                <div className="relative mb-5 cursor-text rounded-[28px] border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-emerald-50 p-4 shadow-[0_20px_55px_rgba(21,101,192,0.14)]"
                   onClick={() => pinInputRef.current?.focus()}>
-                  {[0, 1, 2, 3].map(i => (
-                    <div key={i}
-                      className="w-[54px] h-[62px] rounded-2xl border-2 flex items-center justify-center transition-all duration-200"
-                      style={{
-                        borderColor: pin.length === i ? '#1565C0'
-                                   : pin.length > i  ? '#93c5fd'
-                                   : '#e2e8f0',
-                        background:  pin.length > i  ? '#eff6ff'
-                                   : pin.length === i ? '#f0f9ff'
-                                   : 'white',
-                        boxShadow:   pin.length === i ? '0 0 0 3px rgba(21,101,192,0.13)' : 'none',
-                        transform:   pin.length > i  ? 'scale(1.04)' : 'scale(1)',
-                      }}>
-                      {pin.length > i && (
-                        <div className="w-3 h-3 rounded-full bg-blue-600" />
-                      )}
-                    </div>
-                  ))}
+                  <div className="pointer-events-none absolute inset-x-8 top-1 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
+                  <div className="flex justify-center gap-3">
+                    {[0, 1, 2, 3].map(i => (
+                      <div key={i}
+                        className="relative w-[54px] h-[62px] rounded-2xl border-2 flex items-center justify-center overflow-hidden transition-all duration-200"
+                        style={{
+                          borderColor: pin.length === i ? '#1565C0'
+                                     : pin.length > i  ? '#2B8C29'
+                                     : '#dbeafe',
+                          background:  pin.length > i  ? 'linear-gradient(135deg, #dcfce7 0%, #eff6ff 100%)'
+                                     : pin.length === i ? '#f0f9ff'
+                                     : 'rgba(255,255,255,0.86)',
+                          boxShadow:   pin.length === i ? '0 0 0 4px rgba(21,101,192,0.13), 0 10px 24px rgba(21,101,192,0.12)' : '0 6px 18px rgba(15,23,42,0.05)',
+                          transform:   pin.length > i  ? 'translateY(-2px)' : 'translateY(0)',
+                        }}>
+                        {pin.length === i && <div className="absolute inset-0 animate-pulse bg-blue-400/5" />}
+                        {pin.length > i && (
+                          <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-br from-blue-600 to-emerald-500 shadow-[0_0_16px_rgba(43,140,41,0.35)]" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
 
-                  {/* Invisible input layered over the boxes — captures all keystrokes */}
                   <input
                     ref={pinInputRef}
                     autoFocus
-                    type="text"
+                    type="password"
                     inputMode="numeric"
                     pattern="\d*"
+                    autoComplete="one-time-code"
                     maxLength={4}
                     value={pin}
                     disabled={loading}
@@ -419,51 +423,22 @@ export default function LoginPage() {
                       setErr('');
                       if (v.length === 4) unlock(v);
                     }}
-                    className="absolute inset-0 opacity-0 w-full h-full cursor-text"
-                    style={{ color: 'transparent', caretColor: 'transparent' }}
+                    className="sr-only"
                     aria-label="Quick PIN"
                   />
+                  <div className="mt-3 text-center text-[11px] font-semibold text-slate-400">
+                    Type your 4-digit Quick PIN. Press Backspace to correct it.
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2.5 mt-5 mb-2">
-                  {['1','2','3','4','5','6','7','8','9'].map((digit) => (
-                    <button
-                      key={digit}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => appendPin(digit)}
-                      className="h-12 rounded-2xl border border-slate-200 bg-white text-lg font-black text-slate-800 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 active:scale-[0.98] disabled:opacity-50"
-                    >
-                      {digit}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={usePasswordInstead}
-                    className="h-12 rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 flex items-center justify-center transition-all hover:bg-slate-100 disabled:opacity-50"
-                    aria-label="Use password instead"
-                  >
-                    <ArrowLeft size={17} />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => appendPin('0')}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white text-lg font-black text-slate-800 shadow-sm transition-all hover:border-blue-300 hover:bg-blue-50 active:scale-[0.98] disabled:opacity-50"
-                  >
-                    0
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading || pin.length === 0}
-                    onClick={() => { setPin((p) => p.slice(0, -1)); setErr(''); }}
-                    className="h-12 rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 flex items-center justify-center transition-all hover:bg-slate-100 disabled:opacity-40"
-                    aria-label="Delete digit"
-                  >
-                    <Delete size={17} />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={usePasswordInstead}
+                  className="mb-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50 disabled:opacity-50"
+                >
+                  <ArrowLeft size={16} /> Use password instead
+                </button>
 
                 {err && (
                   <div role="alert" aria-live="assertive"

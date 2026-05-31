@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
@@ -16,6 +17,8 @@ import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
  * viewer can't see it.
  */
 export async function getProjectDetail(id: string, userId: string, role?: string | null) {
+  if (!mongoose.isValidObjectId(id)) return null;
+
   await connectDB();
   const scope = await getLeadScope(userId, role);
   const p = await Project.findOne({ _id: id, ...projectsVisibleFilter(scope) }).lean();

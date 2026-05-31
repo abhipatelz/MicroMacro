@@ -122,7 +122,7 @@ export default function MyDayPage() {
 
       <div className="space-y-1.5">
         {open.map((n) => (
-          <div key={n.id} className={`group flex gap-3 bg-white border border-slate-200/80 rounded-xl px-3.5 py-3 fluid-card ${editingId === n.id ? 'items-start' : 'items-center'}`}>
+          <div key={n.id} className={`group flex min-w-0 gap-3 bg-white border border-slate-200/80 rounded-xl px-3.5 py-3 fluid-card ${editingId === n.id ? 'items-start' : 'items-center'}`}>
             <button
               onClick={() => toggle(n)}
               aria-label="Mark done"
@@ -132,7 +132,7 @@ export default function MyDayPage() {
               <textarea
                 autoFocus
                 rows={1}
-                className="input flex-1 text-sm py-1 resize-none leading-snug whitespace-pre-wrap break-words overflow-hidden"
+                className="input min-w-0 flex-1 text-sm py-1 resize-none leading-snug whitespace-pre-wrap break-words overflow-hidden"
                 value={editText}
                 maxLength={2000}
                 onFocus={(e) => {
@@ -156,7 +156,7 @@ export default function MyDayPage() {
               />
             ) : (
               <span
-                className="flex-1 text-sm text-slate-700 break-words cursor-text hover:text-slate-900"
+                className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm text-slate-700 cursor-text hover:text-slate-900"
                 onClick={() => startEdit(n)}
                 title="Tap to edit"
               >
@@ -200,7 +200,7 @@ export default function MyDayPage() {
                   >
                     <Check size={12} className="text-white" />
                   </button>
-                  <span className="flex-1 text-sm text-slate-400 line-through break-words">{n.text}</span>
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm text-slate-400 line-through">{n.text}</span>
                   <button onClick={() => remove(n)} aria-label="Delete"
                     className="text-slate-300 hover:text-red-500 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Trash2 size={14} />
@@ -282,7 +282,7 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
             </div>
             <button onClick={onClose} className="text-slate-300 hover:text-slate-500"><X size={18} /></button>
           </div>
-          <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5 text-sm text-slate-700 mb-4">{note.text}</div>
+          <div className="max-h-32 overflow-y-auto rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5 text-sm text-slate-700 mb-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{note.text}</div>
 
           <label className="label">Project</label>
           <select className="select mb-3" value={projectId} onChange={(e) => setProjectId(e.target.value)}>

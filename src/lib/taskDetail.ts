@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
@@ -13,6 +14,8 @@ import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
  * Returns null when the task is missing or the viewer can't see its project.
  */
 export async function getTaskDetail(id: string, userId: string, role?: string | null) {
+  if (!mongoose.isValidObjectId(id)) return null;
+
   await connectDB();
 
   // Visibility gate: the task's project must fall inside the viewer's scope.

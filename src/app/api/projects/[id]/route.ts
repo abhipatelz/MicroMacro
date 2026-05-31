@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
@@ -20,6 +21,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   try {
     const { error, user } = await requireUser(req);
     if (error) return error;
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
     // Single source of truth shared with the server-rendered page.
     const detail = await getProjectDetail(params.id, user!.sub, user!.role);
     if (!detail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -33,6 +37,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   try {
     const { error, user } = await requireUser(req);
     if (error) return error;
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
     if (!isLead(user!.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
@@ -92,6 +99,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     // else can even see it).
     const { error, user } = await requireUser(req);
     if (error) return error;
+    if (!mongoose.isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
     await connectDB();
 
     const scope = await getLeadScope(user!.sub, user!.role);

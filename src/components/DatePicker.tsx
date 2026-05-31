@@ -16,6 +16,7 @@ export function DatePicker({
   minDate,
   size = 'md',
   className = '',
+  disabled = false,
 }: {
   value?: string | null;
   onChange: (v: string | null) => void;
@@ -23,6 +24,7 @@ export function DatePicker({
   minDate?: Date;
   size?: 'sm' | 'md';
   className?: string;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -100,8 +102,9 @@ export function DatePicker({
     <div ref={ref} className={`relative inline-block ${className}`}>
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
-        className={`inline-flex items-center gap-1.5 rounded-lg border bg-white transition-all font-medium text-slate-700 ${
+        onClick={() => !disabled && setOpen(o => !o)}
+        disabled={disabled}
+        className={`inline-flex items-center gap-1.5 rounded-lg border bg-white transition-all font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-60 ${
           open ? 'border-blue-300 ring-2 ring-blue-100' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
         } ${pad}`}
       >
@@ -109,7 +112,7 @@ export function DatePicker({
         <span className={display ? 'text-slate-700' : 'text-slate-400'}>
           {display || placeholder}
         </span>
-        {display && (
+        {display && !disabled && (
           <span
             role="button"
             tabIndex={-1}

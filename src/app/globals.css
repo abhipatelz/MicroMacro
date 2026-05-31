@@ -155,6 +155,12 @@ body {
     color: transparent;
     animation: brand-shimmer 8s ease-in-out infinite;
   }
+
+  .brand-shimmer-block {
+    background: linear-gradient(90deg, rgba(21,101,192,0.95), rgba(25,118,210,0.95), rgba(46,125,50,0.95), rgba(25,118,210,0.95), rgba(21,101,192,0.95));
+    background-size: 300% 100%;
+    animation: brand-shimmer 8s ease-in-out infinite;
+  }
   /* Card lift — minimal travel, just enough motion to feel responsive. */
   .fluid-card {
     transition: transform 200ms cubic-bezier(.2,.7,.2,1),

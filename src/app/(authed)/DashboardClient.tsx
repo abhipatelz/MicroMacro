@@ -1,7 +1,8 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { api } from '@/lib/client/api';
 import {
   Avatar, formatDate, daysUntil, ProgressBar,
   LIFECYCLE_LABELS, STATUS_COLORS,
@@ -25,6 +26,7 @@ interface TeamTask {
   id: string;
   title: string;
   status: string;
+  position?: number | null;
   priority?: string;
   dueDate?: string | null;
   ccTcd?: string | null;
@@ -178,6 +180,7 @@ export default function DashboardClient({
           <ProjectsColumn
             projects={ongoingProjects}
             tasksByProject={tasksByProject}
+            viewerId={myId}
           />
 
           {/* Right column — Actions + "My tasks" (for leads: also Contributors). */}
@@ -339,8 +342,8 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
 /*  PROJECTS COLUMN — left side, expandable project rows with tasks inside    */
 /* ────────────────────────────────────────────────────────────────────────── */
 function ProjectsColumn({
-  projects, tasksByProject,
-}: { projects: DashProject[]; tasksByProject: Map<string, TeamTask[]> }) {
+  projects, tasksByProject, viewerId,
+}: { projects: DashProject[]; tasksByProject: Map<string, TeamTask[]>; viewerId: string }) {
   const isLead  = useIsLead();
   return (
     <section>
@@ -379,6 +382,7 @@ function ProjectsColumn({
               project={p}
               tasks={tasksByProject.get(p.id) || []}
               defaultOpen={i < 2}
+              canReorder={isLead || p.ownerId === viewerId}
             />
           ))}
         </div>
@@ -388,8 +392,8 @@ function ProjectsColumn({
 }
 
 function ProjectRow({
-  project, tasks, defaultOpen,
-}: { project: DashProject; tasks: TeamTask[]; defaultOpen?: boolean }) {
+  project, tasks, defaultOpen, canReorder,
+}: { project: DashProject; tasks: TeamTask[]; defaultOpen?: boolean; canReorder: boolean }) {
   const [open, setOpen] = useState(!!defaultOpen);
   const health = HEALTH_META[project.health];
   const total  = project.taskCount ?? 0;
@@ -401,6 +405,9 @@ function ProjectRow({
   // Sort tasks: active first, done last
   const STATUS_ORDER: Record<string, number> = { in_progress: 0, review: 1, blocked: 2, todo: 3, done: 4 };
   const sortedTasks = [...tasks].sort((a, b) => {
+    const pa = a.position ?? Number.MAX_SAFE_INTEGER;
+    const pb = b.position ?? Number.MAX_SAFE_INTEGER;
+    if (pa !== pb) return pa - pb;
     const s = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
     if (s !== 0) return s;
     const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
@@ -469,28 +476,7 @@ function ProjectRow({
               <div className="text-xs text-slate-400">No tasks yet for this project.</div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50/60 border-b border-slate-100">
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-4 py-2">Task</th>
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Subtasks</th>
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">TCD</th>
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Assigned</th>
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Status</th>
-                    <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Completed</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {sortedTasks.slice(0, 20).map(t => <TaskTableRow key={t.id} t={t} />)}
-                </tbody>
-              </table>
-              {sortedTasks.length > 20 && (
-                <div className="px-4 py-2 text-[10px] text-slate-400 border-t border-slate-50">
-                  Showing 20 of {sortedTasks.length} tasks — <Link href={`/projects/${project.id}`} className="text-blue-600 font-semibold">view all in project →</Link>
-                </div>
-              )}
-            </div>
+            <DashboardTaskList projectId={project.id} tasks={sortedTasks} canReorder={canReorder} />
           )}
         </div>
       )}
@@ -498,19 +484,124 @@ function ProjectRow({
   );
 }
 
-function TaskTableRow({ t }: { t: TeamTask }) {
+function DashboardTaskList({ projectId, tasks, canReorder }: { projectId: string; tasks: TeamTask[]; canReorder: boolean }) {
+  const [items, setItems] = useState<TeamTask[]>(tasks);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const latestItems = useRef(items);
+
+  useEffect(() => {
+    const next = tasks;
+    setItems(next);
+    latestItems.current = next;
+  }, [tasks]);
+
+  function moveTask(targetId: string) {
+    if (!canReorder || !draggingId || draggingId === targetId) return;
+    const from = items.findIndex((t) => t.id === draggingId);
+    const to = items.findIndex((t) => t.id === targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    latestItems.current = next;
+    setItems(next);
+  }
+
+  async function persist(next: TeamTask[]) {
+    setSaving(true);
+    try {
+      await api(`/projects/${projectId}/reorder-tasks`, {
+        method: 'POST',
+        body: { orderedIds: next.map((t) => t.id) },
+      });
+    } catch {
+      const reset = tasks;
+      latestItems.current = reset;
+      setItems(reset);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-slate-50/60 border-b border-slate-100">
+            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-4 py-2">Task</th>
+            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Subtasks</th>
+            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">TCD</th>
+            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Assigned</th>
+            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Status</th>
+            <th className="text-left text-[9px] font-bold uppercase tracking-wider text-slate-400 px-2 py-2">Completed</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-50">
+          {items.slice(0, 20).map((t) => (
+            <TaskTableRow
+              key={t.id}
+              t={t}
+              dragging={draggingId === t.id}
+              canReorder={canReorder}
+              onDragStart={() => canReorder && setDraggingId(t.id)}
+              onDragEnter={() => moveTask(t.id)}
+              onDragEnd={() => {
+                setDraggingId(null);
+                if (canReorder) persist(latestItems.current);
+              }}
+            />
+          ))}
+        </tbody>
+      </table>
+      {(saving || tasks.length > 20) && (
+        <div className="flex items-center justify-between gap-3 border-t border-slate-50 px-4 py-2 text-[10px] text-slate-400" aria-live="polite">
+          <span>{saving ? 'Saving order…' : ''}</span>
+          {tasks.length > 20 && (
+            <span>
+              Showing 20 of {tasks.length} tasks — <Link href={`/projects/${projectId}`} className="text-blue-600 font-semibold">view all in project →</Link>
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskTableRow({
+  t, dragging, canReorder, onDragStart, onDragEnter, onDragEnd,
+}: {
+  t: TeamTask;
+  dragging?: boolean;
+  canReorder?: boolean;
+  onDragStart?: () => void;
+  onDragEnter?: () => void;
+  onDragEnd?: () => void;
+}) {
   const due     = t.ccTcd || t.dueDate;
   const dueIn   = daysUntil(due);
   const overdue = due && new Date(due) < new Date() && t.status !== 'done';
 
   return (
-    <tr className="group hover:bg-slate-50/80 transition-colors">
+    <tr
+      draggable={canReorder}
+      onDragStart={canReorder ? onDragStart : undefined}
+      onDragEnter={canReorder ? onDragEnter : undefined}
+      onDragOver={canReorder ? ((e) => e.preventDefault()) : undefined}
+      onDragEnd={canReorder ? onDragEnd : undefined}
+      className={`group transition-colors ${dragging ? 'bg-blue-50/70 opacity-70' : 'hover:bg-slate-50/80'}`}
+    >
       <td className="px-4 py-2.5">
-        <Link href={`/tasks/${t.id}`}
-          className="text-xs text-slate-800 font-medium hover:text-blue-700 line-clamp-1 group-hover:underline underline-offset-2">
-          {t.title}
-        </Link>
-        {t.gxpCritical && <span className="ml-1.5 text-[9px] text-amber-600 font-bold">· GxP</span>}
+        <div className="flex min-w-0 items-center gap-2">
+          {canReorder && (
+            <span className="cursor-grab text-slate-300 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing" title="Drag vertically to reorder">⋮⋮</span>
+          )}
+          <Link href={`/tasks/${t.id}`}
+            className="min-w-0 text-xs text-slate-800 font-medium hover:text-blue-700 line-clamp-1 group-hover:underline underline-offset-2">
+            {t.title}
+          </Link>
+          {t.gxpCritical && <span className="shrink-0 text-[9px] text-amber-600 font-bold">· GxP</span>}
+        </div>
       </td>
       <td className="px-2 py-2.5 whitespace-nowrap">
         {t.subtaskCount > 0 ? (

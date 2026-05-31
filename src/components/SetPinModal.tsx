@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { api } from '@/lib/client/api';
-import { KeyRound, ShieldCheck } from 'lucide-react';
+import { KeyRound, ShieldCheck, Sparkles } from 'lucide-react';
 
 // Blocking, first-login Quick-PIN setup. Mandatory: it has no dismiss control,
 // so a user cannot reach the app without choosing a PIN. The PIN never replaces
@@ -28,23 +28,29 @@ export function SetPinModal({ onDone }: { onDone: () => void }) {
     }
   }
 
-  const box = "input text-center font-black tracking-[0.6em] text-xl py-3";
+  const box = "input text-center font-black tracking-[0.6em] text-xl py-3 rounded-2xl border-blue-100 bg-white/90 shadow-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-100";
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-[400px] p-6">
-        <div className="flex flex-col items-center text-center mb-5">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-3">
-            <KeyRound size={22} className="text-blue-600" />
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+      <div className="relative overflow-hidden rounded-[28px] border border-white/60 bg-white/95 p-6 shadow-[0_30px_90px_rgba(15,23,42,0.35)] w-full max-w-[420px]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-br from-blue-500/18 via-sky-300/10 to-emerald-400/18" />
+        <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-emerald-300/20 blur-2xl" />
+        <div className="pointer-events-none absolute -left-14 top-16 h-32 w-32 rounded-full bg-blue-400/20 blur-2xl" />
+        <div className="relative flex flex-col items-center text-center mb-5">
+          <div className="mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-blue-600 to-emerald-500 text-white shadow-[0_14px_32px_rgba(21,101,192,0.28)]">
+            <KeyRound size={23} />
           </div>
-          <h3 className="text-lg font-black text-slate-900">Set your Quick PIN</h3>
-          <p className="text-xs text-slate-500 mt-1.5 leading-snug max-w-[300px]">
-            Choose a 4-digit PIN to jump back in quickly next time — no need to retype
-            your password every visit. Your password is still required on a new device.
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-blue-700">
+            <Sparkles size={11} className="text-emerald-500" /> Trusted device
+          </div>
+          <h3 className="text-xl font-black text-slate-950">Set your Quick PIN</h3>
+          <p className="text-xs text-slate-500 mt-1.5 leading-snug max-w-[320px]">
+            Choose a 4-digit PIN for a smooth unlock experience. Your password is still
+            required on new devices and after sign-out.
           </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="relative space-y-3">
           <div>
             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 text-center">PIN</label>
             <input autoFocus type="password" inputMode="numeric" pattern="\d*" maxLength={4}
@@ -65,7 +71,7 @@ export function SetPinModal({ onDone }: { onDone: () => void }) {
           )}
 
           <button onClick={save} disabled={!valid || !matches || saving}
-            className="btn-primary w-full justify-center py-2.5">
+            className="btn-primary w-full justify-center py-3 rounded-2xl shadow-[0_14px_30px_rgba(21,101,192,0.22)]">
             {saving ? 'Saving…' : 'Set PIN & continue'}
           </button>
 
