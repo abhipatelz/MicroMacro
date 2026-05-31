@@ -36,6 +36,7 @@ export default function TeamDetailPage() {
   const [board, setBoard] = useState<any[]>([]);
   const [progress, setProgress] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
+  const [loadError, setLoadError] = useState<string>('');
   const [adding, setAdding] = useState(false);
   const [newMember, setNewMember] = useState('');
   const [activityMember, setActivityMember] = useState<any | null>(null);
@@ -46,19 +47,44 @@ export default function TeamDetailPage() {
   const [view, setView] = useState<'progress' | 'microtasks' | 'projects'>(isLead ? 'progress' : 'microtasks');
 
   async function load() {
-    const [t, b, p] = await Promise.all([
-      api<any>(`/teams/${id}`),
-      api<any[]>(`/teams/${id}/board`),
-      api<any>(`/analytics/team/${id}/progress`),
-    ]);
-    setTeam(t);
-    setBoard(b);
-    setProgress(p);
+    setLoadError('');
+    try {
+      // Per-member progress analytics is a LEAD/ADMIN-only endpoint (it 403s
+      // for contributors). Only request it when the viewer can use it — if we
+      // include it for an IC the whole Promise.all rejects and the page hangs
+      // on the skeleton forever.
+      const [t, b] = await Promise.all([
+        api<any>(`/teams/${id}`),
+        api<any[]>(`/teams/${id}/board`),
+      ]);
+      setTeam(t);
+      setBoard(b);
+      if (isLead) {
+        api<any>(`/analytics/team/${id}/progress`).then(setProgress).catch(() => {});
+      }
+    } catch (e: any) {
+      setLoadError(e?.message || 'This team could not be loaded.');
+    }
   }
   useEffect(() => {
     load();
-    api<any[]>('/users').then(setUsers);
+    // The user list only feeds the add-member dropdown (owner/admin only); a
+    // failure here must never block the team view from rendering.
+    api<any[]>('/users').then(setUsers).catch(() => {});
   }, [id]);
+
+  if (loadError) {
+    return (
+      <div className="max-w-lg mx-auto mt-16 text-center space-y-3 page-enter">
+        <h1 className="text-lg font-bold text-slate-800">Team unavailable</h1>
+        <p className="text-sm text-slate-500">{loadError}</p>
+        <div className="flex items-center justify-center gap-2 pt-1">
+          <button onClick={() => load()} className="btn-primary">Try again</button>
+          <Link href="/teams" className="btn-secondary">Back to teams</Link>
+        </div>
+      </div>
+    );
+  }
 
   if (!team) {
     return (

@@ -32,7 +32,22 @@ function isInfraError(msg: string) {
   return INFRA_PATTERNS.some((re) => re.test(msg));
 }
 
+// Next.js uses thrown errors as control flow: redirect(), notFound(), and the
+// DynamicServerError it raises to bail out of static rendering all surface as
+// exceptions carrying a `digest`. These are NOT failures — they must propagate
+// to Next untouched, never get logged to the error monitor, and never become a
+// 500. Swallowing the DynamicServerError was flooding the admin monitor with
+// bogus "Dynamic server usage" entries.
+function isNextControlFlow(e: unknown): boolean {
+  const digest = (e as any)?.digest;
+  return (
+    typeof digest === 'string' &&
+    (digest === 'DYNAMIC_SERVER_USAGE' || digest.startsWith('NEXT_'))
+  );
+}
+
 export function handleError(e: unknown) {
+  if (isNextControlFlow(e)) throw e;
   if (e instanceof ZodError) {
     return NextResponse.json({ error: 'Validation failed', issues: e.issues }, { status: 400 });
   }
