@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
-import { Card, PriorityTag, StatusTag, formatDate, Avatar, useToast } from '@/components/ui';
+import { Card, PriorityTag, StatusTag, formatDate, useToast } from '@/components/ui';
+import { UserAvatar } from '@/components/AvatarRegistry';
 import { DatePicker } from '@/components/DatePicker';
 import { useIsLead } from '@/components/CurrentUserContext';
 import { chimeIfEnabled } from '@/lib/sound';
@@ -369,7 +370,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
           <div className="space-y-3 mb-3">
             {task.comments.map((c: any) => (
               <div key={c.id} className="flex gap-3">
-                <Avatar name={c.userName} size={28} />
+                <UserAvatar userId={c.userId} name={c.userName} size={28} />
                 <div className="flex-1">
                   <div className="text-xs text-slate-500">
                     <span className="font-semibold text-slate-700">{c.userName}</span> · {formatDate(c.createdAt)}

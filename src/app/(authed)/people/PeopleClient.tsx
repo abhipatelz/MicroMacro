@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { api } from '@/lib/client/api';
-import { Avatar, RoleBadge } from '@/components/ui';
+import { RoleBadge } from '@/components/ui';
+import { UserAvatar } from '@/components/AvatarRegistry';
 import { ActivityGraph } from '@/components/ActivityGraph';
 import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2, BarChart3, Search, UserX, RotateCcw } from 'lucide-react';
 
@@ -13,7 +14,7 @@ function ActivityModal({ user, onClose }: { user: any; onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[820px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3 mb-5">
-          <Avatar name={user.name} size={44} />
+          <UserAvatar userId={user.id} name={user.name} size={44} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="text-base font-black text-slate-900 truncate">{user.name}</h3>
@@ -809,7 +810,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   disabled={!isLeadOrAdmin}
                   className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isLeadOrAdmin ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
                   title={isLeadOrAdmin ? `View ${u.name}'s activity` : undefined}>
-                  <Avatar name={u.name} size={36} />
+                  <UserAvatar userId={u.id} name={u.name} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
                       {u.name}
@@ -901,7 +902,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   disabled={!isLeadOrAdmin}
                   className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isLeadOrAdmin ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
                   title={isLeadOrAdmin ? `View ${u.name}'s activity` : undefined}>
-                  <Avatar name={u.name} size={36} />
+                  <UserAvatar userId={u.id} name={u.name} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
                       {u.name}
@@ -983,7 +984,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   disabled={!isLeadOrAdmin}
                   className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isLeadOrAdmin ? 'hover:bg-amber-50/60 cursor-pointer' : 'cursor-default'}`}
                   title={isLeadOrAdmin ? `View ${u.name}'s activity` : undefined}>
-                  <span className="opacity-60"><Avatar name={u.name} size={36} /></span>
+                  <span className="opacity-60"><UserAvatar userId={u.id} name={u.name} size={36} /></span>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-700 text-sm leading-tight truncate">{u.name}</div>
                     <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">

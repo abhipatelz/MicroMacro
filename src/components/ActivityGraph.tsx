@@ -94,20 +94,37 @@ function timeAgo(iso: string | null): string {
 }
 
 /* ── Circular achievement medallion ──────────────────────────────────────── */
-function Medallion({ def, earned }: { def: BadgeDef; earned: boolean }) {
+function Medallion({ def, earned, count }: { def: BadgeDef; earned: boolean; count?: number }) {
+  // GitHub-style "xN" repeat-count pill — shown only on earned, tiered badges
+  // where a count ≥ 2 is meaningful (e.g. total tasks done, streak days).
+  const showCount = earned && typeof count === 'number' && count >= 2;
   return (
     <div className="flex flex-col items-center gap-1 text-center w-[58px]" title={earned ? def.blurb : `Locked — ${def.blurb}`}>
-      <div
-        className="w-11 h-11 rounded-full flex items-center justify-center text-lg shadow-sm transition-transform"
-        style={{
-          background: earned ? `linear-gradient(135deg, ${def.from}, ${def.to})` : '#f1f5f9',
-          boxShadow: earned ? `0 2px 8px ${def.to}40` : 'none',
-          filter: earned ? 'none' : 'grayscale(1)',
-          opacity: earned ? 1 : 0.45,
-          border: earned ? '2px solid rgba(255,255,255,0.7)' : '2px solid #e2e8f0',
-        }}
-      >
-        <span style={{ filter: earned ? 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' : 'none' }}>{def.emoji}</span>
+      <div className="relative">
+        <div
+          className="w-12 h-12 rounded-full flex items-center justify-center text-lg transition-transform hover:scale-105"
+          style={{
+            // Glossy GitHub-like finish: a soft radial highlight over the
+            // brand gradient. Locked badges fall back to a flat grey.
+            background: earned
+              ? `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.55), rgba(255,255,255,0) 42%), linear-gradient(135deg, ${def.from}, ${def.to})`
+              : '#f1f5f9',
+            boxShadow: earned ? `0 3px 10px ${def.to}45, inset 0 1px 1px rgba(255,255,255,0.4)` : 'none',
+            filter: earned ? 'none' : 'grayscale(1)',
+            opacity: earned ? 1 : 0.4,
+            border: earned ? '2px solid rgba(255,255,255,0.8)' : '2px solid #e2e8f0',
+          }}
+        >
+          <span style={{ filter: earned ? 'drop-shadow(0 1px 1px rgba(0,0,0,0.18))' : 'none' }}>{def.emoji}</span>
+        </div>
+        {showCount && (
+          <span
+            className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black flex items-center justify-center text-white shadow"
+            style={{ background: 'linear-gradient(135deg, #fb923c, #ea580c)', border: '1.5px solid #fff' }}
+          >
+            x{count}
+          </span>
+        )}
       </div>
       <span className="text-[9px] font-bold leading-tight" style={{ color: earned ? '#475569' : '#94a3b8' }}>
         {def.label}
@@ -200,6 +217,25 @@ export function ActivityGraph({ userId, name }: { userId?: string; name?: string
   const earned = data?.badges || [];
   const firstName = name ? name.split(' ')[0] : 'You';
 
+  // GitHub-style "xN" counts — attach a meaningful number to the *highest*
+  // earned tier of each progressive achievement family, so a medallion can
+  // read "Champion ×137" (total tasks) or "7-Day Streak ×9" (streak days)
+  // the way GitHub shows "Pull Shark ×2".
+  const badgeCounts = useMemo<Record<string, number>>(() => {
+    const out: Record<string, number> = {};
+    const tasksDone = data?.totalTasksDone ?? 0;
+    const streak    = data?.streak ?? 0;
+    const taskTiers   = ['task_rookie', 'task_achiever', 'task_performer', 'task_champion'];
+    const streakTiers = ['streak_3', 'streak_7'];
+    const highestEarned = (tiers: string[]) =>
+      [...tiers].reverse().find((k) => earned.includes(k));
+    const topTask   = highestEarned(taskTiers);
+    const topStreak = highestEarned(streakTiers);
+    if (topTask)   out[topTask]   = tasksDone;
+    if (topStreak) out[topStreak] = streak;
+    return out;
+  }, [data?.totalTasksDone, data?.streak, earned]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[150px_1fr] gap-5">
       {/* ── Achievements rail (left) ─────────────────────────────────────── */}
@@ -211,7 +247,7 @@ export function ActivityGraph({ userId, name }: { userId?: string; name?: string
         </div>
         <div className="grid grid-cols-3 lg:grid-cols-2 gap-x-1 gap-y-3">
           {BADGE_ORDER.map((key) => (
-            <Medallion key={key} def={BADGES[key]} earned={earned.includes(key)} />
+            <Medallion key={key} def={BADGES[key]} earned={earned.includes(key)} count={badgeCounts[key]} />
           ))}
         </div>
         {!loading && (

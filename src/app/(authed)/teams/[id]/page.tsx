@@ -7,7 +7,6 @@ import { useCurrentUser } from '@/components/CurrentUserContext';
 import { Download, Trash2, Printer, Sheet, BarChart3, X } from 'lucide-react';
 import {
   Card,
-  Avatar,
   ProgressBar,
   LifecycleTag,
   StatusTag,
@@ -15,6 +14,7 @@ import {
   formatDate,
   TaskLink
 } from '@/components/ui';
+import { UserAvatar } from '@/components/AvatarRegistry';
 import { ActivityGraph } from '@/components/ActivityGraph';
 import { downloadTeamReport, printTeamReport, downloadTeamCsv } from './report';
 
@@ -126,7 +126,7 @@ export default function TeamDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={() => setActivityMember(null)}>
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[820px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start gap-3 mb-5">
-              <Avatar name={activityMember.name} size={44} />
+              <UserAvatar userId={activityMember.id} name={activityMember.name} size={44} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-black text-slate-900 truncate">{activityMember.name}</h3>
@@ -223,7 +223,7 @@ export default function TeamDetailPage() {
                     key={m.id}
                     className="group flex items-center gap-2 py-1.5 border-b border-slate-100 last:border-b-0"
                   >
-                    <Avatar name={m.name} />
+                    <UserAvatar userId={m.id} name={m.name} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{m.name}</div>
                       <div className="text-xs text-slate-500 truncate">

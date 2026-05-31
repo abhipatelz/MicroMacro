@@ -3,12 +3,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
-  Avatar, formatDate, daysUntil, ProgressBar,
+  formatDate, daysUntil, ProgressBar,
   LIFECYCLE_LABELS, STATUS_COLORS,
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
 import { api } from '@/lib/client/api';
 import { playDropTick } from '@/lib/sound';
+import { UserAvatar } from '@/components/AvatarRegistry';
 import { useIsLead, useCurrentUser } from '@/components/CurrentUserContext';
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
@@ -680,7 +681,7 @@ function TaskTableRow({ t }: { t: TeamTask }) {
       <td className="px-2 py-2.5">
         {t.assigneeName ? (
           <div className="flex items-center gap-1.5">
-            <Avatar name={t.assigneeName} size={18} />
+            <UserAvatar userId={t.assigneeId} name={t.assigneeName} size={18} />
             <span className="text-[11px] text-slate-600 truncate max-w-[80px]">{t.assigneeName}</span>
           </div>
         ) : <span className="text-slate-300 text-xs">—</span>}
@@ -1140,7 +1141,7 @@ function ContributorRow({ person, tasks }: { person: DashPerson; tasks: TeamTask
         onClick={() => setOpen(o => !o)}
       >
         <div className="flex items-center gap-2">
-          <Avatar name={person.name} size={26} />
+          <UserAvatar userId={person.id} name={person.name} size={26} />
           <div className="flex-1 min-w-0">
             <div className="text-xs font-semibold text-slate-800 truncate">{person.name}</div>
             <div className="text-[10px] text-slate-400 truncate">

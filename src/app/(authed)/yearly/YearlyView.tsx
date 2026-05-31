@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
-import { Card, Avatar, LifecycleTag, formatDate } from '@/components/ui';
+import { Card, LifecycleTag, formatDate } from '@/components/ui';
+import { UserAvatar } from '@/components/AvatarRegistry';
 import { SimpleBarChart } from '@/components/SimpleBarChart';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -69,7 +70,7 @@ export default function YearlyView({ targetUserId }: { targetUserId?: string }) 
       {target && (
         <Card>
           <div className="flex items-center gap-4">
-            <Avatar name={target.name} size={48} />
+            <UserAvatar userId={target.id} name={target.name} size={48} />
             <div>
               <div className="text-lg font-semibold">{target.name}</div>
               <div className="text-sm text-slate-500">{target.title || target.role}</div>

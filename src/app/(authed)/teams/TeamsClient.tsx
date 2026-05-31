@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { Avatar } from '@/components/ui';
+import { UserAvatar } from '@/components/AvatarRegistry';
 import { Pencil, Plus, Users as UsersIcon, X, Check, Search, Trash2, AlertTriangle, ArrowRight } from 'lucide-react';
 
 interface TeamItem {
@@ -231,7 +232,7 @@ function TeamCard({
         ) : (
           visibleMembers.map((m) => (
             <div key={m.id} className="ring-2 ring-white rounded-full" title={m.name}>
-              <Avatar name={m.name} size={26} />
+              <UserAvatar userId={m.id} name={m.name} size={26} />
             </div>
           ))
         )}
@@ -457,7 +458,7 @@ function TeamFormModal({
                         selected ? 'bg-brand-50/60 hover:bg-brand-50' : 'hover:bg-slate-50'
                       }`}
                     >
-                      <Avatar name={u.name} size={26} />
+                      <UserAvatar userId={u.id} name={u.name} size={26} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-slate-800 truncate">
                           {u.name}

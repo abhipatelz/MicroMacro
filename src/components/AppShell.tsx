@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { Avatar } from './ui';
 import { PragatiMark } from './PragatiMark';
 import { CurrentUserProvider } from './CurrentUserContext';
+import { AvatarRegistryProvider } from './AvatarRegistry';
 import { NotificationBell } from './NotificationBell';
 import { api } from '@/lib/client/api';
 
@@ -416,7 +417,11 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
 
   return (
     <CurrentUserProvider user={user}>
-    <div className="min-h-screen flex overflow-x-hidden" style={{ background: 'var(--bg-page)' }}>
+    <AvatarRegistryProvider seed={{ id: user.id, letter: user.avatarLetter, bg: user.avatarBg, font: user.avatarFont }}>
+    {/* Fixed-height app shell: the shell itself never scrolls (overflow-hidden),
+        so the sidebar stays put — only <main> scrolls. This is what keeps the
+        sidebar pinned regardless of how far the page content scrolls. */}
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-page)' }}>
 
       {/* Mobile backdrop */}
       <div
@@ -466,7 +471,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
       </aside>
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col">
 
         {/* Mobile-only slim top strip — soft shadow so it lifts off the page as
             content scrolls under it, instead of exposing a hard white edge. */}
@@ -493,7 +498,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto relative">
+        <main className="flex-1 min-h-0 overflow-y-auto relative">
           {pathname === '/' && (
             <div aria-hidden
               className="pointer-events-none absolute top-0 left-0 right-0 h-[200px]"
@@ -585,6 +590,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
         </div>
       )}
     </div>
+    </AvatarRegistryProvider>
     </CurrentUserProvider>
   );
 }

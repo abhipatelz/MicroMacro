@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/client/api';
-import { Avatar, Card, LifecycleTag } from '@/components/ui';
+import { Card, LifecycleTag } from '@/components/ui';
+import { UserAvatar } from '@/components/AvatarRegistry';
 import { ChevronRight, Pause, TrendingUp, TrendingDown } from 'lucide-react';
 
 const VelocityChart = dynamic(() => import('./VelocityChart'), {
@@ -165,7 +166,7 @@ export default function InsightsPage() {
               return (
                 <div key={p.id} className={`rounded-lg p-3 border ${lc.bg} border-slate-200`}>
                   <div className="flex items-center gap-2.5 mb-2">
-                    <Avatar name={p.name} size={32} />
+                    <UserAvatar userId={p.id} name={p.name} size={32} />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm text-slate-800 truncate">{p.name}</div>
                       <div className="text-[10px] text-slate-400 truncate">{p.title || 'Team member'}</div>

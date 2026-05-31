@@ -2,7 +2,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
-import { Avatar, ProgressBar, formatDate } from '@/components/ui';
+import { ProgressBar, formatDate } from '@/components/ui';
+import { UserAvatar } from '@/components/AvatarRegistry';
 
 const HEALTH_DOT: Record<string, { bg: string; label: string }> = {
   good:     { bg: '#22c55e', label: 'Healthy' },
@@ -190,7 +191,7 @@ export default function CommandCentrePage() {
               return (
                 <Link key={person.id} href={`/people`}
                   className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors">
-                  <Avatar name={person.name} size={30} />
+                  <UserAvatar userId={person.id} name={person.name} size={30} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-slate-800 truncate">{person.name}</span>
