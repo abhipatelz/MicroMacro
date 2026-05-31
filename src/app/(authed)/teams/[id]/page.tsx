@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { useCurrentUser } from '@/components/CurrentUserContext';
-import { Download, Trash2, Printer } from 'lucide-react';
+import { Download, Trash2, Printer, Sheet } from 'lucide-react';
 import {
   Card,
   Avatar,
@@ -14,7 +14,7 @@ import {
   formatDate,
   TaskLink
 } from '@/components/ui';
-import { downloadTeamReport, printTeamReport } from './report';
+import { downloadTeamReport, printTeamReport, downloadTeamCsv } from './report';
 
 const FUNCTION_LABEL: Record<string, string> = {
   general: 'General',
@@ -138,7 +138,14 @@ export default function TeamDetailPage() {
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
               title="Download a self-contained HTML report of this team's projects and progress"
             >
-              <Download size={15} /> Download
+              <Download size={15} /> HTML
+            </button>
+            <button
+              onClick={() => downloadTeamCsv(team, board)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              title="Download the task backlog as a CSV spreadsheet"
+            >
+              <Sheet size={15} /> CSV
             </button>
           </div>
         )}
