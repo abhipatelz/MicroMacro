@@ -287,6 +287,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                     onChange={(v) => canEditAll && update({ ccTcd: v }, { optimistic: { ccTcd: v } })}
                     placeholder="Set date"
                     disabled={!canEditAll}
+                    block
                   />
                 </div>
               </div>
@@ -498,6 +499,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                     onChange={(v) => isLead && update({ startDate: v }, { optimistic: { startDate: v } })}
                     placeholder="Set date"
                     disabled={!isLead}
+                    block
                   />
                 </div>
               </div>
@@ -509,6 +511,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                     onChange={(v) => canEditBasics && update({ dueDate: v }, { optimistic: { dueDate: v } })}
                     placeholder="Set date"
                     disabled={!canEditBasics}
+                    block
                   />
                 </div>
               </div>

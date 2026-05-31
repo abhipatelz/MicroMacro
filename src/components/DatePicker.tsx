@@ -17,6 +17,7 @@ export function DatePicker({
   size = 'md',
   className = '',
   disabled = false,
+  block = false,
 }: {
   value?: string | null;
   onChange: (v: string | null) => void;
@@ -25,6 +26,10 @@ export function DatePicker({
   size?: 'sm' | 'md';
   className?: string;
   disabled?: boolean;
+  // When true the trigger fills its container and matches the height/padding of
+  // a `.select` / `.input`, so a date control lines up cleanly beside
+  // Assigned-to / Priority / Phase pickers in a form grid.
+  block?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -86,7 +91,11 @@ export function DatePicker({
   }, [open]);
 
   const display = selected ? formatPretty(selected) : '';
-  const pad = size === 'sm' ? 'px-2 py-1 text-xs' : 'px-2.5 py-1.5 text-xs';
+  // `block` matches the .select/.input box (w-full, px-3 py-2.5, text-sm) so it
+  // sits flush with the other form controls; otherwise it's a compact inline chip.
+  const pad = block
+    ? 'px-3 py-2.5 text-sm w-full justify-between'
+    : size === 'sm' ? 'px-2 py-1 text-xs' : 'px-2.5 py-1.5 text-xs';
 
   function select(d: Date) {
     onChange(toISO(d));
@@ -99,7 +108,7 @@ export function DatePicker({
   }
 
   return (
-    <div ref={ref} className={`relative inline-block ${className}`}>
+    <div ref={ref} className={`relative ${block ? 'block w-full' : 'inline-block'} ${className}`}>
       <button
         type="button"
         onClick={() => !disabled && setOpen(o => !o)}

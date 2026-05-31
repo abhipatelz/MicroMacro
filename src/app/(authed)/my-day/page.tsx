@@ -284,7 +284,12 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
             </div>
             <button onClick={onClose} className="text-slate-300 hover:text-slate-500"><X size={18} /></button>
           </div>
-          <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2.5 text-sm text-slate-700 mb-4">{note.text}</div>
+          {/* The note being promoted — tinted + accented so it reads as the
+             "source" being filed, visually distinct from the form fields below. */}
+          <div className="rounded-lg border-l-4 border-blue-300 bg-blue-50/70 px-3 py-2.5 text-sm text-slate-700 mb-4">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mb-0.5">Note</div>
+            {note.text}
+          </div>
 
           <label className="label">Project</label>
           <select className="select mb-3" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
@@ -321,7 +326,7 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
             </div>
             <div>
               <label className="label">Target completion</label>
-              <DatePicker value={due} onChange={(v) => setDue(v || '')} />
+              <DatePicker value={due} onChange={(v) => setDue(v || '')} block />
             </div>
           </div>
 

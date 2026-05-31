@@ -21,7 +21,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
   const [team, setTeam] = useState('');
   const [lc, setLc] = useState('');
   const [status, setStatus] = useState('');
-  const [tab, setTab] = useState<'active' | 'completed' | 'archived' | 'all'>('active');
+  const [tab, setTab] = useState<'active' | 'completed' | 'all'>('active');
   const [loaded, setLoaded] = useState(true);
 
   // First render uses the server-provided list — skip the refetch effect
@@ -37,8 +37,6 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
       ['planning', 'in_progress', 'on_hold'].forEach(s => params.append('status', s));
     } else if (tab === 'completed') {
       params.set('status', 'completed');
-    } else if (tab === 'archived') {
-      params.set('archived', '1');
     } else if (status) {
       params.set('status', status);
     }
@@ -87,9 +85,9 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — archiving isn't in use yet, so the Archived bin is hidden. */}
       <div className="flex gap-1 border-b border-slate-100">
-        {(['active', 'completed', 'all', 'archived'] as const).map(t => (
+        {(['active', 'completed', 'all'] as const).map(t => (
           <button
             key={t}
             onClick={() => { setTab(t); setStatus(''); }}
@@ -99,7 +97,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                 : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
             }`}
           >
-            {t === 'active' ? 'Active' : t === 'completed' ? 'Completed' : t === 'archived' ? 'Archived' : 'All'}
+            {t === 'active' ? 'Active' : t === 'completed' ? 'Completed' : 'All'}
           </button>
         ))}
       </div>

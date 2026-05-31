@@ -454,11 +454,15 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0 flex flex-col">
 
-        {/* Mobile-only slim top strip */}
+        {/* Mobile-only slim top strip — soft shadow so it lifts off the page as
+            content scrolls under it, instead of exposing a hard white edge. */}
         <div className="lg:hidden sticky top-0 z-30 flex items-center gap-2.5 px-3 h-11"
           style={{
-            background: dark ? '#262624' : '#ffffff',
+            background: dark ? 'rgba(38,38,36,0.85)' : 'rgba(255,255,255,0.85)',
+            backdropFilter: 'saturate(180%) blur(8px)',
+            WebkitBackdropFilter: 'saturate(180%) blur(8px)',
             borderBottom: dark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e8edf4',
+            boxShadow: dark ? '0 2px 12px rgba(0,0,0,0.4)' : '0 2px 10px rgba(15,23,42,0.08)',
           }}>
           <button
             onClick={() => setOpen(o => !o)}
