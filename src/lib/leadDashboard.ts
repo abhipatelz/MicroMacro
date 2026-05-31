@@ -3,7 +3,7 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { User } from '@/models/User';
 import { Team } from '@/models/Team';
-import { project as projectS, task as taskS } from '@/lib/serialize';
+import { project as projectS, task as taskS, date as toIso } from '@/lib/serialize';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 
 const STATUS_ORDER: Record<string, number> = { in_progress: 0, review: 1, blocked: 2, todo: 3, done: 4 };
@@ -128,9 +128,9 @@ export async function getLeadDashboardData(
       title:        t.title,
       status:       t.status,
       priority:     t.priority,
-      dueDate:      t.dueDate ?? null,
-      ccTcd:        (t as any).ccTcd ?? null,
-      completedAt:  t.completedAt ?? null,
+      dueDate:      toIso(t.dueDate),
+      ccTcd:        toIso((t as any).ccTcd),
+      completedAt:  toIso(t.completedAt),
       projectId:    String(t.projectId),
       projectCode:  p?.code ?? '',
       projectName:  p?.name ?? '',

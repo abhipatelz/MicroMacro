@@ -2,7 +2,7 @@ import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
 import { User } from '@/models/User';
-import { task as taskS } from '@/lib/serialize';
+import { task as taskS, date as toIso } from '@/lib/serialize';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 
 /**
@@ -44,7 +44,7 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
       userId:    String(c.userId),
       userName:  uMap.get(String(c.userId)) || 'User',
       body:      c.body,
-      createdAt: c.createdAt,
+      createdAt: toIso(c.createdAt),
     }));
 
     return {

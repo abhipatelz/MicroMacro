@@ -9,6 +9,29 @@ function id(v: any): string | undefined {
   return undefined;
 }
 
+/**
+ * Normalise any date-ish value to an ISO string (or null).
+ *
+ * This is critical for the server-rendered pages: when a serialized payload is
+ * handed to a Client Component as a prop, React's Flight serialization
+ * PRESERVES `Date` instances as real `Date` objects — unlike `JSON.stringify`
+ * (the API path), which turns them into strings. Client code that does
+ * `value.slice(0, 10)` on what it assumes is a string then throws
+ * "slice is not a function" and crashes the page into the error boundary.
+ * Forcing strings here keeps the SSR-seed and the API refetch byte-identical.
+ */
+export function date(v: any): string | null {
+  if (!v) return null;
+  if (typeof v === 'string') return v;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v.toISOString();
+  try {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  } catch {
+    return null;
+  }
+}
+
 export function u(user: any) {
   if (!user) return null;
   return {
@@ -20,7 +43,7 @@ export function u(user: any) {
     employeeId: user.employeeId || '',
     // Lock state — surfaced on the People page so admin/lead can see
     // who can't sign in and click Unlock. Not credential data.
-    lockedAt: user.lockedAt || null,
+    lockedAt: date(user.lockedAt),
     failedLoginAttempts: user.failedLoginAttempts || 0,
   };
 }
@@ -50,9 +73,9 @@ export function project(p: any, extras: Any = {}) {
     priority: p.priority,
     teamId: id(p.teamId),
     ownerId: id(p.ownerId),
-    startDate: p.startDate,
-    dueDate: p.dueDate,
-    completedAt: p.completedAt,
+    startDate: date(p.startDate),
+    dueDate: date(p.dueDate),
+    completedAt: date(p.completedAt),
     gxpImpact: p.gxpImpact,
     regulatoryRefs: p.regulatoryRefs,
     phases: (p.phases || []).map((ph: any) => ({
@@ -61,11 +84,11 @@ export function project(p: any, extras: Any = {}) {
       position: ph.position
     })),
     archived:   !!p.archived,
-    archivedAt: p.archivedAt || null,
+    archivedAt: date(p.archivedAt),
     archivedBy: id(p.archivedBy),
     isPersonal: !!(p.isPersonal || p.personal),
     personal: !!(p.isPersonal || p.personal),
-    createdAt: p.createdAt,
+    createdAt: date(p.createdAt),
     ...extras
   };
 }
@@ -76,8 +99,8 @@ export function subtask(s: any) {
     title: s.title,
     assigneeId: id(s.assigneeId),
     status: s.status,
-    dueDate: s.dueDate,
-    completedAt: s.completedAt,
+    dueDate: date(s.dueDate),
+    completedAt: date(s.completedAt),
     position: s.position
   };
 }
@@ -87,7 +110,7 @@ export function comment(c: any) {
     id: id(c._id),
     userId: id(c.userId),
     body: c.body,
-    createdAt: c.createdAt
+    createdAt: date(c.createdAt)
   };
 }
 
@@ -106,15 +129,15 @@ export function task(t: any, extras: Any = {}) {
     gxpCritical: !!t.gxpCritical,
     requiresQaSignoff: !!t.requiresQaSignoff,
     qaSignoffUserId: id(t.qaSignoffUserId),
-    qaSignoffAt: t.qaSignoffAt,
-    startDate: t.startDate,
-    dueDate: t.dueDate,
-    completedAt: t.completedAt,
+    qaSignoffAt: date(t.qaSignoffAt),
+    startDate: date(t.startDate),
+    dueDate: date(t.dueDate),
+    completedAt: date(t.completedAt),
     estimatedHours: t.estimatedHours,
     actualHours: t.actualHours,
     // Pharma fields
     ccNo:           t.ccNo     || '',
-    ccTcd:          t.ccTcd    || null,
+    ccTcd:          date(t.ccTcd),
     documentNo:     t.documentNo || '',
     applicableSite: t.applicableSite || 'na',
     deployStage:    t.deployStage   || 'na',
@@ -128,7 +151,7 @@ export function task(t: any, extras: Any = {}) {
           rationale: t.aiTriage.rationale,
           suggestedCapa: t.aiTriage.suggestedCapa,
           similarTaskIds: (t.aiTriage.similarTaskIds || []).map((x: any) => id(x)),
-          computedAt: t.aiTriage.computedAt
+          computedAt: date(t.aiTriage.computedAt)
         }
       : null,
     subtasks: (t.subtasks || []).map(subtask),
@@ -140,13 +163,13 @@ export function task(t: any, extras: Any = {}) {
       note: e.note || '',
       onDate: e.onDate || '',
       source: e.source || 'manual',
-      createdAt: e.createdAt,
+      createdAt: date(e.createdAt),
     })),
     effortMins: (t.effortLog || []).reduce((s: number, e: any) => s + (e.minutes || 0), 0),
-    lastActivityAt: t.lastActivityAt || t.updatedAt || t.createdAt,
+    lastActivityAt: date(t.lastActivityAt || t.updatedAt || t.createdAt),
     position: t.position ?? 0,
-    createdAt: t.createdAt,
-    updatedAt: t.updatedAt,
+    createdAt: date(t.createdAt),
+    updatedAt: date(t.updatedAt),
     ...extras
   };
 }
