@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/client/api';
 import { Avatar } from '@/components/ui';
 import { ActivityGraph } from '@/components/ActivityGraph';
+import { BirdsEyeLoader } from '@/components/BirdsEyeLoader';
 import {
   User, Bell, Lock, ShieldCheck, Copy, Check, RefreshCw, X, Activity, KeyRound,
   AlertTriangle, ServerCog,
@@ -489,14 +490,7 @@ export default function SettingsPage() {
     finally { setPwSaving(false); }
   }
 
-  if (!user) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
-        <span className="text-sm text-slate-400">Loading profile…</span>
-      </div>
-    </div>
-  );
+  if (!user) return <BirdsEyeLoader label="Loading your profile…" sublabel="Bringing your workspace into view." />;
 
   const isLeadOrAdmin = (user.role === 'lead' || user.role === 'admin');
   const roleText = user.role === 'admin' ? 'Admin' : isLeadOrAdmin ? 'Team Lead' : 'Individual Contributor';

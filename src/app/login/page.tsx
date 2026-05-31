@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
+import { BirdsEyeLoader } from '@/components/BirdsEyeLoader';
 import { ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
 
 function getInitials(name: string) {
@@ -367,17 +368,25 @@ export default function LoginPage() {
             {mode === 'unlock' && (
               <div className="form-swap" key="unlock">
 
-                {/* Avatar + name */}
+                {/* Avatar + name — a soft breathing halo behind the avatar
+                    makes the re-entry feel alive and welcoming. */}
                 <div className="flex flex-col items-center text-center mb-7">
-                  <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-2xl font-black text-white mb-4 select-none"
-                    style={{ background: 'linear-gradient(135deg, #1565C0 0%, #1a237e 100%)', boxShadow: '0 8px 24px rgba(21,101,192,0.32)' }}>
-                    {getInitials(deviceName)}
+                  <div className="relative mb-4">
+                    <div aria-hidden className="absolute -inset-3 rounded-full"
+                      style={{
+                        background: 'radial-gradient(circle, rgba(21,101,192,0.28) 0%, transparent 70%)',
+                        animation: 'glow-pulse 3.4s ease-in-out infinite',
+                      }} />
+                    <div className="relative w-[72px] h-[72px] rounded-full flex items-center justify-center text-2xl font-black text-white select-none logo-float"
+                      style={{ background: 'linear-gradient(135deg, #1565C0 0%, #1a237e 100%)', boxShadow: '0 8px 24px rgba(21,101,192,0.32)' }}>
+                      {getInitials(deviceName)}
+                    </div>
                   </div>
-                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.18em] mb-1">Welcome back</p>
-                  <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
+                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-[0.18em] mb-1 fade-up-1">Welcome back</p>
+                  <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight fade-up-1">
                     {deviceName || 'You'}
                   </h2>
-                  <p className="text-sm text-slate-400 mt-1.5 leading-snug">
+                  <p className="text-sm text-slate-400 mt-1.5 leading-snug fade-up-2">
                     Enter your Quick PIN to continue
                   </p>
                 </div>
@@ -439,9 +448,8 @@ export default function LoginPage() {
                 )}
 
                 {loading && (
-                  <div className="mt-3 flex items-center justify-center gap-2 text-sm text-slate-400 fade-in-soft">
-                    <span className="w-4 h-4 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
-                    Unlocking…
+                  <div className="mt-2 fade-in-soft">
+                    <BirdsEyeLoader size="sm" inline label="Unlocking your workspace…" sublabel="One moment — getting your bird's-eye view ready." />
                   </div>
                 )}
 
