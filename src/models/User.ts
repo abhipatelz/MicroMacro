@@ -72,6 +72,21 @@ const UserSchema = new Schema(
     failedLoginAttempts: { type: Number, default: 0 },
     lockedAt:            { type: Date,   default: null },
 
+    // ── Account lifecycle (soft deactivation) ───────────────────────────
+    // A deactivated account is the *professional* alternative to a hard
+    // delete: the record is preserved (tasks stay attributable — ALCOA+
+    // "Attributable" & "Enduring"), the person can no longer sign in, and
+    // every transition is written to the audit trail with who/when/why
+    // (21 CFR Part 11 §11.10(d) + §11.10(e)). Reactivating an account also
+    // clears any brute-force lock, so "make active again" is the single
+    // gesture an admin needs. Defaults to active so existing rows (which
+    // predate this field) are treated as active without a migration.
+    active:             { type: Boolean, default: true },
+    deactivatedAt:      { type: Date,   default: null },
+    deactivatedBy:      { type: String, default: '' },   // actor display name
+    deactivationReason: { type: String, default: '' },   // why, for the record
+    reactivatedAt:      { type: Date,   default: null },
+
     // ── Quick PIN (device-bound convenience unlock) ─────────────────────
     // A 4-digit PIN that re-unlocks the app on a device that has ALREADY
     // completed a full username+password sign-in (a trusted-device cookie).

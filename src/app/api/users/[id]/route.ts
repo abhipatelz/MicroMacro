@@ -25,6 +25,11 @@ const Body = z.object({
   // Admin operations lock — true suspends the account (blocks sign-in),
   // false lifts the lock and clears the failed-login counter.
   locked:     z.boolean().optional(),
+  // Account lifecycle. `active: false` deactivates (professional removal
+  // with a preserved record); `active: true` reactivates AND unlocks. A
+  // reason is recorded on deactivation for the audit trail.
+  active:     z.boolean().optional(),
+  deactivationReason: z.string().max(500).optional(),
   // Force the user to set a new password on their next sign-in.
   mustChangePassword: z.boolean().optional(),
 });
@@ -39,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     await connectDB();
     const body = await readBody(req, Body);
 
-    const target = await User.findById(params.id, 'role').lean();
+    const target = await User.findById(params.id, 'role name active').lean();
     if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     // The admin is the workspace owner. A non-admin lead must never be
@@ -60,10 +65,52 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'You cannot lock your own account.' }, { status: 403 });
     }
 
-    if (body.role === 'contributor') {
-      const leadCount = await User.countDocuments({ role: { $in: ['pm', 'lead', 'admin'] } });
+    if (body.active === false && caller.sub === params.id) {
+      return NextResponse.json({ error: 'You cannot deactivate your own account.' }, { status: 403 });
+    }
+
+    // Demoting the last lead, or deactivating the last lead, would leave the
+    // workspace with no one able to manage it.
+    const willLoseLeadSeat =
+      body.role === 'contributor' ||
+      (body.active === false && isLead((target as any).role));
+    if (willLoseLeadSeat) {
+      const leadCount = await User.countDocuments({
+        role: { $in: ['pm', 'lead', 'admin'] },
+        active: { $ne: false },
+      });
       if (leadCount <= 1) {
-        return NextResponse.json({ error: 'Cannot demote the last lead. Promote another user first.' }, { status: 409 });
+        const what = body.active === false ? 'deactivate' : 'demote';
+        return NextResponse.json({ error: `Cannot ${what} the last lead. Promote another user first.` }, { status: 409 });
+      }
+    }
+
+    // Pull lifecycle fields out of the naive body spread — they drive extra
+    // bookkeeping fields (deactivatedAt/by/reason, reactivatedAt) and must
+    // not be written verbatim.
+    const { active, deactivationReason, ...plain } = body;
+    const set: Record<string, any> = { ...plain };
+    const unset: Record<string, any> = {};
+    const wasActive = (target as any).active !== false;
+    let lifecycleAction: 'deactivate' | 'reactivate' | null = null;
+
+    if (typeof active === 'boolean' && active !== wasActive) {
+      if (active === false) {
+        lifecycleAction = 'deactivate';
+        set.active = false;
+        set.deactivatedAt = new Date();
+        set.deactivatedBy = caller.name || '';
+        set.deactivationReason = (deactivationReason || '').trim();
+      } else {
+        // Reactivation doubles as an unlock — the single "make active" gesture.
+        lifecycleAction = 'reactivate';
+        set.active = true;
+        set.reactivatedAt = new Date();
+        set.lockedAt = null;
+        set.failedLoginAttempts = 0;
+        unset.deactivatedAt = '';
+        unset.deactivatedBy = '';
+        unset.deactivationReason = '';
       }
     }
 
@@ -72,19 +119,35 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // mustChangePassword is NOT set here — that only happens at reset-password.
     const isSelfEdit = caller.sub === params.id;
     const mutation: Record<string, any> = isSelfEdit
-      ? { $set: body }
+      ? { $set: set, ...(Object.keys(unset).length ? { $unset: unset } : {}) }
       : {
-          $set: { ...body, activeSessionId: null },
+          $set: { ...set, activeSessionId: null },
           $inc: { sessionVersion: 1 },
+          ...(Object.keys(unset).length ? { $unset: unset } : {}),
         };
 
     const updated = await User.findByIdAndUpdate(params.id, mutation, { new: true }).lean();
     if (!updated) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+    const action =
+      lifecycleAction === 'deactivate' ? 'user.deactivate'
+      : lifecycleAction === 'reactivate' ? 'user.reactivate'
+      : body.role ? 'user.role'
+      : 'user.update';
+    const summary =
+      lifecycleAction === 'deactivate'
+        ? `Deactivated account${set.deactivationReason ? ` — ${set.deactivationReason}` : ''}`
+        : lifecycleAction === 'reactivate' ? 'Reactivated account (lock cleared)'
+        : body.role ? `Changed role → ${body.role}`
+        : 'Updated user account';
+
     await logOperation({
-      action: body.role ? 'user.role' : 'user.update', category: 'user', actor: caller,
+      action, category: 'user', actor: caller,
       targetType: 'user', targetId: params.id, targetLabel: (updated as any)?.name || '',
-      summary: body.role ? `Changed role → ${body.role}` : 'Updated user account',
+      summary,
+      meta: lifecycleAction === 'deactivate'
+        ? { reason: set.deactivationReason || null }
+        : undefined,
     });
 
     return NextResponse.json(u(updated));

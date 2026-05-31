@@ -211,11 +211,15 @@ export async function validateSession(payload: JwtPayload): Promise<JwtPayload |
   await connectDB();
   const user = await User.findById(
     payload.sub,
-    'role mustChangePassword sessionVersion activeSessionId name title email pinHash',
+    'role mustChangePassword sessionVersion activeSessionId name title email pinHash active',
   ).lean();
   if (!user) return null;
 
   const u = user as any;
+  // A deactivated account is denied on its very next request, so an admin
+  // turning someone off mid-session logs them out everywhere immediately
+  // (defence-in-depth alongside the sessionVersion bump on deactivation).
+  if (u.active === false) return null;
   if (typeof payload.sv === 'number' && (u.sessionVersion ?? 0) !== payload.sv) return null;
   if (payload.sid && u.activeSessionId && u.activeSessionId !== payload.sid) return null;
 

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
@@ -462,61 +462,76 @@ function DashboardTaskFlow({ projectId, tasks, canMove }: {
 
   const visible = local.slice(0, 20);
 
+  // Group consecutive tasks by status for phase dividers
+  const groups: { status: string; items: typeof visible }[] = [];
+  for (const t of visible) {
+    const last = groups[groups.length - 1];
+    if (last && last.status === t.status) last.items.push(t);
+    else groups.push({ status: t.status, items: [t] });
+  }
+
   return (
     <ul className="divide-y divide-slate-100">
-      {visible.map((t) => {
-        const meta = FLOW_META[t.status] || FLOW_META.todo;
-        const dragging = draggingId === t.id;
-        const over     = overId === t.id;
-        return (
-          <li
-            key={t.id}
-            onDragOver={(e) => onDragOverRow(e, t.id)}
-            onDrop={(e) => onDropRow(e, t.id)}
-            className={`relative flex items-center gap-3 px-3 py-2 transition-colors ${
-              dragging ? 'opacity-50' : ''
-            } ${over ? 'bg-blue-50/60' : 'hover:bg-slate-50/60'}`}
-          >
-            {/* Drop indicator: a thin blue line above the row being hovered. */}
-            {over && !dragging && (
-              <span aria-hidden className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-blue-500" />
-            )}
-
-            {/* Drag handle — only leads (and personal-project owners on the
-                server) can reorder, so it shows up only for them. */}
-            {canMove ? (
-              <span
-                draggable
-                onDragStart={(e) => onDragStart(e, t.id)}
-                onDragEnd={() => { setDraggingId(null); setOverId(null); }}
-                className="shrink-0 cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500"
-                title="Drag to reorder"
-                aria-label="Reorder task"
-              >
-                <GripVertical size={14} />
-              </span>
-            ) : (
-              <span className="shrink-0 w-3.5" />
-            )}
-
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: meta.color }} aria-hidden />
-
-            <Link
-              href={`/tasks/${t.id}`}
-              className="flex-1 min-w-0 text-xs leading-snug text-slate-800 hover:text-blue-700"
-              onClick={(e) => draggingId && e.preventDefault()}
-            >
-              <span className="line-clamp-1 font-semibold">{t.title}</span>
-              <span className="mt-0.5 flex items-center gap-2 text-[10px] text-slate-400">
-                <span className="font-medium" style={{ color: meta.color }}>{meta.label}</span>
-                <span>·</span>
-                <span className="truncate">{t.assigneeName || 'Unassigned'}</span>
-                {(t.ccTcd || t.dueDate) && <span>· {formatDate(t.ccTcd || t.dueDate)}</span>}
-              </span>
-            </Link>
+      {groups.map((group) => (
+        <React.Fragment key={group.status}>
+          {/* Subtle phase label between status groups */}
+          <li aria-hidden className="px-3 pt-2 pb-0.5 flex items-center gap-2">
+            <span className="text-[9px] font-bold uppercase tracking-widest"
+              style={{ color: (FLOW_META[group.status] || FLOW_META.todo).color, opacity: 0.7 }}>
+              {(FLOW_META[group.status] || FLOW_META.todo).label}
+            </span>
+            <span className="flex-1 h-px bg-slate-100" />
           </li>
-        );
-      })}
+          {group.items.map((t) => {
+            const meta = FLOW_META[t.status] || FLOW_META.todo;
+            const dragging = draggingId === t.id;
+            const over     = overId === t.id;
+            return (
+              <li
+                key={t.id}
+                onDragOver={(e) => onDragOverRow(e, t.id)}
+                onDrop={(e) => onDropRow(e, t.id)}
+                className={`relative flex items-center gap-3 px-3 py-2 transition-colors ${
+                  dragging ? 'opacity-50' : ''
+                } ${over ? 'bg-blue-50/60' : 'hover:bg-slate-50/60'}`}
+              >
+                {over && !dragging && (
+                  <span aria-hidden className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-blue-500" />
+                )}
+
+                {canMove ? (
+                  <span
+                    draggable
+                    onDragStart={(e) => onDragStart(e, t.id)}
+                    onDragEnd={() => { setDraggingId(null); setOverId(null); }}
+                    className="shrink-0 cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500"
+                    title="Drag to reorder"
+                    aria-label="Reorder task"
+                  >
+                    <GripVertical size={14} />
+                  </span>
+                ) : (
+                  <span className="shrink-0 w-3.5" />
+                )}
+
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: meta.color }} aria-hidden />
+
+                <Link
+                  href={`/tasks/${t.id}`}
+                  className="flex-1 min-w-0 text-xs leading-snug text-slate-800 hover:text-blue-700"
+                  onClick={(e) => draggingId && e.preventDefault()}
+                >
+                  <span className="line-clamp-1 font-semibold">{t.title}</span>
+                  <span className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-400">
+                    <span className="truncate">{t.assigneeName || 'Unassigned'}</span>
+                    {(t.ccTcd || t.dueDate) && <span>· {formatDate(t.ccTcd || t.dueDate)}</span>}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </React.Fragment>
+      ))}
       {local.length > 20 && (
         <li className="px-3 py-2 text-[10px] text-slate-400">
           Showing 20 of {local.length} tasks — open the project for the full board.
@@ -807,14 +822,17 @@ function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
   ];
 
   const inner = (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <TrendingUp size={14} className="text-slate-400" />
+          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Actions</h3>
+        </div>
+        {!expanded && <ExpandButton onClick={() => setExpanded(true)} />}
+      </div>
     <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
       <div className="px-4 pt-3 pb-2 border-b border-slate-100">
-        <div className="flex items-center gap-2 mb-2.5">
-          <TrendingUp size={13} className="text-slate-400" />
-          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Actions</h3>
-          {!expanded && <span className="ml-auto"><ExpandButton onClick={() => setExpanded(true)} /></span>}
-        </div>
         <div className="flex gap-1 flex-wrap">
           {FILTERS.map(f => (
             <button key={f.key}
@@ -867,6 +885,7 @@ function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
         />
       </div>
     </section>
+    </div>
   );
 
   return expanded

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { api } from '@/lib/client/api';
 import { Avatar, RoleBadge } from '@/components/ui';
 import { ActivityGraph } from '@/components/ActivityGraph';
-import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2, BarChart3, Search, Lock } from 'lucide-react';
+import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2, BarChart3, Search, UserX, RotateCcw } from 'lucide-react';
 
 /* ── Activity peek modal — team leaders click a teammate to see how they're
    tracking: contribution graph, streak and badges (read-only, no private
@@ -11,7 +11,7 @@ import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, 
 function ActivityModal({ user, onClose }: { user: any; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[640px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[820px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3 mb-5">
           <Avatar name={user.name} size={44} />
           <div className="flex-1 min-w-0">
@@ -468,6 +468,55 @@ function RemoveConfirmDialog({ user, onConfirm, onCancel, saving }: {
   );
 }
 
+/* ── Deactivate (professional removal with a record) dialog ───────────────
+   Unlike a hard delete, deactivation keeps the account and all of the
+   person's task history intact (ALCOA+ Attributable & Enduring). A reason
+   is required so the audit trail records *why* — 21 CFR Part 11 §11.10(e).
+   The account can be reactivated later, which also clears any lock. */
+function DeactivateDialog({ user, onConfirm, onCancel, saving }: {
+  user: any; onConfirm: (reason: string) => void; onCancel: () => void; saving: boolean;
+}) {
+  const [reason, setReason] = useState('');
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onCancel}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[420px] modal-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-col items-center text-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+            <UserX size={22} className="text-amber-600" />
+          </div>
+          <div>
+            <div className="text-base font-black text-slate-900 tracking-tight">Deactivate {user.name}?</div>
+            <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+              They lose access immediately and disappear from assignee lists, but the
+              account and all their task history are preserved. You can reactivate it
+              later. This is the recommended alternative to permanent removal.
+            </p>
+          </div>
+          <div className="w-full text-left">
+            <label className="label">Reason <span className="text-slate-300 font-normal normal-case">(recorded in the audit trail)</span></label>
+            <textarea
+              className="textarea text-sm"
+              rows={2}
+              placeholder="e.g. Left the organisation · role transfer · extended leave"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-2 w-full">
+            <button onClick={onCancel} className="btn-secondary flex-1 justify-center">Cancel</button>
+            <button onClick={() => onConfirm(reason.trim())} disabled={saving || !reason.trim()}
+              className="flex-1 justify-center btn text-white"
+              style={{ background: 'linear-gradient(135deg,#b45309,#d97706)', boxShadow: '0 1px 3px rgba(180,83,9,0.3)' }}>
+              {saving ? 'Deactivating…' : 'Deactivate'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main page ────────────────────────────────────────────────────────── */
 interface PeopleClientProps {
   initialUsers: any[];
@@ -487,10 +536,14 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
   const [removeConfirm, setRemoveConfirm] = useState<any | null>(null);
   const [removing, setRemoving] = useState(false);
   const [activityUser, setActivityUser] = useState<any | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<any | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
 
   // Background refresh after a mutation. The initial render uses the
-  // server-provided list, so no fetch fires on mount.
-  function load() { api<any[]>('/users').then(setUsers).catch(() => {}); }
+  // server-provided list (which includes deactivated accounts), so no fetch
+  // fires on mount. The refetch must also ask for inactive accounts —
+  // /api/users hides them by default so they never leak into assignee lists.
+  function load() { api<any[]>('/users?includeInactive=1').then(setUsers).catch(() => {}); }
 
   async function confirmRoleChange() {
     if (!roleConfirm) return;
@@ -560,6 +613,42 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
     }
   }
 
+  // Deactivate — professional removal that keeps the record. A reason is
+  // captured for the audit trail.
+  async function confirmDeactivate(reason: string) {
+    if (!deactivateTarget) return;
+    setDeactivating(true);
+    setRoleErr('');
+    try {
+      await api(`/users/${deactivateTarget.id}`, {
+        method: 'PATCH',
+        body: { active: false, deactivationReason: reason },
+      });
+      setDeactivateTarget(null);
+      await load();
+    } catch (e: any) {
+      setRoleErr(e.message || 'Failed to deactivate account.');
+      setDeactivateTarget(null);
+    } finally {
+      setDeactivating(false);
+    }
+  }
+
+  // Reactivate — restores access and clears any brute-force lock in one go.
+  async function reactivate(user: any) {
+    if (!confirm(`Reactivate ${user.name}'s account?\nThey'll be able to sign in again, and any lock is cleared. They keep their existing password.`)) return;
+    setSaving(user.id);
+    setRoleErr('');
+    try {
+      await api(`/users/${user.id}`, { method: 'PATCH', body: { active: true } });
+      await load();
+    } catch (e: any) {
+      setRoleErr(e.message || 'Failed to reactivate account.');
+    } finally {
+      setSaving(null);
+    }
+  }
+
   function handleCreated(name: string) {
     setShowAdd(false);
     setJustAdded(name);
@@ -577,15 +666,19 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
     (u.email || '').toLowerCase().includes(q) ||
     (u.employeeId || '').toLowerCase().includes(q);
 
-  const pms = users.filter((u) => (u.role === 'lead' || u.role === 'admin') && matches(u));
-  const ics = users.filter((u) => u.role === 'contributor' && matches(u));
+  // Active accounts drive the Leads/Contributors sections; deactivated
+  // accounts move to their own record section at the bottom.
+  const liveUsers = users.filter((u) => u.active !== false);
+  const pms = liveUsers.filter((u) => (u.role === 'lead' || u.role === 'admin') && matches(u));
+  const ics = liveUsers.filter((u) => u.role === 'contributor' && matches(u));
+  const deactivated = users.filter((u) => u.active === false && matches(u));
   const isLeadOrAdmin = (me?.role === 'lead' || me?.role === 'admin');
 
   // Workspace-wide totals (unfiltered) for the summary strip.
-  const totalPeople  = users.length;
-  const leadCount    = users.filter((u) => u.role === 'lead' || u.role === 'admin').length;
-  const icCount      = users.filter((u) => u.role === 'contributor').length;
-  const lockedCount  = users.filter((u) => u.lockedAt).length;
+  const totalPeople  = liveUsers.length;
+  const leadCount    = liveUsers.filter((u) => u.role === 'lead' || u.role === 'admin').length;
+  const icCount      = liveUsers.filter((u) => u.role === 'contributor').length;
+  const deactivatedCount = users.filter((u) => u.active === false).length;
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -611,6 +704,14 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
           onConfirm={confirmRemove}
           onCancel={() => setRemoveConfirm(null)}
           saving={removing}
+        />
+      )}
+      {deactivateTarget && (
+        <DeactivateDialog
+          user={deactivateTarget}
+          onConfirm={confirmDeactivate}
+          onCancel={() => setDeactivateTarget(null)}
+          saving={deactivating}
         />
       )}
       {roleConfirm && (
@@ -660,7 +761,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
           { label: 'People',       value: totalPeople, icon: User,   color: 'text-slate-600' },
           { label: 'Leads & admin', value: leadCount,  icon: Shield, color: 'text-blue-600' },
           { label: 'Contributors', value: icCount,     icon: User,   color: 'text-slate-600' },
-          { label: 'Locked',       value: lockedCount, icon: Lock,   color: lockedCount ? 'text-rose-600' : 'text-slate-400' },
+          { label: 'Deactivated',  value: deactivatedCount, icon: UserX, color: deactivatedCount ? 'text-amber-600' : 'text-slate-400' },
         ].map((s) => {
           const Icon = s.icon;
           return (
@@ -701,7 +802,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         ) : (
           <div className="divide-y divide-slate-50">
             {pms.map((u) => (
-              <div key={u.id} className="flex items-center gap-3 px-5 py-4">
+              <div key={u.id} className="flex items-center flex-wrap gap-x-3 gap-y-2 px-5 py-4">
                 <button
                   type="button"
                   onClick={() => isLeadOrAdmin && setActivityUser(u)}
@@ -759,6 +860,15 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                     Make contributor
                   </button>
                 )}
+                {me?.id !== u.id && u.role !== 'admin' && (
+                  <button
+                    className="p-1.5 rounded-lg text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                    onClick={() => setDeactivateTarget(u)}
+                    disabled={saving === u.id}
+                    title="Deactivate account (keeps the record)">
+                    <UserX size={14} />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -784,7 +894,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         ) : (
           <div className="divide-y divide-slate-50">
             {ics.map((u) => (
-              <div key={u.id} className="flex items-center gap-3 px-5 py-4">
+              <div key={u.id} className="flex items-center flex-wrap gap-x-3 gap-y-2 px-5 py-4">
                 <button
                   type="button"
                   onClick={() => isLeadOrAdmin && setActivityUser(u)}
@@ -835,8 +945,15 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   Promote to Lead
                 </button>
                 <button
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                  onClick={() => setDeactivateTarget(u)}
+                  disabled={saving === u.id}
+                  title="Deactivate account (keeps the record)">
+                  <UserX size={14} />
+                </button>
+                <button
                   className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  onClick={() => setRemoveConfirm(u)} title="Remove member">
+                  onClick={() => setRemoveConfirm(u)} title="Permanently remove (deletes the record)">
                   <Trash2 size={13} />
                 </button>
               </div>
@@ -844,6 +961,61 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
           </div>
         )}
       </div>
+
+      {/* Deactivated record — kept on purpose. A deactivated person can't
+         sign in and is gone from every assignee list, but the account and
+         their task history remain attributable. Reactivating restores
+         access and clears any lock. */}
+      {deactivated.length > 0 && (
+        <div className="card overflow-hidden border-amber-200/70">
+          <div className="px-5 py-3.5 border-b border-amber-100 bg-amber-50/50 flex items-center gap-2">
+            <UserX size={14} className="text-amber-500" />
+            <h2 className="text-sm font-bold text-slate-700">Deactivated accounts</h2>
+            <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 ml-1">{deactivated.length}</span>
+            <span className="ml-auto text-[11px] text-slate-400">Record retained · can be reactivated</span>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {deactivated.map((u) => (
+              <div key={u.id} className="flex items-center flex-wrap gap-x-3 gap-y-2 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => isLeadOrAdmin && setActivityUser(u)}
+                  disabled={!isLeadOrAdmin}
+                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isLeadOrAdmin ? 'hover:bg-amber-50/60 cursor-pointer' : 'cursor-default'}`}
+                  title={isLeadOrAdmin ? `View ${u.name}'s activity` : undefined}>
+                  <span className="opacity-60"><Avatar name={u.name} size={36} /></span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-700 text-sm leading-tight truncate">{u.name}</div>
+                    <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono">@{handleOf(u)}</span>
+                      {u.deactivatedAt && <span>· off {new Date(u.deactivatedAt).toLocaleDateString()}</span>}
+                      {u.deactivatedBy && <span>· by {u.deactivatedBy}</span>}
+                    </div>
+                    {u.deactivationReason && (
+                      <div className="text-[11px] text-amber-700/80 mt-0.5 italic truncate" title={u.deactivationReason}>
+                        “{u.deactivationReason}”
+                      </div>
+                    )}
+                  </div>
+                </button>
+                <span className="tag border text-xs font-semibold border-amber-200 bg-amber-50 text-amber-700">Deactivated</span>
+                <button
+                  className="text-xs text-emerald-700 hover:text-emerald-900 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors border border-emerald-200 inline-flex items-center gap-1.5"
+                  onClick={() => reactivate(u)}
+                  disabled={saving === u.id}
+                  title="Restore access and clear any lock">
+                  <RotateCcw size={12} /> Reactivate
+                </button>
+                <button
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  onClick={() => setRemoveConfirm(u)} title="Permanently remove (deletes the record)">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -496,6 +496,110 @@ function buildBottleneckSheet(wb: ExcelJS.Workbook, project: any, tasks: any[], 
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
+   SHEET 4 — Team & Schedule (workload per person + next-14-day deadlines)
+════════════════════════════════════════════════════════════════════════════ */
+function buildTeamScheduleSheet(wb: ExcelJS.Workbook, project: any, tasks: any[], users: any[]) {
+  const ws = wb.addWorksheet('👥 Team & Schedule', { properties: { tabColor: { argb: C.healthGood } } });
+  ws.views = [{ showGridLines: false }];
+  ws.columns = [
+    { width: 5 }, { width: 30 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 16 }, { width: 18 },
+  ];
+  const COLS = 8;
+  const userMap = new Map(users.map(u => [String(u._id), u.name]));
+  const phaseMap = new Map((project.phases || []).map((p: any) => [String(p._id), p.name]));
+
+  let r = 1;
+  ws.mergeCells(r, 1, r, COLS);
+  ws.getCell(r, 1).value = `  TEAM WORKLOAD & SCHEDULE  —  ${project.name.toUpperCase()}`;
+  ws.getCell(r, 1).font = { name: 'Calibri', size: 13, bold: true, color: { argb: C.headerFg } };
+  ws.getCell(r, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.headerBg } };
+  ws.getCell(r, 1).alignment = { vertical: 'middle', horizontal: 'center' };
+  ws.getRow(r).height = 28;
+  r += 2;
+
+  // ── Section A: workload by person ──
+  hdr(ws, r, COLS, '  WORKLOAD BY PERSON  —  who is carrying what', C.sectionBg, C.sectionFg);
+  r++;
+  colHdr(ws, r, ['#', 'Assignee', 'Assigned', 'Done', 'In Progress', 'Overdue', '% Complete', 'Progress']);
+  r++;
+
+  // Group open + done tasks by assignee (including an Unassigned bucket).
+  const buckets = new Map<string, any[]>();
+  for (const t of tasks) {
+    const key = t.assigneeId ? String(t.assigneeId) : '__unassigned__';
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(t);
+  }
+  const rows = Array.from(buckets.entries()).map(([key, ts]) => {
+    const done    = ts.filter(t => t.status === 'done').length;
+    const inProg  = ts.filter(t => t.status === 'in_progress').length;
+    const overdue = ts.filter(t => t.status !== 'done' && daysOverdue(t.dueDate) !== null && daysOverdue(t.dueDate)! > 0).length;
+    return {
+      name: key === '__unassigned__' ? 'Unassigned' : (userMap.get(key) || 'Unknown'),
+      assigned: ts.length, done, inProg, overdue,
+      pct: ts.length ? Math.round(done / ts.length * 100) : 0,
+    };
+  }).sort((a, b) => b.assigned - a.assigned);
+
+  rows.forEach((m, i) => {
+    const bg = i % 2 === 0 ? C.white : C.rowAlt;
+    ws.getRow(r).height = 19;
+    setVal(ws, r, 1, i + 1, { align: 'center', bg, color: C.textMuted });
+    setVal(ws, r, 2, m.name, { bg, bold: true });
+    setVal(ws, r, 3, m.assigned, { align: 'center', bg });
+    setVal(ws, r, 4, m.done, { align: 'center', bg, color: m.done ? C.done : C.textMuted, bold: m.done > 0 });
+    setVal(ws, r, 5, m.inProg, { align: 'center', bg, color: C.inProgress });
+    setVal(ws, r, 6, m.overdue, { align: 'center', bg, color: m.overdue ? C.critical : C.textMuted, bold: m.overdue > 0 });
+    setVal(ws, r, 7, `${m.pct}%`, { align: 'center', bg, bold: true, color: m.pct >= 80 ? C.done : m.pct >= 50 ? C.inProgress : C.critical });
+    progressBar(ws, r, 8, m.pct);
+    applyBorder(ws, r, 1, COLS);
+    r++;
+  });
+  if (rows.length === 0) {
+    ws.getRow(r).height = 18;
+    ws.mergeCells(r, 1, r, COLS);
+    setVal(ws, r, 1, '  No tasks yet.', { color: C.textMuted, bold: true });
+    r++;
+  }
+
+  // ── Section B: upcoming deadlines (next 14 days) ──
+  r += 2;
+  const now = Date.now();
+  const soon = now + 14 * 86400000;
+  const upcoming = tasks
+    .filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate).getTime() >= now && new Date(t.dueDate).getTime() <= soon)
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  hdr(ws, r, COLS, `  UPCOMING DEADLINES  (${upcoming.length})  —  due in the next 14 days`, C.brandDark, C.headerFg, 11);
+  r++;
+  if (upcoming.length === 0) {
+    ws.getRow(r).height = 18;
+    ws.mergeCells(r, 1, r, COLS);
+    setVal(ws, r, 1, '  Nothing due in the next two weeks.', { color: C.textMuted, bold: true });
+    r++;
+  } else {
+    colHdr(ws, r, ['#', 'Task Title', 'Phase', 'Assignee', 'Status', 'Priority', 'Due Date', 'Due In']);
+    r++;
+    upcoming.forEach((task, i) => {
+      const days = Math.ceil((new Date(task.dueDate).getTime() - now) / 86400000);
+      const urgent = days <= 2;
+      const bg = urgent ? C.highBg : i % 2 === 0 ? C.white : C.rowAlt;
+      ws.getRow(r).height = 19;
+      setVal(ws, r, 1, i + 1, { align: 'center', bg });
+      setVal(ws, r, 2, task.title, { bg, bold: urgent });
+      setVal(ws, r, 3, (phaseMap.get(String(task.phaseId)) as string) || '—', { bg, align: 'center' });
+      setVal(ws, r, 4, userMap.get(String(task.assigneeId)) || '—', { bg, align: 'center' });
+      setVal(ws, r, 5, statusLabel(task.status), { bg, align: 'center' });
+      setVal(ws, r, 6, (task.priority || 'low').toUpperCase(), { bg, align: 'center', bold: task.priority === 'critical' || task.priority === 'high' });
+      setVal(ws, r, 7, fmt(task.dueDate), { bg, align: 'center' });
+      setVal(ws, r, 8, days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days} days`, { bg, align: 'center', color: urgent ? C.high : C.textMuted, bold: urgent });
+      applyBorder(ws, r, 1, COLS);
+      r++;
+    });
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
    ROUTE HANDLER
 ════════════════════════════════════════════════════════════════════════════ */
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -528,6 +632,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     buildSummarySheet(wb, project, tasks as any[], phaseMap);
     buildTasksSheet(wb, project, tasks as any[], users as any[]);
+    buildTeamScheduleSheet(wb, project, tasks as any[], users as any[]);
     buildBottleneckSheet(wb, project, tasks as any[], users as any[]);
 
     const buf = await wb.xlsx.writeBuffer();

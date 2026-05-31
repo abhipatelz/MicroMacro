@@ -246,9 +246,12 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
   const SidebarInner = (
     <>
       {/* Brand header */}
-      <div className="flex items-center gap-2.5 px-4 h-14 shrink-0 border-b overflow-hidden"
+      <div className={`flex items-center h-14 shrink-0 border-b overflow-hidden ${showCollapsed ? 'px-0 justify-center' : 'gap-2.5 px-4'}`}
         style={{ borderColor: dark ? 'rgba(255,255,255,0.07)' : '#e8edf4' }}>
-        <Link href="/" className={`flex items-center gap-2.5 ${showCollapsed ? 'justify-center w-full' : 'flex-1 min-w-0'}`}>
+        {/* When collapsed, drop the inter-element gap so the mark sits dead-centre
+            in the 68px rail instead of being nudged left by the (zero-width)
+            wordmark's gap — which made the logo look off/uneven. */}
+        <Link href="/" className={`flex items-center ${showCollapsed ? 'justify-center w-full' : 'gap-2.5 flex-1 min-w-0'}`}>
           {/* Constant size — the mark used to scale 28↔30 on every collapse,
               causing a brief squeeze. The wordmark fades out instead. */}
           <PragatiMark size={30} flat />
@@ -346,10 +349,8 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
           style={{ borderColor: dark ? 'rgba(255,255,255,0.05)' : '#e8edf4' }}>
           {AccountMenu}
           <NotificationBell dark={dark} openUp />
-          <button type="button" onClick={() => setConfirmLogout(true)} title="Sign out"
-            className={`p-2 rounded-lg transition-colors ${dark ? 'text-red-400/55 hover:text-red-400 hover:bg-white/5' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}`}>
-            <LogOut size={16} />
-          </button>
+          {/* No standalone sign-out here when collapsed — it lives inside the
+              account menu (tap the avatar), keeping the rail uncluttered. */}
           <button type="button" title="Account menu" aria-label="Account menu"
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => setAccountMenuOpen((v) => !v)}
@@ -487,7 +488,7 @@ export default function AppShell({ user, initialDark, children }: { user: Curren
               }}
             />
           )}
-          <div key={pathname} className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 page-enter relative">
+          <div key={pathname} className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 page-enter relative overflow-x-hidden">
             {children}
           </div>
         </main>

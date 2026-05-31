@@ -308,7 +308,17 @@ export default function NewProjectPage() {
                 type="button"
                 role="switch"
                 aria-checked={personal}
-                onClick={() => setPersonal(p => !p)}
+                onClick={() => {
+                  const next = !personal;
+                  setPersonal(next);
+                  // When switching to personal, default to a general lifecycle if currently on a GxP-specific one
+                  if (next) {
+                    const gxpKeys = LIFECYCLE_GROUPS.flatMap(g =>
+                      g.label !== 'General' ? g.options.map(o => o.value) : []
+                    ).filter(v => v !== 'generic');
+                    if (gxpKeys.includes(form.lifecycle)) up('lifecycle', 'generic');
+                  }
+                }}
                 className={`mt-0.5 relative w-9 h-5 rounded-full shrink-0 transition-colors cursor-pointer ${
                   personal ? 'bg-blue-600' : 'bg-slate-300'
                 }`}
@@ -338,10 +348,15 @@ export default function NewProjectPage() {
           <div className="card p-5">
             <label className="label">Workflow template</label>
             <p className="text-xs text-slate-400 mb-3 -mt-1">
-              Pick a template to get predefined stages and tasks — you can edit everything in the next step.
+              {personal
+                ? 'Pick a ready-made template to jump-start your personal project — or start blank.'
+                : 'Pick a template to get predefined stages and tasks — you can edit everything in the next step.'}
             </p>
             <div className="space-y-4">
-              {LIFECYCLE_GROUPS.map(group => (
+              {(personal
+                ? [...LIFECYCLE_GROUPS].sort((a, b) => a.label === 'General' ? -1 : b.label === 'General' ? 1 : 0)
+                : LIFECYCLE_GROUPS
+              ).map(group => (
                 <div key={group.label}>
                   <div className="flex items-baseline gap-2 mb-1.5">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{group.label}</div>

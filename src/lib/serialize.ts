@@ -45,6 +45,15 @@ export function u(user: any) {
     // who can't sign in and click Unlock. Not credential data.
     lockedAt: date(user.lockedAt),
     failedLoginAttempts: user.failedLoginAttempts || 0,
+    // Account lifecycle. `active` defaults to true for legacy rows that
+    // predate the field (undefined !== false). The deactivation metadata
+    // gives the People page a professional record of who turned the
+    // account off, when, and why.
+    active: user.active !== false,
+    deactivatedAt: date(user.deactivatedAt),
+    deactivatedBy: user.deactivatedBy || '',
+    deactivationReason: user.deactivationReason || '',
+    reactivatedAt: date(user.reactivatedAt),
   };
 }
 

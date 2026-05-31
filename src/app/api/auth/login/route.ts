@@ -135,6 +135,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(GENERIC_INVALID.body, { status: GENERIC_INVALID.status });
     }
 
+    // ── Deactivated account ──────────────────────────────────────────
+    // Checked only AFTER the credential is verified, so we never reveal to
+    // someone who doesn't know the password that the account exists. A
+    // deactivated user gets a clear, professional message (not the generic
+    // "invalid" wall) because this is a known account an admin turned off —
+    // they should know to contact their administrator, not keep guessing.
+    if ((user as any).active === false) {
+      return NextResponse.json(
+        { error: 'This account has been deactivated. Please contact your administrator.' },
+        { status: 403 },
+      );
+    }
+
     // ── Success path ─────────────────────────────────────────────────
     // Reset the counter and promote to admin if this email matches the
     // configured workspace owner. Single atomic save afterwards.

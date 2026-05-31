@@ -22,12 +22,18 @@ export async function GET(req: NextRequest) {
     // single team. Used by the project task-assignee dropdown so leads
     // only see people who actually belong to the project's team.
     const teamId = req.nextUrl.searchParams.get('teamId');
-    let filter: any = {};
+    // Deactivated accounts are excluded everywhere by default — they must
+    // not appear in assignee pickers or team rosters. Only an admin can ask
+    // for them (the People page does, to show the deactivated record).
+    const includeInactive =
+      req.nextUrl.searchParams.get('includeInactive') === '1' &&
+      String(user.role) === 'admin';
+    let filter: any = includeInactive ? {} : { active: { $ne: false } };
     if (teamId) {
       const team = await Team.findById(teamId).select('leadId memberIds').lean();
       if (team) {
         const ids = [team.leadId, ...(team.memberIds || [])].filter(Boolean);
-        filter = { _id: { $in: ids } };
+        filter = { ...filter, _id: { $in: ids } };
       } else {
         return NextResponse.json([]);
       }

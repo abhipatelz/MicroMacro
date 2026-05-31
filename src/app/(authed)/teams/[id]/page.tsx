@@ -4,16 +4,18 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { useCurrentUser } from '@/components/CurrentUserContext';
-import { Download, Trash2, Printer, Sheet } from 'lucide-react';
+import { Download, Trash2, Printer, Sheet, BarChart3, X } from 'lucide-react';
 import {
   Card,
   Avatar,
   ProgressBar,
   LifecycleTag,
   StatusTag,
+  RoleBadge,
   formatDate,
   TaskLink
 } from '@/components/ui';
+import { ActivityGraph } from '@/components/ActivityGraph';
 import { downloadTeamReport, printTeamReport, downloadTeamCsv } from './report';
 
 const FUNCTION_LABEL: Record<string, string> = {
@@ -36,6 +38,7 @@ export default function TeamDetailPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [adding, setAdding] = useState(false);
   const [newMember, setNewMember] = useState('');
+  const [activityMember, setActivityMember] = useState<any | null>(null);
   const me = useCurrentUser();
   const isLead = me?.role === 'lead' || me?.role === 'admin';
   // An IC's team view is personal: they see their own micro-tasks only and
@@ -117,6 +120,26 @@ export default function TeamDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* Per-member activity peek — leads/admins click the graph icon on a
+          member to see how they're tracking (read-only). */}
+      {activityMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={() => setActivityMember(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[820px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-5">
+              <Avatar name={activityMember.name} size={44} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-black text-slate-900 truncate">{activityMember.name}</h3>
+                  {activityMember.role && <RoleBadge role={activityMember.role} />}
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">Performance overview</div>
+              </div>
+              <button onClick={() => setActivityMember(null)} className="text-slate-300 hover:text-slate-500 ml-2 mt-0.5"><X size={18} /></button>
+            </div>
+            <ActivityGraph userId={activityMember.id} name={activityMember.name} />
+          </div>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{team.name}</h1>
@@ -211,6 +234,15 @@ export default function TeamDetailPage() {
                           ` · ${p.done}/${p.assigned} done${p.overdue ? ` · ${p.overdue} overdue` : ''}`}
                       </div>
                     </div>
+                    {isLead && (
+                      <button
+                        onClick={() => setActivityMember(m)}
+                        title={`View ${m.name}'s activity`}
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-600 transition-all"
+                      >
+                        <BarChart3 size={14} />
+                      </button>
+                    )}
                     {isOwnerOrAdmin && (
                       <button
                         onClick={() => removeMember(m.id)}
