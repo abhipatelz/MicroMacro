@@ -526,7 +526,7 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
               </div>
               <div className="min-w-0 pb-1">
                 <div className="mb-3 inline-flex rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white backdrop-blur">
-                  Pragati profile
+                  <span className="font-display">Pragati</span>&nbsp;profile
                 </div>
                 <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                   <h1 className="text-2xl font-black leading-tight tracking-tight text-white sm:text-3xl">{user.name}</h1>

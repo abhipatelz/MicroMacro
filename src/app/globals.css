@@ -35,10 +35,18 @@
    Only use where the background is light; on dark/coloured surfaces use the
    plain .brand-wordmark with an explicit colour instead. */
 .brand-wordmark-gradient {
-  background: linear-gradient(115deg, #1565C0 0%, #1976D2 42%, #2E7D32 100%);
+  /* Blue-dominant with a deep-azure core and a forest finish on the final
+     glyphs — mirrors the logo mark's tile gradient. The extra #0D47A1 stop
+     gives the start a richer, inkier depth than a flat two-stop ramp, and the
+     green is pushed to the tail (88–100%) so it reads as an accent, not half
+     the word. */
+  background: linear-gradient(118deg, #0D47A1 0%, #1565C0 30%, #1976D2 60%, #2E7D32 100%);
   -webkit-background-clip: text;
           background-clip: text;
   color: transparent;
+  /* Hairline shadow lifts the gradient glyphs off light cards without muddying
+     the fill (kept very soft so it never reads as a drop-shadow). */
+  filter: drop-shadow(0 1px 0 rgba(15, 23, 42, 0.04));
 }
 
 :root {
