@@ -375,10 +375,12 @@ export function Avatar({ name, size = 28, letter, bg, font }: AvatarProps) {
         letterSpacing: '0.02em',
         background,
         color,
-        // Squircle — a rounded-square that echoes the Pragati logo tile,
-        // instead of a plain circle. Proportional radius so it reads the same
-        // at every size (matches PragatiMark's ~0.26–0.28 factor).
-        borderRadius: Math.max(4, Math.round(size * 0.28)),
+        // Diagonal squircle — opposing corners share a radius, creating a
+        // gentle "gem/badge" shape that's distinctively not a circle or a
+        // plain rounded-rectangle. Scales proportionally at every size.
+        // TL & BR = rounder (0.40×) / TR & BL = tighter (0.22×) so the shape
+        // has a subtle diagonal axis — more interesting, still coherent.
+        borderRadius: `${Math.max(4, Math.round(size * 0.40))}px ${Math.max(3, Math.round(size * 0.22))}px ${Math.max(4, Math.round(size * 0.40))}px ${Math.max(3, Math.round(size * 0.22))}px`,
         boxShadow: useMonogram
           ? '0 1px 2px rgba(15,23,42,0.12)'
           : 'inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 2px rgba(15,23,42,0.12)',

@@ -2,7 +2,7 @@
 // Every assertion is derivable from a line in src/lib/alcoa.ts — no DB, no network.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scoreAlcoa, type TaskSnapshot } from '../../src/lib/alcoa.ts';
+import { scoreAlcoa, type TaskSnapshot } from '@/lib/alcoa';
 
 // ─── fixture helpers ─────────────────────────────────────────────────────────
 

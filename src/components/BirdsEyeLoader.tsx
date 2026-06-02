@@ -68,6 +68,12 @@ export function BirdLandingLoader({ label = 'Coming in to land…' }: { label?: 
         <div className="bird-land">
           <PragatiMark size={34} flat />
         </div>
+        {/* Touchdown ripple — a soft brand-blue ring that expands once on contact. */}
+        <div
+          aria-hidden
+          className="bird-ripple absolute left-1/2 -bottom-0.5 h-6 w-6 rounded-full"
+          style={{ border: '1.5px solid rgba(21,101,192,0.35)' }}
+        />
         {/* Soft contact shadow that spreads as the mark settles. */}
         <div
           aria-hidden
@@ -77,6 +83,7 @@ export function BirdLandingLoader({ label = 'Coming in to land…' }: { label?: 
       </div>
       <div className="space-y-1.5">
         <div className="skeleton h-3.5 w-40 rounded" />
+        <div className="skeleton h-2.5 w-24 rounded" />
         <div className="text-[11px] font-semibold text-slate-400">{label}</div>
       </div>
     </div>

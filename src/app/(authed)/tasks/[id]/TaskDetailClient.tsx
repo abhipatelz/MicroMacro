@@ -286,6 +286,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
               remarks:          task.remarks,
               pendingWith:      task.pendingWith,
               aiTriage:         task.aiTriage,
+              projectIsPersonal: task.projectIsPersonal ?? task.isPersonal,
             }} />
           </div>
         </div>

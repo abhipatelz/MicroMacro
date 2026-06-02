@@ -11,8 +11,8 @@
     </linearGradient>
   </defs>
 
-  <rect width="64" height="64" fill="url(#bg)"/>
-  <rect width="64" height="64" fill="url(#gloss)"/>
+  <path d="M 24,0 H 51 Q 64,0 64,13 V 40 Q 64,64 40,64 H 13 Q 0,64 0,51 V 24 Q 0,0 24,0 Z" fill="url(#bg)"/>
+  <path d="M 24,0 H 51 Q 64,0 64,13 V 40 Q 64,64 40,64 H 13 Q 0,64 0,51 V 24 Q 0,0 24,0 Z" fill="url(#gloss)"/>
 
   <g fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path d="M14 40 L32 22 L50 40" stroke="#ffffff" stroke-width="7"/>

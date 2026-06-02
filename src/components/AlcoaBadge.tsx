@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Activity } from 'lucide-react'
+import { Activity, ShieldCheck } from 'lucide-react'
 import { scoreAlcoa, type AlcoaScore, type AlcoaPrinciple, type TaskSnapshot } from '@/lib/alcoa'
 
 const PRINCIPLE_ORDER: AlcoaPrinciple[] = [
@@ -49,16 +49,23 @@ export function AlcoaBadge({ task }: { task: TaskSnapshot }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  // Personal tasks aren't GxP records — never clutter them with a compliance score.
+  if (task.projectIsPersonal) return null
+
   return (
     <div ref={ref} className="relative inline-block">
+      {/* Resting state is deliberately quiet — a muted shield + grade letter that
+          blends in and is easy to ignore. The full score, colours and per-principle
+          breakdown only appear on click, so the badge never competes for attention. */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-bold cursor-pointer select-none transition-opacity hover:opacity-80 ${colors.chip}`}
-        title="ALCOA+ data integrity score — click for breakdown"
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-slate-400 hover:text-slate-600 hover:bg-slate-100/70 transition-colors cursor-pointer select-none"
+        title={`ALCOA+ data integrity ${score.total}/100 · grade ${score.grade} — click for breakdown`}
+        aria-label={`ALCOA+ data integrity score ${score.total} out of 100, grade ${score.grade}`}
       >
-        <Activity size={11} />
-        ALCOA⁺ {score.total}
+        <ShieldCheck size={12} />
+        <span className="tabular-nums">{score.grade}</span>
       </button>
 
       {open && (
