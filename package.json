@@ -9,7 +9,7 @@
     "start": "next start -p 3000",
     "lint": "next lint",
     "seed": "tsx scripts/seed.ts",
-    "seed:idp": "tsx scripts/seed-idp.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
     "cleanup-users": "tsx scripts/cleanup-users.ts",
     "keep-mes-only": "tsx scripts/keep-mes-only.ts",
     "set-admin": "tsx scripts/set-admin.ts",

@@ -137,7 +137,7 @@ export function DatePicker({
       {mounted && open && coords && createPortal(
         <div
           ref={popRef}
-          className="fixed rounded-2xl fade-in-soft datepicker-pop bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-white/10"
+          className="fixed rounded-2xl fade-in-soft datepicker-pop bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-white/10 overflow-hidden"
           style={{
             top: coords.top,
             left: coords.left,
@@ -149,10 +149,12 @@ export function DatePicker({
           onMouseDown={e => e.stopPropagation()}
         >
           {/* Brand-gradient bar at the top — a small, refined cue that links
-              the calendar to the Pragati palette. Replaces the previous flat
-              header that looked indistinguishable from a generic dropdown. */}
+              the calendar to the Pragati palette. The parent owns the rounded
+              corners + overflow:hidden so the bar can't poke past the curve
+              (the bar's own border-radius didn't account for the 1px border
+              inset, so it was visibly overflowing on both edges). */}
           <div
-            className="h-1 rounded-t-2xl"
+            className="h-1"
             style={{ background: 'linear-gradient(90deg, #0D47A1 0%, #1565C0 45%, #2E7D32 100%)' }}
           />
           <div className="p-3">
