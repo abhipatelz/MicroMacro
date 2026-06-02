@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { RoleBadge } from '@/components/ui';
@@ -685,11 +685,16 @@ function DeactivateDialog({ user, onConfirm, onCancel, saving }: {
 /* ── Main page ────────────────────────────────────────────────────────── */
 interface PeopleClientProps {
   initialUsers: any[];
+  /** Total active contributors in the workspace (for "load more" + counts). */
+  contribTotal?: number;
+  /** Page size the server used for the first contributor batch. */
+  contribPage?: number;
   me:           any;
 }
 
-export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
+export default function PeopleClient({ initialUsers, contribTotal = 0, contribPage = 150, me }: PeopleClientProps) {
   const [users, setUsers] = useState<any[]>(initialUsers);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -708,7 +713,17 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
   // server-provided list (which includes deactivated accounts), so no fetch
   // fires on mount. The refetch must also ask for inactive accounts —
   // /api/users hides them by default so they never leak into assignee lists.
-  function load() { api<any[]>('/users?includeInactive=1').then(setUsers).catch(() => {}); }
+  // When a search is active we refetch that query so the view stays consistent
+  // with what the admin is looking at; otherwise we pull the full set.
+  function load() {
+    const sp = new URLSearchParams({ includeInactive: '1' });
+    const term = queryRef.current.trim();
+    if (term) sp.set('q', term);
+    api<any[]>(`/users?${sp.toString()}`).then(setUsers).catch(() => {});
+  }
+  // Mirror the live query into a ref so load() (called from many handlers) can
+  // read it without being recreated on every keystroke.
+  const queryRef = useRef('');
 
   async function confirmRoleChange(signoff: { password: string; reason: string }) {
     if (!roleConfirm) return;
@@ -840,6 +855,39 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
     (u.email || '').toLowerCase().includes(q) ||
     (u.employeeId || '').toLowerCase().includes(q);
 
+  // ── Server-backed search & pagination ───────────────────────────────────
+  // The first paint only carries one page of contributors. So that an admin
+  // can still find ANYONE in a large workspace, a non-empty query hits the
+  // server (regex across name/username/email/employeeId/title/dept/org), which
+  // returns every match regardless of what's been paged in. Clearing the box
+  // restores the original bounded first page (kept in a ref) — no unbounded
+  // "fetch everyone" ever fires from typing.
+  const initialRef = useRef<any[]>(initialUsers);
+  useEffect(() => { queryRef.current = query; }, [query]);
+  useEffect(() => {
+    const term = query.trim();
+    if (!term) { setUsers(initialRef.current); return; }
+    const t = setTimeout(() => {
+      api<any[]>(`/users?includeInactive=1&q=${encodeURIComponent(term)}`)
+        .then(setUsers).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  async function loadMoreContributors() {
+    const loaded = users.filter((u) => u.active !== false && u.role === 'contributor').length;
+    setLoadingMore(true);
+    try {
+      const res = await api<{ items: any[] }>(`/users?role=contributor&limit=${contribPage}&offset=${loaded}`);
+      const incoming = res.items || [];
+      setUsers((prev) => {
+        const seen = new Set(prev.map((u) => u.id));
+        return [...prev, ...incoming.filter((u) => !seen.has(u.id))];
+      });
+    } catch { /* keep what we have */ }
+    finally { setLoadingMore(false); }
+  }
+
   // Active accounts drive the Leads/Contributors sections; deactivated
   // accounts move to their own record section at the bottom.
   const liveUsers = users.filter((u) => u.active !== false);
@@ -849,10 +897,12 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
   const isLeadOrAdmin = (me?.role === 'lead' || me?.role === 'admin');
   const isAdmin = me?.role === 'admin';
 
-  // Workspace-wide totals (unfiltered) for the summary strip.
-  const totalPeople  = liveUsers.length;
+  // Workspace-wide totals (unfiltered) for the summary strip. Leads and
+  // deactivated accounts are always loaded in full, so their counts are exact;
+  // contributors use the server-wide total (the list itself may be paged).
   const leadCount    = liveUsers.filter((u) => u.role === 'lead' || u.role === 'admin').length;
-  const icCount      = liveUsers.filter((u) => u.role === 'contributor').length;
+  const icCount      = contribTotal || liveUsers.filter((u) => u.role === 'contributor').length;
+  const totalPeople  = leadCount + icCount;
   const deactivatedCount = users.filter((u) => u.active === false).length;
 
   return (
@@ -955,7 +1005,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         <Search size={14} className="absolute top-1/2 -translate-y-1/2 left-3 text-slate-400" />
         <input
           className="input pl-9"
-          placeholder="Search by name, username or member ID…"
+          placeholder="Search the whole workspace — name, username, email, member ID…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -1063,7 +1113,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
           <User size={14} className="text-slate-400" />
           <h2 className="text-sm font-bold text-slate-700">Contributors</h2>
-          <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 ml-1">{ics.length}</span>
+          <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 ml-1">{q ? ics.length : (contribTotal || ics.length)}</span>
         </div>
         {ics.length === 0 ? (
           <div className="px-5 py-5 text-sm text-slate-400">
@@ -1141,6 +1191,18 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                 </button>
               </div>
             ))}
+            {/* Load more — only meaningful when browsing (not searching), and
+               only while fewer contributors are loaded than the workspace has. */}
+            {!q && ics.length < contribTotal && (
+              <div className="px-5 py-3 text-center">
+                <button
+                  onClick={loadMoreContributors}
+                  disabled={loadingMore}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 disabled:opacity-50 inline-flex items-center gap-1.5">
+                  {loadingMore ? 'Loading…' : `Load more · showing ${ics.length} of ${contribTotal}`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
