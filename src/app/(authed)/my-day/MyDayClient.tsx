@@ -5,6 +5,7 @@ import { api } from '@/lib/client/api';
 import { useIsLead } from '@/components/CurrentUserContext';
 import { Plus, Check, Trash2, ArrowRight, X, Sparkles } from 'lucide-react';
 import { DatePicker } from '@/components/DatePicker';
+import { Select } from '@/components/Select';
 
 interface Note { id: string; text: string; done: boolean; promotedTaskId: string | null; createdAt: string; }
 
@@ -292,37 +293,53 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
           </div>
 
           <label className="label">Project</label>
-          <select className="select mb-3" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-            {projects.length === 0 && <option value="">No projects available</option>}
-            {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <div className="mb-3">
+            <Select
+              value={projectId} onChange={setProjectId} ariaLabel="Project"
+              placeholder={projects.length === 0 ? 'No projects available' : 'Select a project'}
+              options={projects.map((p) => ({ value: p.id, label: p.name }))}
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className="label">Phase</label>
-              <select className="select" value={phaseId} onChange={(e) => setPhaseId(e.target.value)} disabled={loadingMeta || phases.length === 0}>
-                <option value="">{phases.length === 0 ? 'No phases' : 'Unassigned'}</option>
-                {phases.map((ph) => <option key={ph.id} value={ph.id}>{ph.name}</option>)}
-              </select>
+              <Select
+                value={phaseId} onChange={setPhaseId} ariaLabel="Phase"
+                disabled={loadingMeta || phases.length === 0}
+                placeholder={phases.length === 0 ? 'No phases' : 'Unassigned'}
+                options={[
+                  { value: '', label: phases.length === 0 ? 'No phases' : 'Unassigned' },
+                  ...phases.map((ph) => ({ value: ph.id, label: ph.name })),
+                ]}
+              />
             </div>
             <div>
               <label className="label">Priority</label>
-              <select className="select" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
+              <Select
+                value={priority} onChange={setPriority} ariaLabel="Priority"
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'high', label: 'High' },
+                  { value: 'critical', label: 'Critical' },
+                ]}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Assign to</label>
-              <select className="select" value={assigneeId} onChange={(e) => setAssignee(e.target.value)} disabled={loadingMeta}>
-                <option value="">Unassigned</option>
-                {members.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
+              <Select
+                value={assigneeId} onChange={setAssignee} ariaLabel="Assign to"
+                disabled={loadingMeta}
+                placeholder="Unassigned"
+                options={[
+                  { value: '', label: 'Unassigned' },
+                  ...members.map((u) => ({ value: u.id, label: u.name })),
+                ]}
+              />
             </div>
             <div>
               <label className="label">Target completion</label>

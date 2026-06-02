@@ -18,6 +18,7 @@ import { UserAvatar } from '@/components/AvatarRegistry';
 import { ActivityGraph } from '@/components/ActivityGraph';
 import { downloadTeamReport, printTeamReport, downloadTeamCsv } from './report';
 import { ExportMenu } from '@/components/ExportMenu';
+import { Select } from '@/components/Select';
 
 const FUNCTION_LABEL: Record<string, string> = {
   general: 'General',
@@ -212,18 +213,14 @@ export default function TeamDetailPage() {
             )}
             {adding && isOwnerOrAdmin && (
               <div className="flex gap-2 mb-3">
-                <select
-                  className="select"
-                  value={newMember}
-                  onChange={(e) => setNewMember(e.target.value)}
-                >
-                  <option value="">Select user…</option>
-                  {availableUsers.map((u: any) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  className="flex-1" value={newMember} onChange={setNewMember} ariaLabel="Select user to add"
+                  placeholder="Select user…"
+                  options={[
+                    { value: '', label: 'Select user…' },
+                    ...availableUsers.map((u: any) => ({ value: u.id, label: u.name })),
+                  ]}
+                />
                 <button className="btn-primary" onClick={addMember}>
                   Add
                 </button>

@@ -34,11 +34,18 @@
   font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Keep the descender from being clipped at the baseline in tight headers
-     (the 'g' tail was being shaved when the parent had overflow:hidden +
-     small line-height). */
-  line-height: 1.1;
-  padding-bottom: 0.04em;
+  /* The descender of General Sans' 'g' is deep. With `background-clip: text`
+     the glyph is painted into a tight line box, so a small line-height (or a
+     parent's overflow:hidden) shaved the tail — the "broken g" report. Give it
+     its own non-clipping inline-block box with generous line-height + a hair of
+     bottom padding so the descender always has room, regardless of the
+     surrounding layout. */
+  display: inline-block;
+  /* !important so a utility like `leading-none` on the same element can't pull
+     the line box tight and clip the descender. */
+  line-height: 1.28 !important;
+  padding-bottom: 0.14em;
+  overflow: visible;
 }
 
 /* Gradient-filled variant for light surfaces (sidebar in light mode, auth

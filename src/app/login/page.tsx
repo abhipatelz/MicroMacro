@@ -367,7 +367,7 @@ export default function LoginPage() {
 
               {/* Wordmark */}
               <h1
-                className="fade-up-1 brand-wordmark text-center text-white leading-none"
+                className="fade-up-1 brand-wordmark text-center text-white"
                 style={{ fontSize: 'clamp(62px, 6.2vw, 88px)' }}
               >
                 Pragati

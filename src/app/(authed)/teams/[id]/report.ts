@@ -226,7 +226,10 @@ export function buildTeamReportHtml(team: any, progress: any, board: any[]): str
             </linearGradient>
           </defs>
           <rect width="34" height="34" rx="9" fill="url(#pg)"/>
-          <path d="M11 24V10h6.2c3 0 4.9 1.8 4.9 4.5S20.2 19 17.2 19H14v5h-3Zm3-7.6h2.9c1.4 0 2.2-.7 2.2-1.9s-.8-1.9-2.2-1.9H14v3.8Z" fill="#fff"/>
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 22 L17 12 L26 22" stroke="#fff" stroke-width="3.6"/>
+            <path d="M10 28 L17 21 L24 28" stroke="#B7E4C2" stroke-width="2.6" opacity="0.92"/>
+          </g>
         </svg>
         <span class="logo">Pragati<small>Quality Informatics</small></span>
       </span>

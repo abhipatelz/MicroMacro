@@ -5,6 +5,7 @@ import { api } from '@/lib/client/api';
 import { useIsLead } from '@/components/CurrentUserContext';
 import { Plus, X, GripVertical, ChevronDown, ChevronRight, Sparkles, Trash2, BookmarkPlus, Lock } from 'lucide-react';
 import { DatePicker } from '@/components/DatePicker';
+import { Select } from '@/components/Select';
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 interface Phase { id: string; name: string; tasks: string[] }
@@ -477,12 +478,17 @@ export default function NewProjectPage() {
             </div>
             <div>
               <label className="label">Priority</label>
-              <select className="select" value={form.priority} onChange={e => up('priority', e.target.value)}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
+              <Select
+                value={form.priority}
+                onChange={(v) => up('priority', v)}
+                ariaLabel="Priority"
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'high', label: 'High' },
+                  { value: 'critical', label: 'Critical' },
+                ]}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -546,10 +552,16 @@ export default function NewProjectPage() {
             {!personal && teams.length > 0 && (
               <div>
                 <label className="label">Team</label>
-                <select className="select" value={form.teamId} onChange={e => up('teamId', e.target.value)}>
-                  <option value="">— Unassigned —</option>
-                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
+                <Select
+                  value={form.teamId}
+                  onChange={(v) => up('teamId', v)}
+                  ariaLabel="Team"
+                  placeholder="— Unassigned —"
+                  options={[
+                    { value: '', label: '— Unassigned —' },
+                    ...teams.map((t) => ({ value: t.id, label: t.name })),
+                  ]}
+                />
               </div>
             )}
           </div>

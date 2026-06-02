@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { Avatar } from '@/components/ui';
+import { Select } from '@/components/Select';
 import { UserAvatar } from '@/components/AvatarRegistry';
 import { Pencil, Plus, Users as UsersIcon, X, Check, Search, Trash2, AlertTriangle, ArrowRight } from 'lucide-react';
 
@@ -444,24 +445,27 @@ function TeamFormModal({
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                 Function
               </label>
-              <select className="select" value={func} onChange={(e) => setFunc(e.target.value)}>
-                <option value="general">General</option>
-                <option value="ctb">Change the Business</option>
-                <option value="rtb">Run the Business</option>
-              </select>
+              <Select
+                value={func} onChange={setFunc} ariaLabel="Function"
+                options={[
+                  { value: 'general', label: 'General' },
+                  { value: 'ctb', label: 'Change the Business' },
+                  { value: 'rtb', label: 'Run the Business' },
+                ]}
+              />
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                 Team owner
               </label>
-              <select className="select" value={leadId} onChange={(e) => setLeadId(e.target.value)}>
-                <option value="">— No owner —</option>
-                {users
-                  .filter((u) => u.role === 'lead')
-                  .map((u) => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-              </select>
+              <Select
+                value={leadId} onChange={setLeadId} ariaLabel="Team owner"
+                placeholder="— No owner —"
+                options={[
+                  { value: '', label: '— No owner —' },
+                  ...users.filter((u) => u.role === 'lead').map((u) => ({ value: u.id, label: u.name })),
+                ]}
+              />
             </div>
           </div>
 

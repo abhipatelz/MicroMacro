@@ -163,7 +163,10 @@ export function buildProjectReportHtml(project: any, phases: any[]): string {
         <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs><linearGradient id="pg" x1="0" y1="0" x2="34" y2="34" gradientUnits="userSpaceOnUse"><stop stop-color="#1565C0"/><stop offset="1" stop-color="#2B8C47"/></linearGradient></defs>
           <rect width="34" height="34" rx="9" fill="url(#pg)"/>
-          <path d="M11 24V10h6.2c3 0 4.9 1.8 4.9 4.5S20.2 19 17.2 19H14v5h-3Z" fill="#fff"/>
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 22 L17 12 L26 22" stroke="#fff" stroke-width="3.6"/>
+            <path d="M10 28 L17 21 L24 28" stroke="#B7E4C2" stroke-width="2.6" opacity="0.92"/>
+          </g>
         </svg>
         <span class="logo">Pragati<small>Quality Informatics</small></span>
       </span>

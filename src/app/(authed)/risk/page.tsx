@@ -6,6 +6,7 @@ import {
   Activity, Info, ChevronDown, ChevronUp, RefreshCw,
   UserPlus, Clock, ExternalLink,
 } from 'lucide-react';
+import { Select } from '@/components/Select';
 
 interface RiskFeature {
   name: string; value: number; weight: number; contribution: number; explanation: string;
@@ -289,10 +290,11 @@ export default function RiskRadarPage() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
-        <select className="select text-sm w-auto" value={teamId} onChange={e => setTeamId(e.target.value)}>
-          <option value="">All teams</option>
-          {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
+        <Select
+          className="w-48" value={teamId} onChange={setTeamId} ariaLabel="Filter by team"
+          placeholder="All teams"
+          options={[{ value: '', label: 'All teams' }, ...teams.map((t) => ({ value: t.id, label: t.name }))]}
+        />
         {filter !== 'all' && (
           <button onClick={() => setFilter('all')} className="text-xs text-slate-500 hover:text-slate-700 underline">
             Clear filter

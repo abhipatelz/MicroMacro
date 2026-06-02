@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { LifecycleTag, StatusTag, formatDate } from '@/components/ui';
+import { Select } from '@/components/Select';
 import { useIsLead } from '@/components/CurrentUserContext';
 import { Plus, Search, SlidersHorizontal, Lock } from 'lucide-react';
 
@@ -118,27 +119,29 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
               overflows the card) and sit inline from sm: up. */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
             <SlidersHorizontal size={13} className="text-slate-400 shrink-0 hidden sm:block" />
-            <select className="select text-sm w-full sm:w-auto" value={team} onChange={(e) => setTeam(e.target.value)}>
-              <option value="">All teams</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-            <select className="select text-sm w-full sm:w-auto" value={lc} onChange={(e) => setLc(e.target.value)}>
-              <option value="">All lifecycles</option>
-              {lifecycles.map((l) => (
-                <option key={l.key} value={l.key}>{l.label}</option>
-              ))}
-            </select>
+            <Select
+              className="w-full sm:w-44" value={team} onChange={setTeam} ariaLabel="Filter by team"
+              placeholder="All teams"
+              options={[{ value: '', label: 'All teams' }, ...teams.map((t) => ({ value: t.id, label: t.name }))]}
+            />
+            <Select
+              className="w-full sm:w-48" value={lc} onChange={setLc} ariaLabel="Filter by lifecycle"
+              placeholder="All lifecycles"
+              options={[{ value: '', label: 'All lifecycles' }, ...lifecycles.map((l) => ({ value: l.key, label: l.label }))]}
+            />
             {tab === 'all' && (
-              <select className="select text-sm w-full sm:w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="">All statuses</option>
-                <option value="planning">Planning</option>
-                <option value="in_progress">In progress</option>
-                <option value="on_hold">On hold</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+              <Select
+                className="w-full sm:w-40" value={status} onChange={setStatus} ariaLabel="Filter by status"
+                placeholder="All statuses"
+                options={[
+                  { value: '', label: 'All statuses' },
+                  { value: 'planning', label: 'Planning' },
+                  { value: 'in_progress', label: 'In progress' },
+                  { value: 'on_hold', label: 'On hold' },
+                  { value: 'completed', label: 'Completed' },
+                  { value: 'cancelled', label: 'Cancelled' },
+                ]}
+              />
             )}
           </div>
         </div>

@@ -311,6 +311,157 @@ function KanbanBoard({ tasks, onDropReorder, isLead, onDelete }: {
   );
 }
 
+/* ── Kanban board — MOBILE ────────────────────────────────────────────────────
+   The horizontally-scrolling, drag-and-drop desktop board is unusable on a
+   phone (tiny columns, drag fights the page scroll). On mobile we render a
+   purpose-built view instead: a status tab strip across the top, then the
+   selected status's cards as a full-width vertical list. Moving a card is a
+   tap — a "Move to" sheet — not a drag, which is far more reliable on touch.
+   This component is only mounted below `md`, so the desktop experience is
+   completely untouched. */
+function KanbanBoardMobile({ tasks, onMove, isLead, onDelete }: {
+  tasks: any[];
+  onMove: (taskId: string, toStatus: string, orderedIds: string[]) => void;
+  isLead: boolean;
+  onDelete: (taskId: string) => void;
+}) {
+  const [active, setActive] = useState<string>('todo');
+  const [moving, setMoving] = useState<any | null>(null);
+
+  const byStatus = (s: string) => tasks
+    .filter((t) => t.status === s)
+    .sort((a, b) => {
+      const ad = a.ccTcd ? new Date(a.ccTcd).getTime() : a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const bd = b.ccTcd ? new Date(b.ccTcd).getTime() : b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      return ad - bd;
+    });
+
+  const colTasks = byStatus(active);
+
+  function move(toStatus: string) {
+    if (!moving) return;
+    const dest = byStatus(toStatus).map((t) => t.id).filter((id) => id !== moving.id);
+    dest.push(moving.id);
+    onMove(moving.id, toStatus, dest);
+    setMoving(null);
+    setActive(toStatus);
+  }
+
+  return (
+    <div>
+      {/* Status tabs — horizontally scrollable chips with live counts. */}
+      <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 kanban-scroll">
+        {STATUSES.map((s) => {
+          const meta = STATUS_META[s];
+          const n = tasks.filter((t) => t.status === s).length;
+          const on = active === s;
+          return (
+            <button
+              key={s}
+              onClick={() => setActive(s)}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
+              style={{
+                background: on ? meta.color : meta.bg,
+                color: on ? '#fff' : meta.color,
+                border: `1.5px solid ${on ? meta.color : meta.border}`,
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: on ? '#fff' : meta.color }} />
+              {meta.label}
+              <span className="text-[10px] font-black opacity-90">{n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Cards for the selected status — full-width vertical list. */}
+      <div className="space-y-2 mt-1">
+        {colTasks.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 py-10 text-center text-sm text-slate-400">
+            No tasks in {STATUS_META[active].label}.
+          </div>
+        ) : colTasks.map((t) => {
+          const meta = STATUS_META[t.status] || STATUS_META.todo;
+          return (
+            <div key={t.id} className="relative rounded-xl border bg-white dark:bg-slate-800 dark:border-white/10"
+              style={{ borderColor: '#e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <Link href={`/tasks/${t.id}`} className="block p-3.5">
+                <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug pr-8">{t.title}</div>
+                {(t.gxpCritical || t.requiresQaSignoff || (t.priority && t.priority !== 'low')) && (
+                  <div className="mt-2 flex gap-1.5 flex-wrap">
+                    {t.gxpCritical && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-100">Compliance</span>}
+                    {t.requiresQaSignoff && !t.qaSignoffAt && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">Sign-off</span>}
+                    {t.requiresQaSignoff && t.qaSignoffAt && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">Approved ✓</span>}
+                    {t.priority && t.priority !== 'low' && <PriorityTag priority={t.priority} />}
+                  </div>
+                )}
+                <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-400">
+                  <span className="truncate">{t.assigneeName || 'Unassigned'}</span>
+                  {(t.ccTcd || t.dueDate) && <span className="font-mono shrink-0 ml-2">{formatDate(t.ccTcd || t.dueDate)}</span>}
+                </div>
+                {t.subtaskCount > 0 && (
+                  <div className="mt-2">
+                    <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${Math.round((t.subtasksDone / t.subtaskCount) * 100)}%`, background: meta.color }} />
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{t.subtasksDone}/{t.subtaskCount} subtasks</div>
+                  </div>
+                )}
+              </Link>
+              {/* Card actions: Move (lead) + Delete (lead). Big tap targets. */}
+              {isLead && (
+                <div className="flex items-stretch border-t border-slate-100 dark:border-white/5">
+                  <button
+                    onClick={() => setMoving(t)}
+                    className="flex-1 py-2.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 dark:hover:bg-white/5 transition-colors inline-flex items-center justify-center gap-1.5"
+                  >
+                    <ChevronRight size={13} /> Move
+                  </button>
+                  <button
+                    onClick={() => onDelete(t.id)}
+                    className="w-12 py-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-white/5 transition-colors inline-flex items-center justify-center border-l border-slate-100 dark:border-white/5"
+                    aria-label="Delete task"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Move-to bottom sheet */}
+      {moving && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setMoving(null)}>
+          <div className="w-full max-w-md bg-white dark:bg-[#262624] rounded-t-2xl p-4 pb-6 modal-in" onClick={(e) => e.stopPropagation()}>
+            <div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-white/15 mx-auto mb-3" />
+            <div className="text-sm font-bold text-slate-800 dark:text-white/90 mb-1 truncate">Move "{moving.title}"</div>
+            <div className="text-xs text-slate-400 mb-3">Choose a new status</div>
+            <div className="space-y-1.5">
+              {STATUSES.filter((s) => s !== moving.status).map((s) => {
+                const meta = STATUS_META[s];
+                return (
+                  <button key={s} onClick={() => move(s)}
+                    className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl border text-left hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                    style={{ borderColor: meta.border }}>
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: meta.color }} />
+                    <span className="text-sm font-semibold" style={{ color: meta.color }}>{meta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={() => setMoving(null)}
+              className="w-full mt-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Quick-add task ───────────────────────────────────────────────────────── */
 function QuickAddTask({ projectId, phaseId, users, onAdded }: {
   projectId: string; phaseId?: string; users: any[]; onAdded: () => void;
@@ -1151,7 +1302,19 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         </div>
       )}
 
-      {view === 'board' && <KanbanBoard tasks={tasks} onDropReorder={dropReorder} isLead={canManage} onDelete={deleteTask} />}
+      {view === 'board' && (
+        <>
+          {/* Desktop: the full drag-and-drop column board. Mobile: a tap-driven
+              status view (see KanbanBoardMobile). Pure CSS switch by breakpoint
+              so the desktop board is never affected. */}
+          <div className="hidden md:block">
+            <KanbanBoard tasks={tasks} onDropReorder={dropReorder} isLead={canManage} onDelete={deleteTask} />
+          </div>
+          <div className="md:hidden">
+            <KanbanBoardMobile tasks={tasks} onMove={dropReorder} isLead={canManage} onDelete={deleteTask} />
+          </div>
+        </>
+      )}
 
       {/* Modals */}
       {pendingStatus && (

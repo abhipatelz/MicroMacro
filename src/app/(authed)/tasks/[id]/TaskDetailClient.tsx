@@ -6,6 +6,7 @@ import { api } from '@/lib/client/api';
 import { Card, PriorityTag, StatusTag, formatDate, useToast } from '@/components/ui';
 import { UserAvatar } from '@/components/AvatarRegistry';
 import { DatePicker } from '@/components/DatePicker';
+import { Select } from '@/components/Select';
 import { useIsLead } from '@/components/CurrentUserContext';
 import { chimeIfEnabled } from '@/lib/sound';
 import { ChevronRight, Shield, FileText, MessageSquare, Timer, Activity, Clock, Trash2 } from 'lucide-react';
@@ -473,10 +474,16 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
             </div>
             <div>
               <label className="label">Assignee</label>
-              <select className="select disabled:bg-slate-50 disabled:text-slate-500" value={task.assigneeId || ''} disabled={!isLead} onChange={(e) => isLead && update({ assigneeId: e.target.value || null })}>
-                <option value="">Unassigned</option>
-                {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
+              <Select
+                value={task.assigneeId || ''}
+                disabled={!isLead}
+                ariaLabel="Assignee"
+                onChange={(v) => isLead && update({ assigneeId: v || null })}
+                options={[
+                  { value: '', label: 'Unassigned' },
+                  ...users.map((u: any) => ({ value: u.id, label: u.name })),
+                ]}
+              />
             </div>
             {/* Waiting on — who the task is stuck/pending with (QA, a person,
                a department). Editable by the assignee or a lead. */}
@@ -501,15 +508,23 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="label">Priority</label>
-                <select className="select disabled:bg-slate-50 disabled:text-slate-500" value={task.priority} disabled={!isLead} onChange={(e) => isLead && update({ priority: e.target.value })}>
-                  {['low','medium','high','critical'].map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <Select
+                  value={task.priority}
+                  disabled={!isLead}
+                  ariaLabel="Priority"
+                  onChange={(v) => isLead && update({ priority: v })}
+                  options={['low', 'medium', 'high', 'critical'].map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
+                />
               </div>
               <div>
                 <label className="label">Type</label>
-                <select className="select disabled:bg-slate-50 disabled:text-slate-500" value={task.taskType} disabled={!isLead} onChange={(e) => isLead && update({ taskType: e.target.value })}>
-                  {TASK_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g,' ')}</option>)}
-                </select>
+                <Select
+                  value={task.taskType}
+                  disabled={!isLead}
+                  ariaLabel="Task type"
+                  onChange={(v) => isLead && update({ taskType: v })}
+                  options={TASK_TYPES.map((t) => ({ value: t, label: t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) }))}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
