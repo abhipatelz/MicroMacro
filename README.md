@@ -32,9 +32,9 @@ bottom runbook (env vars, smoke test, uptime monitor, rollback).
 
 ## Stack
 
-Next.js 14 (App Router) · TypeScript · MongoDB / Mongoose · Tailwind ·
-JWT + bcrypt + httpOnly cookie. No NextAuth, no Prisma, no third-party
-identity provider — by design, for 21 CFR Part 11 traceability.
+Next.js 14 (App Router) · TypeScript · MongoDB / Mongoose · Zod ·
+Tailwind · JWT + bcrypt + httpOnly cookie. No NextAuth, no Prisma, no
+third-party identity provider — by design, for 21 CFR Part 11 traceability.
 
 ## Architectural invariants
 
@@ -49,12 +49,27 @@ talking to the QA lead first.
 npm run dev              # local dev server
 npm run build            # production build
 npm run typecheck        # tsc --noEmit
-npm run e2e              # Playwright suite
+npm run lint             # next lint (ESLint)
+npm run test:unit        # fast unit tests — node:test via tsx, no DB/browser
+npm run e2e              # Playwright suite (needs a browser + Mongo)
 npm run smoke-prod <url> # read-only smoke test against a live deployment
 npm run set-admin <email>      # promote a user to admin
 npm run set-password <email> <pw>  # bootstrap a password from CLI
 npm run cleanup-users    # drop everyone not from the invite flow
 ```
+
+## Testing
+
+Two layers, both runnable from a clean checkout:
+
+- **Unit** (`npm run test:unit`) — zero-infra tests on the Node built-in
+  runner (via `tsx`) covering the pure, GxP-critical logic: the
+  rule-based triage scoring, priority-weighted progress, contribution
+  weights, the lifecycle ↔ Zod-enum sync invariant, and the request
+  schemas. No database or browser required.
+- **End-to-end** (`npm run e2e`) — Playwright drives auth, dashboard,
+  projects, teams and core UX flows against a real server backed by an
+  in-memory Mongo (`USE_IN_MEMORY_MONGO=true`).
 
 ## License
 

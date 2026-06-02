@@ -43,9 +43,11 @@ const nextConfig = {
   // Don't leak the framework version header.
   poweredByHeader: false,
   experimental: {
-    serverComponentsExternalPackages: isProd
-      ? ['mongoose']
-      : ['mongoose', 'mongodb-memory-server'],
+    // mongodb-memory-server is a devDependency, loaded only via a dynamic
+    // import gated behind USE_IN_MEMORY_MONGO (never set in prod). Keep it
+    // external in BOTH modes so webpack doesn't pull this dev-only package
+    // (and its optional `aws4` transitive) into the production server bundle.
+    serverComponentsExternalPackages: ['mongoose', 'mongodb-memory-server'],
     // Transform barrel imports (e.g. lucide-react) into direct per-icon
     // imports at build time. Harmless win; lucide-react is imported in 26 files.
     optimizePackageImports: ['lucide-react'],
