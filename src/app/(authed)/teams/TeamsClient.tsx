@@ -232,18 +232,26 @@ function TeamCard({
         <span className="text-slate-600 font-medium">{lead?.name || 'Unassigned'}</span>
       </div>
 
-      <div className="mt-3 flex items-center -space-x-1.5">
+      {/* Member rail — squircle avatars don't stack cleanly with a negative
+          gap (the rounded corners of one cut into the flat edge of the next),
+          so we wrap each in a circular, white-ringed clip just for this stack.
+          The full-page member view still shows the brand squircles. */}
+      <div className="mt-3 flex items-center -space-x-2">
         {visibleMembers.length === 0 ? (
           <span className="text-[11px] text-slate-400 italic">No members yet</span>
         ) : (
           visibleMembers.map((m) => (
-            <div key={m.id} className="ring-2 ring-white rounded-[7px]" title={m.name}>
-              <UserAvatar userId={m.id} name={m.name} size={26} />
+            <div
+              key={m.id}
+              title={m.name}
+              className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-white dark:ring-[#262624] bg-white relative"
+            >
+              <UserAvatar userId={m.id} name={m.name} size={28} />
             </div>
           ))
         )}
         {extra > 0 && (
-          <div className="w-[26px] h-[26px] rounded-[7px] ring-2 ring-white bg-slate-100 text-[10px] font-bold text-slate-500 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-full ring-2 ring-white dark:ring-[#262624] bg-slate-100 text-[10px] font-bold text-slate-600 flex items-center justify-center">
             +{extra}
           </div>
         )}
