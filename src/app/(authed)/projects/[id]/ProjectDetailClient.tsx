@@ -1260,7 +1260,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                         {t.dueDate && <span className="text-xs text-slate-400 font-mono">{formatDate(t.dueDate)}</span>}
                         {canManage && (
                           <button onClick={() => deleteTask(t.id)} aria-label="Delete task"
-                            className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-all shrink-0">
                             <Trash2 size={13} />
                           </button>
                         )}
@@ -1315,7 +1315,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                     {t.dueDate && <span className="text-xs text-slate-400 font-mono">{formatDate(t.dueDate)}</span>}
                     {canManage && (
                       <button onClick={() => deleteTask(t.id)} aria-label="Delete task"
-                        className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-all shrink-0">
                         <Trash2 size={13} />
                       </button>
                     )}

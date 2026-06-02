@@ -339,9 +339,11 @@ interface AvatarProps {
   bg?: string | null;
   /** Index into AVATAR_FONTS. */
   font?: number | null;
+  /** When true, wraps the avatar in a brand-gradient ring (Insta-story style). */
+  ring?: boolean;
 }
 
-export function Avatar({ name, size = 28, letter, bg, font }: AvatarProps) {
+export function Avatar({ name, size = 28, letter, bg, font, ring }: AvatarProps) {
   // Initials: first letter of first word + first letter of last word.
   // Single-word names render a single letter. Coloured deterministically by name.
   const trimmed = (name || '').trim();
@@ -351,9 +353,6 @@ export function Avatar({ name, size = 28, letter, bg, font }: AvatarProps) {
   const defaultInitials = (first + last) || '?';
   const initials = (letter || defaultInitials).slice(0, 2).toUpperCase() || '?';
 
-  // Monogram override: solid colour + chosen font. Falls back to the
-  // legacy hash-coloured gradient + system font when no override is set,
-  // so every existing call site keeps working unchanged.
   const useMonogram = !!bg;
   const hash    = trimmed.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const [lo, hi] = AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length];
@@ -363,33 +362,57 @@ export function Avatar({ name, size = 28, letter, bg, font }: AvatarProps) {
   const color = useMonogram ? avatarFg(bg!) : '#ffffff';
   const fontDef = AVATAR_FONTS[font ?? 0] || AVATAR_FONTS[0];
 
-  return (
+  // When a ring is shown the inner disc is inset by 3px (1.5px ring + 1.5px gap).
+  const innerSize = ring ? size - 6 : size;
+
+  const disc = (
     <div
       className="flex items-center justify-center shrink-0 select-none"
       style={{
-        width: size,
-        height: size,
-        fontSize: size * (initials.length === 1 ? 0.52 : 0.46),
+        width: innerSize,
+        height: innerSize,
+        // Slightly larger font relative to size so the letter fills the circle,
+        // and a text-shadow for the "stamped coin" premium feel.
+        fontSize: innerSize * (initials.length === 1 ? 0.54 : 0.46),
         fontWeight: fontDef.weight,
         fontFamily: fontDef.family,
-        letterSpacing: '0.02em',
+        letterSpacing: '0.01em',
         background,
         color,
-        // Diagonal squircle — opposing corners share a radius, creating a
-        // gentle "gem/badge" shape that's distinctively not a circle or a
-        // plain rounded-rectangle. Scales proportionally at every size.
-        // TL & BR = rounder (0.40×) / TR & BL = tighter (0.22×) so the shape
-        // has a subtle diagonal axis — more interesting, still coherent.
-        borderRadius: `${Math.max(4, Math.round(size * 0.40))}px ${Math.max(3, Math.round(size * 0.22))}px ${Math.max(4, Math.round(size * 0.40))}px ${Math.max(3, Math.round(size * 0.22))}px`,
+        borderRadius: '50%',
         boxShadow: useMonogram
-          ? '0 1px 2px rgba(15,23,42,0.12)'
-          : 'inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 2px rgba(15,23,42,0.12)',
+          ? '0 2px 6px rgba(15,23,42,0.15)'
+          : 'inset 0 1.5px 0 rgba(255,255,255,0.28), 0 2px 6px rgba(15,23,42,0.15)',
         lineHeight: 1,
+        textShadow: '0 1px 2px rgba(0,0,0,0.18)',
       }}
       title={trimmed || ''}
       aria-label={trimmed || 'User'}
     >
       {initials}
+    </div>
+  );
+
+  if (!ring) return disc;
+
+  // Gradient ring wrapper — same technique as Instagram stories: a gradient
+  // background with a small transparent gap between it and the inner disc.
+  return (
+    <div
+      className="shrink-0 flex items-center justify-center select-none"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, #1565C0 0%, #1976D2 40%, #2B8C29 100%)',
+        padding: 2,
+      }}
+      title={trimmed || ''}
+      aria-label={trimmed || 'User'}
+    >
+      <div style={{ borderRadius: '50%', padding: 1.5, background: 'var(--bg-card, #fff)' }}>
+        {disc}
+      </div>
     </div>
   );
 }

@@ -1077,7 +1077,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         ) : (
           <div className="divide-y divide-slate-50">
             {ics.map((u) => (
-              <div key={u.id} className="flex items-center flex-wrap gap-x-3 gap-y-2 px-5 py-4">
+              <div key={u.id} className="group flex items-center flex-wrap gap-x-3 gap-y-2 px-5 py-4">
                 <button
                   type="button"
                   onClick={() => isLeadOrAdmin && setActivityUser(u)}
@@ -1101,7 +1101,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   </span>
                 )}
                 <button
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all"
                   onClick={() => setEditUser(u)} title="Edit profile">
                   <Pencil size={13} />
                 </button>
@@ -1128,14 +1128,14 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   Promote to Lead
                 </button>
                 <button
-                  className="p-1.5 rounded-lg text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-300 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all"
                   onClick={() => setDeactivateTarget(u)}
                   disabled={saving === u.id}
                   title="Deactivate account (keeps the record)">
                   <UserX size={14} />
                 </button>
                 <button
-                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
                   onClick={() => setRemoveConfirm(u)} title="Permanently remove (deletes the record)">
                   <Trash2 size={13} />
                 </button>
