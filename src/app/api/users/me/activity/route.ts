@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
     const year = Math.min(Math.max(parseInt(searchParams.get('year') || '') || currentYear, 2020), currentYear + 1);
 
     const data = await buildContributions(user!.sub, year);
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' },
+    });
   } catch (e) {
     return handleError(e);
   }
