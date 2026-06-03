@@ -4,7 +4,12 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { useCurrentUser } from '@/components/CurrentUserContext';
-import { Trash2, BarChart3, X } from 'lucide-react';
+import { Trash2, BarChart3, X, Compass } from 'lucide-react';
+import dynamicImport from 'next/dynamic';
+const BirdsEyeView = dynamicImport(
+  () => import('@/components/BirdsEyeView').then((m) => m.BirdsEyeView),
+  { ssr: false, loading: () => null },
+);
 import {
   Card,
   ProgressBar,
@@ -46,6 +51,7 @@ export default function TeamDetailPage() {
   // An IC's team view is personal: they see their own micro-tasks only and
   // none of their teammates' progress. Default them straight to micro-tasks.
   const [view, setView] = useState<'progress' | 'microtasks' | 'projects'>(isLead ? 'progress' : 'microtasks');
+  const [birdsEyeOpen, setBirdsEyeOpen] = useState(false);
 
   async function load() {
     setLoadError('');
@@ -173,7 +179,16 @@ export default function TeamDetailPage() {
             the report is generated entirely from data already on screen so
             this is purely a UI gate. */}
         {(isOwnerOrAdmin || isLead) && (
-          <div className="shrink-0">
+          <div className="shrink-0 flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setBirdsEyeOpen(true)}
+              title="Open this team's bird's-eye view"
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg text-white shadow-sm hover:shadow-md transition-all font-semibold"
+              style={{ background: 'linear-gradient(120deg, #1565C0 0%, #1976D2 50%, #2E7D32 100%)' }}
+            >
+              <Compass size={15} /> Bird&apos;s-eye
+            </button>
             <ExportMenu
               onPdf={() => printTeamReport(team, progress, board)}
               onHtml={() => downloadTeamReport(team, progress, board)}
@@ -182,6 +197,33 @@ export default function TeamDetailPage() {
           </div>
         )}
       </div>
+
+      {birdsEyeOpen && team && (
+        <BirdsEyeView
+          onClose={() => setBirdsEyeOpen(false)}
+          data={{
+            rootLabel: team.name,
+            rootSubLabel: `${(team.projects || []).length} project${(team.projects || []).length === 1 ? '' : 's'} · ${(board || []).length} task${(board || []).length === 1 ? '' : 's'}`,
+            scope: 'team',
+            teams: [{ id: team.id, name: team.name, ownerName: team.leadName }],
+            projects: (team.projects || []).map((p: any) => ({
+              id: p.id, code: p.code, name: p.name,
+              teamId: team.id,
+              health: 'healthy',
+              taskCount: p.taskCount ?? 0,
+              tasksDone: p.tasksDone ?? 0,
+              dueDate: p.dueDate ?? null,
+              ownerName: p.ownerName ?? null,
+            })),
+            tasks: (board || []).map((t: any) => ({
+              id: t.id, title: t.title, projectId: t.projectId,
+              status: t.status,
+              assigneeName: t.assigneeName ?? null,
+              dueDate: (t.ccTcd || t.dueDate) ?? null,
+            })),
+          }}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-1 space-y-4">

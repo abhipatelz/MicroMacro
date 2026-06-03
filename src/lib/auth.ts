@@ -10,7 +10,12 @@ import { User } from '@/models/User';
 //   'lead'     — team lead.
 //   'contributor' — individual contributor.
 // Legacy rows may still contain 'pm' or 'employee'; normalize at every boundary.
-export type Role = 'contributor' | 'lead' | 'admin';
+export type Role = 'contributor' | 'lead' | 'admin' | 'master_admin';
+// Legacy stored values that should be coerced on read (kept for backward
+// compatibility with documents written before the role enum was tightened).
+// `master_admin` is the multi-tenant superuser — dormant until the runtime
+// flag PRAGATI_MULTI_TENANT=true is set, but recognised everywhere so that
+// promoting a user to it doesn't fall back to "contributor".
 export type StoredRole = Role | 'pm' | 'employee';
 
 export interface JwtPayload {
@@ -44,22 +49,31 @@ export function newSessionId(): string {
 }
 
 export function normalizeRole(role?: string | null): Role {
+  if (role === 'master_admin') return 'master_admin';
   if (role === 'admin') return 'admin';
   if (role === 'lead' || role === 'pm') return 'lead';
   return 'contributor';
 }
 
 // True for team lead/admin roles. Use `isAdmin()` when you specifically want
-// to surface admin-only affordances.
+// to surface admin-only affordances. Master-admin is implicitly above lead.
 export function isLead(role?: string | null): boolean {
   const r = normalizeRole(role);
-  return r === 'lead' || r === 'admin';
+  return r === 'lead' || r === 'admin' || r === 'master_admin';
 }
 
-// The 'admin' role is a single super-user with full visibility across every
-// team and project, used by the workspace owner for management + demo.
+// The 'admin' role is the workspace owner with full visibility across every
+// team and project. Master-admin is a strict superset (also includes tenant
+// provisioning), so it satisfies admin checks everywhere admin is required.
 export function isAdmin(role?: string | null): boolean {
-  return normalizeRole(role) === 'admin';
+  const r = normalizeRole(role);
+  return r === 'admin' || r === 'master_admin';
+}
+
+/** Master admin — the platform operator. Dormant in single-tenant mode but
+ *  the role check is wired so future multi-tenant features can gate on it. */
+export function isMasterAdmin(role?: string | null): boolean {
+  return normalizeRole(role) === 'master_admin';
 }
 
 // Any role allowed to mutate shared records (create / edit / delete

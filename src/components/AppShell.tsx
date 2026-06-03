@@ -31,14 +31,14 @@ const FirstTimeTour = dynamic(
 import {
   LayoutDashboard, FolderKanban, Users, UsersRound, NotebookPen,
   LogOut, Menu, X, Moon, Sun, AlertTriangle, ChevronLeft, ChevronRight, ScrollText,
-  UserCircle, Layers,
+  UserCircle, Layers, Globe,
 } from 'lucide-react';
 
 export interface CurrentUser {
   id: string;
   name: string;
   email: string;
-  role: 'contributor' | 'lead' | 'admin';
+  role: 'contributor' | 'lead' | 'admin' | 'master_admin';
   title?: string;
   mustChangePassword?: boolean;
   hasPin?: boolean;
@@ -159,8 +159,9 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
 
   type NavItem = { href: string; label: string; icon: any; iconColor: string; iconBg: string };
 
-  const isAdmin       = user.role === 'admin';
-  const isLeadOrAdmin = user.role === 'lead' || user.role === 'admin';
+  const isAdmin       = user.role === 'admin' || user.role === 'master_admin';
+  const isMasterAdmin = user.role === 'master_admin';
+  const isLeadOrAdmin = user.role === 'lead' || isAdmin;
 
   // Team-lead nav: run teams, projects and tasks. NOT People — workspace
   // user management (create/reset/unlock/delete/promote accounts) is an
@@ -177,6 +178,12 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
     { href: '/people',   label: 'People',    icon: UsersRound,      iconColor: '#00897B', iconBg: '#E0F2F1' },
     { href: '/audit',    label: 'Logs',      icon: ScrollText,      iconColor: '#6366F1', iconBg: '#EEF2FF' },
   ];
+  // The master-admin item is only added when the signed-in user actually holds
+  // that role. In the current single-tenant deploy no one does, so the link
+  // never appears — the route itself also redirects non-master-admins.
+  const masterAdminExtra: NavItem[] = isMasterAdmin
+    ? [{ href: '/master-admin', label: 'Platform', icon: Globe, iconColor: '#9333EA', iconBg: '#F3E8FF' }]
+    : [];
 
   const contributorNav: NavItem[] = [
     { href: '/',         label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
@@ -187,7 +194,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
   const myDayItem: NavItem = { href: '/my-day', label: 'My Day', icon: NotebookPen, iconColor: '#D97706', iconBg: '#FEF3C7' };
 
   const nav = isAdmin
-    ? [...leadNav, ...adminExtra]
+    ? [...leadNav, ...adminExtra, ...masterAdminExtra]
     : isLeadOrAdmin ? leadNav : contributorNav;
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname?.startsWith(href);
 

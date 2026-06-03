@@ -13,7 +13,7 @@ const UserSchema = new Schema(
     passwordHash: { type: String, required: true },
     // Product roles are admin, lead, and contributor.
     // 'pm'/'employee' are legacy aliases accepted only until migrated.
-    role:         { type: String, enum: ['contributor', 'lead', 'admin', 'pm', 'employee'], default: 'contributor' },
+    role:         { type: String, enum: ['contributor', 'lead', 'admin', 'pm', 'employee', 'master_admin'], default: 'contributor' },
 
     // ── Identity fields ─────────────────────────────────────────────────
     // These can be set manually or overwritten by LDAP sync.

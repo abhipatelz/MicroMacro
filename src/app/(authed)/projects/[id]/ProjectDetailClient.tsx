@@ -13,13 +13,19 @@ import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { useIsDark } from '@/lib/client/useIsDark';
 import { weightedProgress } from '@/lib/progress';
-import { GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight, Lock, Pencil, ShieldCheck, ScrollText } from 'lucide-react';
+import { GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight, Lock, Pencil, ShieldCheck, ScrollText, Compass } from 'lucide-react';
 import { chimeIfEnabled, playDropTick } from '@/lib/sound';
 import { Celebration } from '@/components/Celebration';
 import { TaskCompletePop } from '@/components/TaskCompletePop';
 import { useCurrentUser } from '@/components/CurrentUserContext';
 import { ExportMenu } from '@/components/ExportMenu';
 import { printProjectReport, downloadProjectReport, downloadProjectCsv } from './report';
+import dynamicImport from 'next/dynamic';
+// Bird's-eye view is heavy SVG — defer it until a viewer opens the modal.
+const BirdsEyeView = dynamicImport(
+  () => import('@/components/BirdsEyeView').then((m) => m.BirdsEyeView),
+  { ssr: false, loading: () => null },
+);
 
 const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
 
@@ -739,6 +745,9 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   const [deleteOpen, setDeleteOpen]           = useState(false);
   const [blockCompleteOpen, setBlockComplete] = useState(false);
   const [savingStatus, setSavingStatus]       = useState(false);
+  // Bird's-eye view modal — shows this project's tasks as a tree (project
+  // scope, single-column layout, no team level).
+  const [birdsEyeOpen, setBirdsEyeOpen]       = useState(false);
   // The status the user picked that's awaiting an e-signature (password +
   // reason). Null when no sign-off is in flight.
   const [pendingStatus, setPendingStatus]     = useState<string | null>(null);
@@ -1120,6 +1129,18 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           {/* Actions — Export (PDF/CSV/HTML) for everyone; Archive + Delete
               admin-only. */}
           <div className="flex flex-wrap items-center md:justify-end gap-2">
+            {/* Bird's-eye view — opens this project's task tree in a
+                full-screen modal. Same SVG component the dashboard uses,
+                scoped to the single project here. */}
+            <button
+              type="button"
+              onClick={() => setBirdsEyeOpen(true)}
+              title="Open bird's-eye view"
+              className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg text-white shadow-sm hover:shadow-md transition-all"
+              style={{ background: 'linear-gradient(120deg, #1565C0 0%, #1976D2 50%, #2E7D32 100%)' }}
+            >
+              <Compass size={13} /> Bird&apos;s-eye
+            </button>
             <ExportMenu
               onExcel={project.isPersonal ? undefined : () => { window.location.href = `/api/projects/${project.id}/export`; }}
               onPdf={() => printProjectReport(project, phases)}
@@ -1372,6 +1393,32 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           projectName={project.name} projectId={id}
           onClose={() => setDeleteOpen(false)}
           onDeleted={() => { setDeleteOpen(false); window.location.replace('/projects'); }}
+        />
+      )}
+      {birdsEyeOpen && project && (
+        <BirdsEyeView
+          onClose={() => setBirdsEyeOpen(false)}
+          data={{
+            rootLabel: project.name,
+            rootSubLabel: `${project.code || 'Project'} · ${(tasks || []).length} task${(tasks || []).length === 1 ? '' : 's'}`,
+            scope: 'project',
+            teams: [],
+            projects: [{
+              id: project.id, code: project.code, name: project.name,
+              teamId: null,
+              health: 'healthy',
+              taskCount: (tasks || []).length,
+              tasksDone: (tasks || []).filter((t: any) => t.status === 'done').length,
+              dueDate: project.dueDate || null,
+              ownerName: project.ownerName || null,
+            }],
+            tasks: (tasks || []).map((t: any) => ({
+              id: t.id, title: t.title, projectId: project.id,
+              status: t.status,
+              assigneeName: t.assigneeName ?? null,
+              dueDate: (t.ccTcd || t.dueDate) ?? null,
+            })),
+          }}
         />
       )}
     </div>

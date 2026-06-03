@@ -5,10 +5,21 @@ import { api } from '@/lib/client/api';
 import { useIsLead } from '@/components/CurrentUserContext';
 import {
   Plus, Check, Trash2, ArrowRight, X, Sparkles, Calendar, Zap,
-  ChevronDown, ChevronUp, Target, BookmarkCheck, Shield, BrainCircuit, Bird, PenLine,
+  ChevronDown, ChevronUp, Target, BookmarkCheck, Shield, BrainCircuit,
 } from 'lucide-react';
 import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
+import dynamicImport from 'next/dynamic';
+// The mind map is interactive SVG with autosave; keep it out of the My Day
+// first paint unless the user opens it.
+const MindMap = dynamicImport(
+  () => import('@/components/MindMap').then((m) => m.MindMap),
+  { ssr: false, loading: () => (
+    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/40 h-[460px] flex items-center justify-center text-xs text-slate-400">
+      Loading mind map…
+    </div>
+  ) },
+);
 
 interface Note { id: string; text: string; done: boolean; promotedTaskId: string | null; createdAt: string; }
 
@@ -89,6 +100,9 @@ export default function MyDayClient({ initialData }: {
   const [editText,  setEditText]    = useState('');
   const [savedAt,   setSavedAt]     = useState<Date | null>(null);
   const [justDone,  setJustDone]    = useState<string | null>(null);
+  // Mind map panel — collapsed by default so the focused "what's on" view
+  // stays the My Day landing experience.
+  const [mindMapOpen, setMindMapOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const total   = open.length + done.length;
@@ -231,24 +245,36 @@ export default function MyDayClient({ initialData }: {
         </div>
       </form>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-5">
-        {[
-          { icon: PenLine, title: 'Scribble board', body: 'Freeform whiteboard for rough thoughts.' },
-          { icon: BrainCircuit, title: 'Mind map', body: 'Branch ideas before turning them into tasks.' },
-          { icon: Bird, title: "Bird's-eye view", body: 'Coming next: project/team map of work → owners.' },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <button key={item.title} type="button" disabled
-              className="text-left rounded-xl border border-dashed border-slate-200 dark:border-white/[0.08] bg-white/55 dark:bg-white/[0.025] px-3 py-2.5 opacity-80">
-              <div className="flex items-center gap-2 mb-1">
-                <Icon size={13} className="text-blue-500" />
-                <span className="text-[11px] font-black text-slate-600 dark:text-white/55">{item.title}</span>
-              </div>
-              <p className="text-[10px] leading-snug text-slate-400 dark:text-white/30">{item.body}</p>
-            </button>
-          );
-        })}
+      {/* Mind map toggle — opens the per-user mind map below. Single button
+          (replacing the row of three "coming next" stubs) so the feature
+          reads as actually shipped rather than a teaser. */}
+      <div className="mb-5">
+        <button type="button"
+          onClick={() => setMindMapOpen((v) => !v)}
+          className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors text-left ${
+            mindMapOpen
+              ? 'border-blue-300 bg-blue-50/60 dark:bg-blue-500/10 dark:border-blue-500/30'
+              : 'border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.025] hover:border-slate-300'
+          }`}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #1565C0, #22C55E)' }}>
+              <BrainCircuit size={15} className="text-white" />
+            </div>
+            <div>
+              <div className="text-[12px] font-black text-slate-700 dark:text-white/80">Mind map</div>
+              <div className="text-[10px] text-slate-400 dark:text-white/35">Branch your thinking — drag nodes, draw connections, persists per user.</div>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+            {mindMapOpen ? 'Hide' : 'Open'}
+          </span>
+        </button>
+        {mindMapOpen && (
+          <div className="mt-3 fade-in-soft">
+            <MindMap />
+          </div>
+        )}
       </div>
 
       {/* ── Empty state ──────────────────────────────────────────────── */}

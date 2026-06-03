@@ -22,8 +22,16 @@ function warmActivityGraph(userId?: string) {
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
   ChevronDown, TrendingUp, Clock, Sparkles, ArrowRight, UserPlus, Plus,
-  Maximize2, X, BarChart3,
+  Maximize2, X, BarChart3, Compass,
 } from 'lucide-react';
+import dynamic2 from 'next/dynamic';
+// Lazy — the bird's-eye view is a heavy SVG layout component and most
+// visits won't open it. Keep it out of the dashboard's first paint.
+const BirdsEyeView = dynamic2(
+  () => import('@/components/BirdsEyeView').then((m) => m.BirdsEyeView),
+  { ssr: false, loading: () => null },
+);
+import type { BirdsEyeData } from '@/components/BirdsEyeView';
 
 /* ── Types matching /api/lead-dashboard ──────────────────────────────────── */
 interface TeamTask {
@@ -171,6 +179,48 @@ const HEALTH_META: Record<string, { label: string; bg: string; text: string; dot
 
 type ActionFilter = 'week' | 'nextWeek' | 'month' | 'untilDate';
 
+/**
+ * Project the lead-dashboard payload into the BirdsEyeView's shape. We pull
+ * teams from the per-project `teamName` (the lead-dashboard endpoint already
+ * resolved it), de-duplicate by name, and map projects + tasks 1:1.
+ */
+function buildBirdsEyeDataFromDash(dash: DashResp): BirdsEyeData {
+  // Build a synthetic team id from name. Lead-dashboard doesn't return team
+  // ids on projects, so we group by name — that's fine for visualisation.
+  const teamIdByName = new Map<string, string>();
+  const teams: { id: string; name: string; ownerName?: string | null }[] = [];
+  for (const p of dash.projects) {
+    const name = (p.teamName || '').trim();
+    if (!name) continue;
+    if (!teamIdByName.has(name)) {
+      const id = `team:${name}`;
+      teamIdByName.set(name, id);
+      teams.push({ id, name });
+    }
+  }
+  return {
+    rootLabel: `${dash.user.name}'s workspace`,
+    rootSubLabel: `${dash.teamCount} team${dash.teamCount === 1 ? '' : 's'} · ${dash.projects.length} project${dash.projects.length === 1 ? '' : 's'} · ${dash.teamTasks.length} task${dash.teamTasks.length === 1 ? '' : 's'}`,
+    scope: 'workspace',
+    teams,
+    projects: dash.projects.map((p) => ({
+      id: p.id, code: p.code, name: p.name,
+      teamId: p.teamName ? (teamIdByName.get(p.teamName) ?? null) : null,
+      health: p.health,
+      taskCount: p.taskCount ?? 0,
+      tasksDone: p.tasksDone ?? 0,
+      dueDate: p.dueDate ?? null,
+      ownerName: p.ownerName ?? null,
+    })),
+    tasks: dash.teamTasks.map((t) => ({
+      id: t.id, title: t.title, projectId: t.projectId,
+      status: t.status,
+      assigneeName: t.assigneeName ?? null,
+      dueDate: (t.ccTcd || t.dueDate) ?? null,
+    })),
+  };
+}
+
 /* ── Main page ────────────────────────────────────────────────────────────── */
 export default function DashboardClient({
   initialData,
@@ -178,6 +228,9 @@ export default function DashboardClient({
   const dash = initialData;
   const isLead = useIsLead();
   const [summaryModal, setSummaryModal] = useState<null | 'open' | 'overdue'>(null);
+  // Bird's-eye view — the lead's whole workspace as a packed tree. Opened
+  // from the small compass icon in the greeting row.
+  const [birdsEyeOpen, setBirdsEyeOpen] = useState(false);
 
   // First-run: a lead/admin whose workspace has no projects yet. Show a
   // guided setup path instead of a wall of empty panels — this is the
@@ -235,28 +288,57 @@ export default function DashboardClient({
     <div className="pb-12 max-w-[1440px]">
 
       {/* ── Greeting ────────────────────────────────────────────────────── */}
-      <div className="mb-5 sm:mb-6 pt-1">
-        {/* inline-flex + items-baseline keeps the emoji optically seated on the
-            text baseline instead of floating above the cap height. The slight
-            negative translate nudges most emoji glyphs (which sit high in their
-            em-box) down so they read as part of the line. */}
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight inline-flex items-baseline gap-2 flex-wrap">
-          <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}, {firstName}.</span>
-          <span className="text-[0.85em] translate-y-[0.06em]" suppressHydrationWarning>{greetingEmoji()}</span>
-        </h1>
-        {!isFirstRun && (() => {
-          const open = visibleTasks.filter(t => t.status !== 'done').length;
-          const now = new Date();
-          const isSameDay = (d: Date) => d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-          const overdue = visibleTasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < now && !isSameDay(new Date(t.dueDate))).length;
-          const dueToday = visibleTasks.filter(t => t.status !== 'done' && t.dueDate && isSameDay(new Date(t.dueDate))).length;
-          return (
-            <p className="mt-1 text-sm text-slate-500 dark:text-white/45" suppressHydrationWarning>
-              {greetingSubline({ open, overdue, dueToday, now })}
-            </p>
-          );
-        })()}
+      <div className="mb-5 sm:mb-6 pt-1 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          {/* inline-flex + items-baseline keeps the emoji optically seated on the
+              text baseline instead of floating above the cap height. */}
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight inline-flex items-baseline gap-2 flex-wrap">
+            <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}, {firstName}.</span>
+            <span className="text-[0.85em] translate-y-[0.06em]" suppressHydrationWarning>{greetingEmoji()}</span>
+          </h1>
+        </div>
+        {/* Bird's-eye view trigger — opens a full-screen tree of the
+            workspace (team → projects → tasks). Minimally rendered (icon
+            only with a tooltip) so it doesn't compete with the greeting. */}
+        {!isFirstRun && (
+          <button
+            type="button"
+            onClick={() => setBirdsEyeOpen(true)}
+            title="Open bird's-eye view"
+            aria-label="Open bird's-eye view"
+            className="shrink-0 mt-1 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+            style={{ background: 'linear-gradient(120deg, #1565C0 0%, #1976D2 50%, #2E7D32 100%)' }}
+          >
+            <Compass size={14} />
+            <span className="hidden sm:inline">Bird&apos;s-eye</span>
+          </button>
+        )}
       </div>
+      {!isFirstRun && (
+        <div className="mb-5 sm:mb-6 -mt-3">
+          {(() => {
+            const open = visibleTasks.filter(t => t.status !== 'done').length;
+            const now = new Date();
+            const isSameDay = (d: Date) => d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+            const overdue = visibleTasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < now && !isSameDay(new Date(t.dueDate))).length;
+            const dueToday = visibleTasks.filter(t => t.status !== 'done' && t.dueDate && isSameDay(new Date(t.dueDate))).length;
+            return (
+              <p className="mt-1 text-sm text-slate-500 dark:text-white/45" suppressHydrationWarning>
+                {greetingSubline({ open, overdue, dueToday, now })}
+              </p>
+            );
+          })()}
+        </div>
+      )}
+      {/* Bird's-eye view modal — mounted at the page level so the SVG
+          tree gets its own scroll area regardless of where the trigger
+          was clicked from. */}
+      {birdsEyeOpen && (
+        <BirdsEyeView
+          onClose={() => setBirdsEyeOpen(false)}
+          data={buildBirdsEyeDataFromDash(dash)}
+        />
+      )}
 
       {isFirstRun ? (
         <FirstRunGuide hasTeam={dash.people.length > 0} />
