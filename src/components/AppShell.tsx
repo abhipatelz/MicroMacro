@@ -31,7 +31,7 @@ const FirstTimeTour = dynamic(
 import {
   LayoutDashboard, FolderKanban, Users, UsersRound, NotebookPen,
   LogOut, Menu, X, Moon, Sun, AlertTriangle, ChevronLeft, ChevronRight, ScrollText,
-  UserCircle,
+  UserCircle, Layers,
 } from 'lucide-react';
 
 export interface CurrentUser {
@@ -173,6 +173,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
     { href: '/teams',    label: 'Teams',     icon: Users,           iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
   const adminExtra: NavItem[] = [
+    { href: '/admin',    label: 'Console',   icon: Layers,          iconColor: '#4F46E5', iconBg: '#EEF2FF' },
     { href: '/people',   label: 'People',    icon: UsersRound,      iconColor: '#00897B', iconBg: '#E0F2F1' },
     { href: '/audit',    label: 'Logs',      icon: ScrollText,      iconColor: '#6366F1', iconBg: '#EEF2FF' },
   ];

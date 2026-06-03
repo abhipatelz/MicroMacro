@@ -112,7 +112,10 @@
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  background: var(--bg-page);
+}
 
 body {
   @apply text-slate-800 antialiased;
@@ -629,13 +632,16 @@ a { transition: color 0.15s ease, opacity 0.15s ease; }
 .dark .input,
 .dark .select,
 .dark .textarea {
-  background: #30302e !important;
+  /* background-color (not shorthand) so it doesn't reset background-image */
+  background-color: #30302e !important;
   border-color: rgba(255,255,255,0.10) !important;
   color: #faf9f5 !important;
 }
 .dark .select {
-  /* Lighter chevron so it stays visible on the dark surface. */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.45)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
+  /* Lighter chevron for native <select> elements. No !important so that
+     elements with inline style="background-image:none" (e.g. custom Select
+     component) can suppress this — preventing the double-arrow bug. */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a8a09a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
 }
 .dark .input:focus,
 .dark .select:focus,
@@ -688,6 +694,41 @@ a { transition: color 0.15s ease, opacity 0.15s ease; }
   border-color: rgba(255,255,255,0.10) !important;
   box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4) !important;
 }
+
+/* Modal sheets — hardcoded bg-white in older components goes dark.
+   .modal-in is the class we use on every modal content panel. */
+.dark .modal-in {
+  background: #262624 !important;
+  border-color: rgba(255,255,255,0.10) !important;
+  color: #faf9f5 !important;
+}
+/* Ensure nested text elements inherit the dark modal colour */
+.dark .modal-in .text-slate-900 { color: #faf9f5 !important; }
+.dark .modal-in .text-slate-800 { color: rgba(250,249,245,0.90) !important; }
+.dark .modal-in .text-slate-700 { color: rgba(250,249,245,0.80) !important; }
+.dark .modal-in .text-slate-600 { color: rgba(250,249,245,0.65) !important; }
+.dark .modal-in .text-slate-500 { color: rgba(250,249,245,0.50) !important; }
+.dark .modal-in .text-slate-400 { color: rgba(250,249,245,0.35) !important; }
+.dark .modal-in .text-slate-300 { color: rgba(250,249,245,0.25) !important; }
+/* Nested containers that are bg-white/bg-slate-50 inside a dark modal */
+.dark .modal-in .bg-white          { background: rgba(255,255,255,0.05) !important; }
+.dark .modal-in .bg-slate-50       { background: rgba(255,255,255,0.04) !important; }
+.dark .modal-in .bg-slate-100      { background: rgba(255,255,255,0.07) !important; }
+.dark .modal-in .border-slate-100,
+.dark .modal-in .border-slate-200  { border-color: rgba(255,255,255,0.08) !important; }
+/* Info/status panels inside modals */
+.dark .modal-in .bg-blue-50   { background: rgba(59,130,246,0.12) !important; }
+.dark .modal-in .bg-amber-50  { background: rgba(245,158,11,0.12) !important; }
+.dark .modal-in .bg-red-50    { background: rgba(239,68,68,0.12)  !important; }
+.dark .modal-in .bg-green-50,
+.dark .modal-in .bg-emerald-50 { background: rgba(34,197,94,0.10) !important; }
+.dark .modal-in .border-blue-200  { border-color: rgba(59,130,246,0.25) !important; }
+.dark .modal-in .border-amber-200 { border-color: rgba(245,158,11,0.25) !important; }
+.dark .modal-in .border-red-200   { border-color: rgba(239,68,68,0.25)  !important; }
+.dark .modal-in .text-blue-700    { color: #93c5fd !important; }
+.dark .modal-in .text-blue-500    { color: #60a5fa !important; }
+.dark .modal-in .text-amber-800   { color: #fcd34d !important; }
+.dark .modal-in .text-red-700     { color: #fca5a5 !important; }
 
 /* Selection */
 .dark ::selection { background: rgba(217,119,87,0.35); color: #faf9f5; }
