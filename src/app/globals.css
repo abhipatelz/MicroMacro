@@ -787,3 +787,34 @@ a { transition: color 0.15s ease, opacity 0.15s ease; }
 .dark ::-webkit-scrollbar-thumb         { background: #3a3935; }
 .dark ::-webkit-scrollbar-thumb:hover   { background: #4a4945; }
 .dark ::-webkit-scrollbar-track         { background: #1f1e1d; }
+
+/* Dashboard disclosure affordance: pulse only the first expandable project and
+   the section-level contributor arrow for a short time on landing. This avoids
+   the noisy "every row is blinking" effect in large workspaces while still
+   teaching the interaction. */
+@keyframes dashboard-expand-nudge {
+  0%, 100% {
+    color: rgb(148 163 184);
+    box-shadow: 0 0 0 0 rgba(21, 101, 192, 0);
+  }
+  28% {
+    color: rgb(21 101 192);
+    box-shadow: 0 0 0 5px rgba(21, 101, 192, 0.14);
+  }
+  58% {
+    color: rgb(46 125 50);
+    box-shadow: 0 0 0 7px rgba(46, 125, 50, 0.10);
+  }
+}
+
+.dashboard-expand-nudge {
+  animation: dashboard-expand-nudge 900ms ease-out 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-expand-nudge {
+    animation: none;
+    color: rgb(21 101 192);
+    box-shadow: 0 0 0 4px rgba(21, 101, 192, 0.12);
+  }
+}
