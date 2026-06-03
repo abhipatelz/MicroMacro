@@ -21,6 +21,7 @@ export default async function AdminPage() {
     totalActive,
     leadCount,
     lockedUsers,
+    lockedTotal,
     mustChangePw,
     pendingInvites,
     deactivatedCount,
@@ -33,6 +34,10 @@ export default async function AdminPage() {
       .sort({ lockedAt: -1 })
       .limit(10)
       .lean(),
+    // The list above is capped at 10 for the card preview, but the stat must
+    // count EVERY locked account — otherwise an admin with >10 lockouts sees a
+    // misleadingly low "10" and may miss accounts that need attention.
+    User.countDocuments({ locked: true, active: { $ne: false } }),
     User.find({ mustChangePassword: true, active: { $ne: false } })
       .select('name username email createdAt')
       .sort({ createdAt: -1 })
@@ -66,7 +71,7 @@ export default async function AdminPage() {
         totalActive,
         leadCount,
         contributorCount: totalActive - leadCount,
-        lockedCount: (lockedUsers as any[]).length,
+        lockedCount: lockedTotal,
         pendingInvites,
         deactivatedCount,
       }}

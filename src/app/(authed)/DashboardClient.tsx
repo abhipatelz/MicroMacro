@@ -391,10 +391,10 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
       done: false,
     },
   ];
-  const tints: Record<’blue’ | ‘teal’ | ‘green’, string> = {
-    blue:  ‘bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400’,
-    teal:  ‘bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400’,
-    green: ‘bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400’,
+  const tints: Record<'blue' | 'teal' | 'green', string> = {
+    blue:  'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    teal:  'bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400',
+    green: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   };
 
   return (
@@ -413,7 +413,7 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
               key={s.href}
               href={s.href}
               className="fluid-card group bg-white dark:bg-[#2a2a28] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] p-5 flex flex-col"
-              style={{ boxShadow: ‘0 1px 3px rgba(15,23,42,0.04)’ }}
+              style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${tints[s.tint]}`}>
@@ -430,7 +430,7 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
               </div>
               <p className="text-xs text-slate-500 dark:text-white/40 leading-relaxed flex-1">{s.body}</p>
               <div className="mt-3 text-xs font-semibold text-blue-600 dark:text-blue-400 inline-flex items-center gap-1 group-hover:gap-1.5 transition-all">
-                {s.done ? ‘Review’ : ‘Start’} <ArrowRight size={13} />
+                {s.done ? 'Review' : 'Start'} <ArrowRight size={13} />
               </div>
             </Link>
           );
