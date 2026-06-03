@@ -183,7 +183,7 @@ export default function DashboardClient({
   // first thing a brand-new admin sees, so it should point the way.
   const isFirstRun = isLead && dash.projects.length === 0;
 
-  // ICs see their own task counts in side panels (My Tasks, Actions) but the
+  // ICs see their own task counts in side panels (My Tasks, Work Hub) but the
   // expanded project view shows the *full* pipeline so they have the same
   // visibility their lead does into how their project is progressing. Leads
   // and admins always see everything.
@@ -270,7 +270,7 @@ export default function DashboardClient({
         </>
       )}
 
-      {/* ── Main layout: Projects (left) · Actions (right, same row) ───── */}
+      {/* ── Main layout: Projects (left) · Work Hub (right, same row) ───── */}
       {!isFirstRun && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
 
@@ -280,17 +280,17 @@ export default function DashboardClient({
             tasksByProject={tasksByProject}
           />
 
-          {/* Right column — Actions + "My tasks" (for leads: also Contributors).
+          {/* Right column — Work Hub + "My tasks" (for leads: also Contributors).
              Headers in both columns share the same vertical baseline so the
              dashboard reads as a single inline strip rather than two stacked
-             layouts. The Actions header carries the same uppercase tracking
+             layouts. The Work Hub header carries the same uppercase tracking
              treatment as "Your team's projects" on the left.
              Flows with the page (no sticky/own-scroll): the previous
              sticky+max-height+overflow combo clipped the Individual
              Contributors list and made it feel like it "broke" mid-scroll
              when the column was taller than the viewport. */}
           <div className="space-y-4 pr-1">
-            <ActionsPanel tasks={visibleTasks} />
+            <WorkHubPanel tasks={visibleTasks} />
             <MyTasksPanel tasks={visibleTasks} myId={myId} />
             {/* Leads see workload across their ICs. Contributors don't need a
                per-project rollup of their own work here — "My tasks" above
@@ -308,7 +308,7 @@ export default function DashboardClient({
 }
 
 /* ── Full-screen overlay ──────────────────────────────────────────────────
-   Lets the Actions and Contributors panels expand to a distraction-free,
+   Lets the Work Hub and Contributors panels expand to a distraction-free,
    full-page view (#12). Click the backdrop or the ✕ to close. */
 function FullScreenOverlay({
   title, icon, onClose, children,
@@ -813,9 +813,9 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/*  ACTIONS PANEL — right column top, due/overdue with filter chips           */
+/*  WORK HUB PANEL — right column top, due/overdue with filter chips          */
 /* ────────────────────────────────────────────────────────────────────────── */
-function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
+function WorkHubPanel({ tasks }: { tasks: TeamTask[] }) {
   const [filter, setFilter] = useState<ActionFilter>('week');
   const [untilDate, setUntilDate] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -878,7 +878,7 @@ function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
         <div className="flex items-center gap-2 min-w-0">
           <TrendingUp size={14} className="text-slate-400 shrink-0" />
           <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 truncate">
-            Actions
+            Work Hub
           </h2>
           <span className="text-[10px] text-slate-300 font-semibold shrink-0">{totalCount}</span>
         </div>
@@ -935,7 +935,7 @@ function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
           dotClass="bg-blue-400"
           tasks={due}
           showAll={expanded}
-          emptyHint={filter === 'untilDate' && !untilDate ? 'Pick a date to see upcoming actions.' : 'Nothing due — all clear.'}
+          emptyHint={filter === 'untilDate' && !untilDate ? 'Pick a date to see upcoming work.' : 'Nothing due — all clear.'}
         />
       </div>
     </section>
@@ -943,7 +943,7 @@ function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
   );
 
   return expanded
-    ? <FullScreenOverlay title="Actions" icon={<TrendingUp size={14} className="text-blue-500" />}
+    ? <FullScreenOverlay title="Work Hub" icon={<TrendingUp size={14} className="text-blue-500" />}
         onClose={() => setExpanded(false)}>{inner}</FullScreenOverlay>
     : inner;
 }

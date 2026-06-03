@@ -31,10 +31,16 @@ export async function GET(req: NextRequest) {
     // is added to it, rather than getting blanket visibility into every group.
     const filter = { $or: [{ leadId: user.sub }, { memberIds: user.sub }] };
 
-    const [teams, adminUsers, counts] = await Promise.all([
-      Team.find(filter).sort({ name: 1 }).lean(),
+    const teams = await Team.find(filter).sort({ name: 1 }).lean();
+    const teamIds = teams.map((t: any) => t._id).filter(Boolean);
+    const [adminUsers, counts] = await Promise.all([
       User.find({ role: 'admin' }, '_id').lean(),
-      Project.aggregate([{ $group: { _id: '$teamId', c: { $sum: 1 } } }]),
+      teamIds.length
+        ? Project.aggregate([
+            { $match: { teamId: { $in: teamIds } } },
+            { $group: { _id: '$teamId', c: { $sum: 1 } } },
+          ])
+        : Promise.resolve([]),
     ]);
     const adminIds = new Set(adminUsers.map((u: any) => String(u._id)));
     const cmap = new Map(counts.map((c) => [String(c._id), c.c]));

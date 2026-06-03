@@ -56,7 +56,11 @@ export async function GET(req: NextRequest) {
       ];
       delete q.$or;
     }
-    const projects = await Project.find(q).sort({ createdAt: -1 }).lean();
+    const projects = await Project.find(q)
+      .select('code name description lifecycle status priority teamId ownerId startDate dueDate completedAt gxpImpact archived archivedAt archivedBy isPersonal personal createdAt')
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
     // teams / owners / task counts all depend only on `projects`, so fetch them
     // concurrently instead of in three sequential round-trips.
     const [teams, owners, taskAgg] = await Promise.all([

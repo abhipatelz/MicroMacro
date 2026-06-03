@@ -107,6 +107,8 @@ const TaskSchema = new Schema(
 
 TaskSchema.index({ assigneeId: 1 });
 TaskSchema.index({ projectId: 1 });
+TaskSchema.index({ projectId: 1, position: 1, createdAt: 1 });
+TaskSchema.index({ projectId: 1, status: 1 });
 TaskSchema.index({ status: 1 });
 TaskSchema.index({ dueDate: 1 });
 // Compound indices that match the lead-dashboard aggregations directly —

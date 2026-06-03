@@ -17,12 +17,27 @@ export default async function TeamsPage() {
   // as the API route). Admin users are workspace owners and also see their teams.
   const filter = { $or: [{ leadId: jwt.sub }, { memberIds: jwt.sub }] };
 
-  const [teams, adminUsers, counts, users] = await Promise.all([
-    Team.find(filter).sort({ name: 1 }).lean(),
+  const teams = await Team.find(filter).sort({ name: 1 }).lean();
+  const teamIds = teams.map((t: any) => t._id).filter(Boolean);
+
+  const [adminUsers, counts] = await Promise.all([
     User.find({ role: 'admin' }, '_id').lean(),
-    Project.aggregate([{ $group: { _id: '$teamId', c: { $sum: 1 } } }]),
-    User.find({ active: { $ne: false } }).sort({ name: 1 }).lean(),
+    teamIds.length
+      ? Project.aggregate([
+          { $match: { teamId: { $in: teamIds } } },
+          { $group: { _id: '$teamId', c: { $sum: 1 } } },
+        ])
+      : Promise.resolve([]),
   ]);
+
+  const canManage = jwt.role === 'lead' || jwt.role === 'admin';
+  const visibleUserIds = Array.from(new Set(teams.flatMap((t: any) => [t.leadId, ...(t.memberIds || [])].filter(Boolean).map(String))));
+  const users = await User.find(
+    canManage ? { active: { $ne: false } } : { _id: { $in: visibleUserIds }, active: { $ne: false } },
+  )
+    .select('name role title department organisation location')
+    .sort({ name: 1 })
+    .lean();
 
   const adminIds = new Set(adminUsers.map((u: any) => String(u._id)));
   const cmap = new Map(counts.map((c: any) => [String(c._id), c.c]));

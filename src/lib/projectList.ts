@@ -63,18 +63,23 @@ export async function listProjectsForUser(
     q.status = filters.statuses.length === 1 ? filters.statuses[0] : { $in: filters.statuses };
   }
   if (filters.q) {
+    const safe = filters.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     q.$and = [
       visibility,
       { $or: [
-        { name:        { $regex: filters.q, $options: 'i' } },
-        { code:        { $regex: filters.q, $options: 'i' } },
-        { description: { $regex: filters.q, $options: 'i' } },
+        { name:        { $regex: safe, $options: 'i' } },
+        { code:        { $regex: safe, $options: 'i' } },
+        { description: { $regex: safe, $options: 'i' } },
       ] },
     ];
     delete q.$or;
   }
 
-  const projects = await Project.find(q).sort({ createdAt: -1 }).limit(200).lean();
+  const projects = await Project.find(q)
+    .select('code name description lifecycle status priority teamId ownerId startDate dueDate completedAt gxpImpact archived archivedAt archivedBy isPersonal personal createdAt')
+    .sort({ createdAt: -1 })
+    .limit(200)
+    .lean();
   if (projects.length === 0) return [];
 
   const projectIds = projects.map((p) => p._id);
