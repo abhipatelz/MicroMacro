@@ -7,7 +7,7 @@ import {
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
 import { UserAvatar } from '@/components/AvatarRegistry';
-import { useCurrentUser, useIsLead } from '@/components/CurrentUserContext';
+import { useIsLead } from '@/components/CurrentUserContext';
 import dynamic from 'next/dynamic';
 // Lazy — only the lead's contributor-activity modal needs it, so it stays out
 // of the main dashboard bundle (helps FCP/LCP).
@@ -15,10 +15,6 @@ const ActivityGraph = dynamic(
   () => import('@/components/ActivityGraph').then(m => m.ActivityGraph),
   { ssr: false, loading: () => <div className="h-40 rounded-xl bg-slate-50 animate-pulse" /> },
 );
-
-function warmActivityGraph(userId: string | undefined, cacheUserId?: string) {
-  void import('@/components/ActivityGraph').then((m) => m.preloadActivityGraphData({ userId, cacheUserId }));
-}
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
   ChevronDown, TrendingUp, Clock, Sparkles, ArrowRight, UserPlus, Plus,
@@ -454,12 +450,6 @@ function ProjectsColumn({
   projects, tasksByProject,
 }: { projects: DashProject[]; tasksByProject: Map<string, TeamTask[]> }) {
   const isLead  = useIsLead();
-  const [showExpandNudge, setShowExpandNudge] = useState(true);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setShowExpandNudge(false), 2800);
-    return () => window.clearTimeout(t);
-  }, []);
   return (
     <section>
       <div className="flex items-center justify-between gap-2 mb-3">
@@ -494,12 +484,11 @@ function ProjectsColumn({
         </div>
       ) : (
         <div className="space-y-3">
-          {projects.map((p, index) => (
+          {projects.map((p) => (
             <ProjectRow
               key={p.id}
               project={p}
               tasks={tasksByProject.get(p.id) || []}
-              nudgeExpand={showExpandNudge && index === 0}
             />
           ))}
         </div>
@@ -579,8 +568,8 @@ function DashboardTaskFlow({ tasks }: { tasks: TeamTask[] }) {
 }
 
 function ProjectRow({
-  project, tasks, nudgeExpand = false,
-}: { project: DashProject; tasks: TeamTask[]; nudgeExpand?: boolean }) {
+  project, tasks,
+}: { project: DashProject; tasks: TeamTask[] }) {
   // Collapsed by default — the dashboard should land quiet. The user expands
   // only what they want to inspect.
   const [open, setOpen] = useState(false);
@@ -612,11 +601,7 @@ function ProjectRow({
         onClick={() => setOpen(o => !o)}
         className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors select-none"
       >
-        <button
-          className={`p-0.5 text-slate-400 dark:text-white/30 transition-transform rounded-full ${nudgeExpand && !open ? 'dashboard-expand-nudge' : ''}`}
-          aria-label={open ? 'Collapse project tasks' : 'Expand project tasks'}
-          style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-        >
+        <button className="p-0.5 text-slate-400 dark:text-white/30 transition-transform" style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
           <ChevronDown size={14} />
         </button>
 
@@ -1028,15 +1013,9 @@ function ContributorsPanel({
   // Collapsed by default — keeps the dashboard quiet on landing; the lead
   // expands when they want a contributor-by-contributor breakdown.
   const [panelOpen, setPanelOpen] = useState(false);
-  const [showExpandNudge, setShowExpandNudge] = useState(true);
   // The contributor whose activity graph is being viewed (lead-only deep-dive,
   // same gesture as the team & people pages).
   const [activityPerson, setActivityPerson] = useState<DashPerson | null>(null);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setShowExpandNudge(false), 2800);
-    return () => window.clearTimeout(t);
-  }, []);
 
   if (people.length === 0) {
     return (
@@ -1065,11 +1044,8 @@ function ContributorsPanel({
           Individual Contributors
         </h3>
         <span className="ml-auto text-[10px] text-slate-300 dark:text-white/20 font-semibold">{people.length}</span>
-        <ChevronDown
-          size={12}
-          className={`text-slate-400 dark:text-white/30 transition-transform duration-200 rounded-full ${showExpandNudge && !panelOpen ? 'dashboard-expand-nudge' : ''}`}
-          style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-        />
+        <ChevronDown size={12} className="text-slate-400 dark:text-white/30 transition-transform duration-200"
+          style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
       </div>
 
       {panelOpen && (
@@ -1111,12 +1087,6 @@ function MyFocusPanel({
   tasks, projects, myId,
 }: { tasks: TeamTask[]; projects: any[]; myId: string }) {
   const [panelOpen, setPanelOpen] = useState(true);
-  const [showExpandNudge, setShowExpandNudge] = useState(true);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setShowExpandNudge(false), 2800);
-    return () => window.clearTimeout(t);
-  }, []);
 
   const myOpen = tasks.filter((t) => t.assigneeId === myId && t.status !== 'done');
   if (myOpen.length === 0) return null;
@@ -1149,11 +1119,8 @@ function MyFocusPanel({
         <FolderKanban size={13} className="text-slate-400 dark:text-white/30" />
         <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">Focus by project</h3>
         <span className="ml-auto text-[10px] text-slate-300 dark:text-white/20 font-semibold">{rows.length}</span>
-        <ChevronDown
-          size={12}
-          className={`text-slate-400 dark:text-white/30 transition-transform duration-200 rounded-full ${showExpandNudge && !panelOpen ? 'dashboard-expand-nudge' : ''}`}
-          style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-        />
+        <ChevronDown size={12} className="text-slate-400 dark:text-white/30 transition-transform duration-200"
+          style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
       </div>
 
       {panelOpen && (
@@ -1185,7 +1152,6 @@ function MyFocusPanel({
 
 function ContributorRow({ person, tasks, onViewActivity }: { person: DashPerson; tasks: TeamTask[]; onViewActivity?: () => void }) {
   const [open, setOpen] = useState(false);
-  const currentUser = useCurrentUser();
 
   // Sort tasks: in_progress first, then by due date
   const STATUS_ORDER: Record<string, number> = { in_progress: 0, review: 1, blocked: 2, todo: 3 };
@@ -1221,9 +1187,7 @@ function ContributorRow({ person, tasks, onViewActivity }: { person: DashPerson;
                   discover that the row is clickable. */}
               {onViewActivity && (
                 <button
-                  onMouseEnter={() => warmActivityGraph(person.id, currentUser?.id)}
-                  onFocus={() => warmActivityGraph(person.id, currentUser?.id)}
-                  onClick={(e) => { e.stopPropagation(); warmActivityGraph(person.id, currentUser?.id); onViewActivity(); }}
+                  onClick={(e) => { e.stopPropagation(); onViewActivity(); }}
                   title={`View ${person.name}'s activity`}
                   className="text-slate-400 dark:text-white/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0">
                   <BarChart3 size={13} />

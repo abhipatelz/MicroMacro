@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/client/api';
-import { useCurrentUser } from '@/components/CurrentUserContext';
 import {
   Flame, Clock3, CheckCircle2, Target, FolderCheck, CalendarCheck,
   Trophy, Zap, Users, Lightbulb, Award, GraduationCap, Scale, Gauge,
@@ -81,82 +80,6 @@ function cellColor(n: number, dark: boolean): string {
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-
-const ACTIVITY_CACHE_TTL_MS = 2 * 60 * 1000;
-const activityCache = new Map<string, { data: ActivityData; expiresAt: number }>();
-const activityInflight = new Map<string, Promise<ActivityData>>();
-
-function fallbackActivityData(year: number): ActivityData {
-  return {
-    year,
-    firstYear: year,
-    days: {},
-    total: 0,
-    streak: 0,
-    totalTasksDone: 0,
-    onTimeTasks: 0,
-    onTimeRate: 0,
-    projectsCompleted: 0,
-    projectsOnTime: 0,
-    badges: [],
-    recent: [],
-    achievements: [],
-    role: 'ic',
-  };
-}
-
-function activityCacheKey(who: string, year: number, cacheUserId?: string) {
-  return `${who}:${cacheUserId || 'direct'}:${year}`;
-}
-
-function canUseActivityCache(_who: string, cacheUserId?: string) {
-  // Activity endpoints are credentialed. Cache only when the key includes the
-  // actual signed-in viewer id, so SPA logout/login cannot reuse a previous
-  // account's /me response or an authorized teammate peek.
-  return !!cacheUserId;
-}
-
-function getCachedActivityData(who: string, year: number, cacheUserId?: string): ActivityData | null {
-  if (!canUseActivityCache(who, cacheUserId)) return null;
-  const hit = activityCache.get(activityCacheKey(who, year, cacheUserId));
-  if (!hit) return null;
-  if (hit.expiresAt <= Date.now()) {
-    activityCache.delete(activityCacheKey(who, year, cacheUserId));
-    return null;
-  }
-  return hit.data;
-}
-
-function fetchActivityData(who: string, year: number, cacheUserId?: string): Promise<ActivityData> {
-  const useCache = canUseActivityCache(who, cacheUserId);
-  const key = activityCacheKey(who, year, cacheUserId);
-  const cached = getCachedActivityData(who, year, cacheUserId);
-  if (cached) return Promise.resolve(cached);
-
-  const pending = useCache ? activityInflight.get(key) : null;
-  if (pending) return pending;
-
-  const request = api<ActivityData>(`/${who}?year=${year}`)
-    .then((data) => {
-      if (useCache) {
-        activityCache.set(key, { data, expiresAt: Date.now() + ACTIVITY_CACHE_TTL_MS });
-      }
-      return data;
-    })
-    .finally(() => { if (useCache) activityInflight.delete(key); });
-  if (useCache) activityInflight.set(key, request);
-  return request;
-}
-
-export function preloadActivityGraphData({
-  userId,
-  cacheUserId,
-  year = new Date().getFullYear(),
-}: { userId?: string; cacheUserId?: string; year?: number } = {}) {
-  const who = userId ? `users/${userId}/activity` : 'users/me/activity';
-  return fetchActivityData(who, year, cacheUserId).catch(() => null);
-}
 
 type ContribItem = {
   id: string; title: string; projectName: string; projectCode: string;
@@ -246,7 +169,7 @@ function AchievementTile({ a }: { a: Achievement }) {
   );
 }
 
-export function ActivityGraph({ userId, name, cacheUserId }: { userId?: string; name?: string; cacheUserId?: string }) {
+export function ActivityGraph({ userId, name }: { userId?: string; name?: string }) {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const [data, setData] = useState<ActivityData | null>(null);
@@ -255,30 +178,18 @@ export function ActivityGraph({ userId, name, cacheUserId }: { userId?: string; 
   // Custom heatmap tooltip — replaces the native `title=""` so the hover reads
   // cleanly (formatted date + point count) instead of the OS' slow tooltip.
   const [tip, setTip] = useState<{ x: number; y: number; count: number; date: string } | null>(null);
-  const currentUser = useCurrentUser();
 
   const who = userId ? `users/${userId}/activity` : 'users/me/activity';
-  const cacheScopeUserId = cacheUserId || currentUser?.id;
 
   useEffect(() => {
-    let alive = true;
-    const cached = getCachedActivityData(who, year, cacheScopeUserId);
-    if (cached) {
-      setData(cached);
-      setLoading(false);
-      return () => { alive = false; };
-    }
-
     setLoading(true);
-    fetchActivityData(who, year, cacheScopeUserId)
-      .then((next) => { if (alive) setData(next); })
-      .catch(() => { if (alive) setData(fallbackActivityData(year)); })
-      .finally(() => { if (alive) setLoading(false); });
+    api<ActivityData>(`/${who}?year=${year}`)
+      .then(setData)
+      .catch(() => setData({ year, firstYear: year, days: {}, total: 0, streak: 0, totalTasksDone: 0, onTimeTasks: 0, onTimeRate: 0, projectsCompleted: 0, projectsOnTime: 0, badges: [], recent: [], achievements: [], role: 'ic' }))
+      .finally(() => setLoading(false));
+  }, [who, year]);
 
-    return () => { alive = false; };
-  }, [who, year, cacheScopeUserId]);
-
-  const days = useMemo(() => data?.days || {}, [data?.days]);
+  const days = data?.days || {};
 
   // Week columns for the selected calendar year, Sunday-aligned.
   const { weeks, total } = useMemo(() => {

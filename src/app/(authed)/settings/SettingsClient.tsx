@@ -457,21 +457,6 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
     if (initialUser.role === 'admin') {
       api('/auth/security-key').then((r: any) => setHasRecoveryKey(r.hasKey)).catch(() => {});
     }
-
-    // Warm the below-the-fold activity bundle + current-year data as soon as
-    // the profile shell is interactive, so opening/scanning the graph does not
-    // sit on an avoidable dynamic-import + API waterfall.
-    const warm = () => {
-      void import('@/components/ActivityGraph').then((m) => m.preloadActivityGraphData({ cacheUserId: initialUser.id }));
-    };
-    const w = window as any;
-    const id = typeof w.requestIdleCallback === 'function'
-      ? w.requestIdleCallback(warm, { timeout: 900 })
-      : window.setTimeout(warm, 250);
-    return () => {
-      if (typeof w.cancelIdleCallback === 'function') w.cancelIdleCallback(id);
-      else window.clearTimeout(id);
-    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -638,7 +623,7 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
       {/* ── Activity — the star feature, front and centre ────────────────── */}
       <div id="activity" className="scroll-mt-6">
         <Section icon={Activity} title="Activity" subtitle="Your delivered work on Pragati — completed tasks, weighted for on-time and priority.">
-          <ActivityGraph cacheUserId={user.id} />
+          <ActivityGraph />
         </Section>
       </div>
 
