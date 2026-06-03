@@ -84,6 +84,20 @@ export interface ContribData {
   role: 'ic' | 'lead' | 'admin';     // viewed user's role, drives achievement set
 }
 
+
+const CONTRIBUTION_CACHE_TTL_MS = 60 * 1000;
+const contributionCache = new Map<string, { data: ContribData; expiresAt: number }>();
+
+function cloneContribData(data: ContribData): ContribData {
+  return {
+    ...data,
+    days: { ...data.days },
+    badges: [...data.badges],
+    recent: data.recent.map((item) => ({ ...item })),
+    achievements: data.achievements.map((achievement) => ({ ...achievement })),
+  };
+}
+
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -108,6 +122,12 @@ export function scoreTask(t: {
  * Used by both /api/users/me/activity and /api/users/[id]/activity.
  */
 export async function buildContributions(userId: string, year: number): Promise<ContribData> {
+  const cacheKey = `${userId}:${year}`;
+  const cached = contributionCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cloneContribData(cached.data);
+  }
+
   const userOid = new mongoose.Types.ObjectId(userId);
   const start = new Date(`${year}-01-01T00:00:00.000Z`);
   const end   = new Date(`${year + 1}-01-01T00:00:00.000Z`);
@@ -301,13 +321,15 @@ export async function buildContributions(userId: string, year: number): Promise<
     totalDone, onTimeTasks, onTimeRate, projectsCompleted, projectsOnTime, days,
   });
 
-  return {
+  const result: ContribData = {
     year, firstYear, days, total, streak,
     totalTasksDone: totalDone, onTimeTasks, onTimeRate,
     projectsCompleted, projectsOnTime, badges,
     recent: items.slice(0, 40),
     achievements, role,
   };
+  contributionCache.set(cacheKey, { data: cloneContribData(result), expiresAt: Date.now() + CONTRIBUTION_CACHE_TTL_MS });
+  return result;
 }
 
 /**

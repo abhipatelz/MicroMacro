@@ -288,7 +288,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
         <Link href="/"
           className={`flex items-center min-w-0 w-full ${showCollapsed ? 'justify-center' : 'gap-2.5 pl-[18px] pr-4'}`}>
           <span className="shrink-0">
-            <PragatiMark size={30} flat />
+            <PragatiMark size={30} />
           </span>
           {!showCollapsed && (
             <span className={`brand-wordmark text-[21px] whitespace-nowrap ${dark ? 'text-white' : 'brand-wordmark-gradient'}`}>
@@ -526,7 +526,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
             <Menu size={18} />
           </button>
           <Link href="/" className="flex items-center gap-2">
-            <PragatiMark size={22} flat />
+            <PragatiMark size={22} />
             <span className={`brand-wordmark text-[15px] ${dark ? 'text-white' : 'brand-wordmark-gradient'}`}>Pragati</span>
           </Link>
         </div>

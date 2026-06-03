@@ -88,7 +88,12 @@ export async function GET(req: NextRequest) {
     }
 
     const [items, total, facets] = await Promise.all([
-      User.find(filter).sort({ name: 1 }).skip(offset).limit(limit).lean(),
+      User.find(filter)
+        .select('name username email role title department organisation location avatarLetter avatarBg avatarFont active')
+        .sort({ name: 1 })
+        .skip(offset)
+        .limit(limit)
+        .lean(),
       User.countDocuments(filter),
       // Distinct values for the picker's group-by/filter rail. Scoped to the
       // current filter (minus the field itself) so counts adapt as the user

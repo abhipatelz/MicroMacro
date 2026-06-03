@@ -27,6 +27,8 @@ type Row = {
 };
 
 const PAGE = 20;
+const userPickerCache = new Map<string, { at: number; value: { items: Row[]; total: number } }>();
+const USER_PICKER_CACHE_MS = 45_000;
 
 export function UserPicker({
   value,
@@ -87,7 +89,12 @@ export function UserPicker({
       const sp = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
       if (query) sp.set('q', query);
       if (teamId) sp.set('teamId', teamId);
-      const res = await api<{ items: Row[]; total: number }>(`/users?${sp.toString()}`);
+      const cacheKey = sp.toString();
+      const cached = userPickerCache.get(cacheKey);
+      const res = cached && Date.now() - cached.at < USER_PICKER_CACHE_MS
+        ? cached.value
+        : await api<{ items: Row[]; total: number }>(`/users?${sp.toString()}`);
+      if (!cached) userPickerCache.set(cacheKey, { at: Date.now(), value: res });
       let items = res.items || [];
       if (excludeAdmin) items = items.filter((u) => u.role !== 'admin');
       if (excludeIds?.length) items = items.filter((u) => !excludeIds.includes(u.id));
@@ -107,6 +114,18 @@ export function UserPicker({
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, q, teamId]);
+
+  function warmFirstPage() {
+    if (disabled || open) return;
+    const sp = new URLSearchParams({ limit: String(PAGE), offset: '0' });
+    if (teamId) sp.set('teamId', teamId);
+    const key = sp.toString();
+    const cached = userPickerCache.get(key);
+    if (cached && Date.now() - cached.at < USER_PICKER_CACHE_MS) return;
+    void api<{ items: Row[]; total: number }>(`/users?${key}`)
+      .then((value) => userPickerCache.set(key, { at: Date.now(), value }))
+      .catch(() => {});
+  }
 
   // Focus the search box on open.
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 20); }, [open]);
@@ -181,6 +200,8 @@ export function UserPicker({
     <div className={`relative ${className}`}>
       <button
         ref={btnRef}
+        onMouseEnter={warmFirstPage}
+        onFocus={warmFirstPage}
         type="button"
         disabled={disabled}
         aria-haspopup="listbox"

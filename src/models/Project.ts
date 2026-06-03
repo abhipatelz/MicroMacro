@@ -69,6 +69,12 @@ const ProjectSchema = new Schema(
 ProjectSchema.index({ teamId: 1 });
 ProjectSchema.index({ status: 1 });
 ProjectSchema.index({ archived: 1 });
+// Hot read paths: project list/detail filters combine team/owner visibility,
+// archived state, status tabs, and newest-first ordering. These compound
+// indexes keep /projects and /projects/[id] off broad scans as workspaces grow.
+ProjectSchema.index({ teamId: 1, archived: 1, status: 1, createdAt: -1 });
+ProjectSchema.index({ ownerId: 1, archived: 1, status: 1, createdAt: -1 });
+ProjectSchema.index({ lifecycle: 1, archived: 1 });
 
 export type ProjectDoc = InferSchemaType<typeof ProjectSchema> & { _id: mongoose.Types.ObjectId };
 

@@ -249,6 +249,7 @@ export const TaskCreateSchema = z.object({
   applicableSite: ApplicableSiteEnum.optional(),  // val / prd / val_prd / na
   deployStage: DeployStageEnum.optional(),        // dev / int / prd / na
   remarks: z.string().max(5000).optional(),
+  privateToMe: z.boolean().optional(),
 });
 export type TaskCreateInput = z.infer<typeof TaskCreateSchema>;
 

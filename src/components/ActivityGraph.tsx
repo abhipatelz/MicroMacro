@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/client/api';
+import { useCurrentUser } from '@/components/CurrentUserContext';
 import {
   Flame, Clock3, CheckCircle2, Target, FolderCheck, CalendarCheck,
   Trophy, Zap, Users, Lightbulb, Award, GraduationCap, Scale, Gauge,
@@ -80,6 +81,31 @@ function cellColor(n: number, dark: boolean): string {
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+
+const ACTIVITY_GRAPH_CACHE_MS = 2 * 60_000;
+const activityGraphCache = new Map<string, { at: number; data: ActivityData }>();
+const activityGraphInflight = new Map<string, Promise<ActivityData>>();
+
+function activityKey(who: string, year: number, viewerId?: string) {
+  return viewerId ? `${viewerId}:${who}:${year}` : '';
+}
+
+function loadActivity(who: string, year: number, viewerId?: string) {
+  const key = activityKey(who, year, viewerId);
+  if (key) {
+    const cached = activityGraphCache.get(key);
+    if (cached && Date.now() - cached.at < ACTIVITY_GRAPH_CACHE_MS) return Promise.resolve(cached.data);
+    const pending = activityGraphInflight.get(key);
+    if (pending) return pending;
+  }
+  const req = api<ActivityData>(`/${who}?year=${year}`).then((data) => {
+    if (key) activityGraphCache.set(key, { at: Date.now(), data });
+    return data;
+  }).finally(() => { if (key) activityGraphInflight.delete(key); });
+  if (key) activityGraphInflight.set(key, req);
+  return req;
+}
 
 type ContribItem = {
   id: string; title: string; projectName: string; projectCode: string;
@@ -178,18 +204,22 @@ export function ActivityGraph({ userId, name }: { userId?: string; name?: string
   // Custom heatmap tooltip — replaces the native `title=""` so the hover reads
   // cleanly (formatted date + point count) instead of the OS' slow tooltip.
   const [tip, setTip] = useState<{ x: number; y: number; count: number; date: string } | null>(null);
+  const currentUser = useCurrentUser();
 
   const who = userId ? `users/${userId}/activity` : 'users/me/activity';
+  const viewerId = currentUser?.id;
 
   useEffect(() => {
+    let alive = true;
     setLoading(true);
-    api<ActivityData>(`/${who}?year=${year}`)
-      .then(setData)
-      .catch(() => setData({ year, firstYear: year, days: {}, total: 0, streak: 0, totalTasksDone: 0, onTimeTasks: 0, onTimeRate: 0, projectsCompleted: 0, projectsOnTime: 0, badges: [], recent: [], achievements: [], role: 'ic' }))
-      .finally(() => setLoading(false));
-  }, [who, year]);
+    loadActivity(who, year, viewerId)
+      .then((next) => { if (alive) setData(next); })
+      .catch(() => { if (alive) setData({ year, firstYear: year, days: {}, total: 0, streak: 0, totalTasksDone: 0, onTimeTasks: 0, onTimeRate: 0, projectsCompleted: 0, projectsOnTime: 0, badges: [], recent: [], achievements: [], role: 'ic' }); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [who, year, viewerId]);
 
-  const days = data?.days || {};
+  const days = useMemo(() => data?.days || {}, [data?.days]);
 
   // Week columns for the selected calendar year, Sunday-aligned.
   const { weeks, total } = useMemo(() => {

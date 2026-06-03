@@ -25,7 +25,7 @@ export async function getProjectDetail(id: string, userId: string, role?: string
     const [team, owner, tasks] = await Promise.all([
       p.teamId ? Team.findById(p.teamId).lean() : Promise.resolve(null),
       p.ownerId ? User.findById(p.ownerId).lean() : Promise.resolve(null),
-      Task.find({ projectId: p._id }).sort({ position: 1, createdAt: 1 }).lean(),
+      Task.find({ projectId: p._id, $or: [{ privateToUserId: null }, { privateToUserId: { $exists: false } }, { privateToUserId: scope.userOid }] }).sort({ position: 1, createdAt: 1 }).lean(),
     ]);
     const assignees = await User.find({
       _id: { $in: tasks.map((t) => t.assigneeId).filter(Boolean) },

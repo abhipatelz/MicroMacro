@@ -35,23 +35,24 @@ export async function getLeadDashboardData(
 
   const projects = await Project.find(projFilter).sort({ createdAt: -1 }).lean();
   const visibleProjectIds = projects.map(p => p._id);
+  const visibleTaskPrivacyFilter = { $or: [{ privateToUserId: null }, { privateToUserId: { $exists: false } }, { privateToUserId: scope.userOid }] };
 
   const [myTasks, teamTasksRaw, teams, owners, projectTaskAgg, perUserAgg, users] = await Promise.all([
     // "My tasks" stays sorted by status so the IC's side panel keeps its
     // pipeline grouping.
-    Task.find({ assigneeId: scope.userOid }).sort({ status: 1, dueDate: 1 }).lean(),
+    Task.find({ assigneeId: scope.userOid, ...visibleTaskPrivacyFilter }).sort({ status: 1, dueDate: 1 }).lean(),
     // Project task lists are ordered by CC Target Completion Date (TCD), then
     // due date — the nearest deadline first. The dashboard re-sorts the same
     // way client-side, so the order is deterministic for every viewer and
     // carries no hidden per-user state.
-    Task.find({ projectId: { $in: visibleProjectIds } })
+    Task.find({ projectId: { $in: visibleProjectIds }, ...visibleTaskPrivacyFilter })
       .sort({ ccTcd: 1, dueDate: 1, createdAt: 1 })
       .limit(500)
       .lean(),
     Team.find({ _id: { $in: scope.teamOids } }).lean(),
     User.find({ _id: { $in: projects.map(p => p.ownerId).filter(Boolean) } }, '_id name').lean(),
     Task.aggregate([
-      { $match: { projectId: { $in: visibleProjectIds } } },
+      { $match: { projectId: { $in: visibleProjectIds }, ...visibleTaskPrivacyFilter } },
       {
         $group: {
           _id: '$projectId',
@@ -69,7 +70,7 @@ export async function getLeadDashboardData(
       },
     ]),
     Task.aggregate([
-      { $match: { projectId: { $in: visibleProjectIds }, assigneeId: { $in: scope.memberOids } } },
+      { $match: { projectId: { $in: visibleProjectIds }, assigneeId: { $in: scope.memberOids }, ...visibleTaskPrivacyFilter } },
       {
         $facet: {
           open:     [{ $match: { status: { $ne: 'done' } } }, { $group: { _id: '$assigneeId', c: { $sum: 1 } } }],

@@ -165,6 +165,8 @@ export function task(t: any, extras: Any = {}) {
     deployStage:    t.deployStage   || 'na',
     remarks:        t.remarks  || '',
     pendingWith:    t.pendingWith || '',
+    privateToUserId: id(t.privateToUserId),
+    isPrivate: !!t.privateToUserId,
     aiTriage: t.aiTriage
       ? {
           severity: t.aiTriage.severity,

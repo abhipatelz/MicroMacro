@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
     if (!project) return NextResponse.json({ error: 'Project not found or not accessible' }, { status: 404 });
 
     const ownsPersonal = ((project as any).isPersonal || (project as any).personal) && String((project as any).ownerId) === user!.sub;
-    if (!ownsPersonal && !isLead(user!.role)) {
+    const privateToMe = !!body.privateToMe;
+    if (!privateToMe && !ownsPersonal && !isLead(user!.role)) {
       return NextResponse.json({ error: 'Only team leaders can add tasks to shared projects' }, { status: 403 });
     }
     const task = await Task.create({
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
       phaseId: body.phaseId,
       title: body.title,
       description: body.description || '',
-      assigneeId: body.assigneeId || undefined,
+      assigneeId: privateToMe ? user!.sub : (body.assigneeId || undefined),
       priority: body.priority || 'medium',
       taskType: body.taskType || 'task',
       gxpCritical: !!body.gxpCritical,
@@ -49,11 +50,12 @@ export async function POST(req: NextRequest) {
       applicableSite: body.applicableSite || 'na',
       deployStage:    body.deployStage    || 'na',
       remarks:        body.remarks        || '',
+      privateToUserId: privateToMe ? user!.sub : undefined,
     });
 
     // Tell the assignee they have new work (unless they assigned it to
     // themselves).
-    if (body.assigneeId) {
+    if (!privateToMe && body.assigneeId) {
       await notify({
         userId:    String(body.assigneeId),
         actorId:   user!.sub,
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Tasks inside a personal project stay out of the cross-user audit trail.
-    if (!(project as any).isPersonal) {
+    if (!privateToMe && !(project as any).isPersonal) {
       await logOperation({
         action: 'task.create', category: 'task', actor: user,
         targetType: 'task', targetId: String(task._id), targetLabel: task.title,

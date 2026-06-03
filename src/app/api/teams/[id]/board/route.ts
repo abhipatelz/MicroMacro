@@ -19,11 +19,11 @@ const STATUS_ORDER: Record<string, number> = {
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireUser(req);
+    const { user, error } = await requireUser(req);
     if (error) return error;
     await connectDB();
     const projects = await Project.find({ teamId: params.id }).lean();
-    const tasks = await Task.find({ projectId: { $in: projects.map((p) => p._id) } }).lean();
+    const tasks = await Task.find({ projectId: { $in: projects.map((p) => p._id) }, $or: [{ privateToUserId: null }, { privateToUserId: { $exists: false } }, { privateToUserId: user!.sub }] }).lean();
     const users = await User.find({ _id: { $in: tasks.map((t) => t.assigneeId).filter(Boolean) } }).lean();
     const uMap = new Map(users.map((u) => [String(u._id), u.name]));
     const pMap = new Map(projects.map((p) => [String(p._id), p]));

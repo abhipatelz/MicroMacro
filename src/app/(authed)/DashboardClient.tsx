@@ -173,13 +173,14 @@ export default function DashboardClient({
 }: { initialData: DashResp }) {
   const dash = initialData;
   const isLead = useIsLead();
+  const [summaryModal, setSummaryModal] = useState<null | 'open' | 'overdue'>(null);
 
   // First-run: a lead/admin whose workspace has no projects yet. Show a
   // guided setup path instead of a wall of empty panels — this is the
   // first thing a brand-new admin sees, so it should point the way.
   const isFirstRun = isLead && dash.projects.length === 0;
 
-  // ICs see their own task counts in side panels (My Tasks, Actions) but the
+  // ICs see their own task counts in side panels (My Tasks, Due Center) but the
   // expanded project view shows the *full* pipeline so they have the same
   // visibility their lead does into how their project is progressing. Leads
   // and admins always see everything.
@@ -194,6 +195,13 @@ export default function DashboardClient({
       p.status === 'in_progress' || p.status === 'planning' || p.status === 'on_hold',
     ),
   [dash]);
+
+  const openTasks = useMemo(() => visibleTasks.filter(t => t.status !== 'done'), [visibleTasks]);
+
+  const overdueTasks = useMemo(() => openTasks.filter(t => {
+    const due = t.ccTcd || t.dueDate;
+    return due && new Date(due) < new Date();
+  }), [openTasks]);
 
   // Expanded project view: everyone sees the whole project's tasks, so an IC
   // can see the path of work around their own assignments — not just their
@@ -251,22 +259,25 @@ export default function DashboardClient({
       ) : (
         <>
           {/* ── Summary strip ──────────────────────────────────────────── */}
-          {(() => {
-            const totalOpen    = visibleTasks.filter(t => t.status !== 'done').length;
-            const totalOverdue = visibleTasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < new Date()).length;
-            return (
-              <div className="flex flex-wrap gap-2.5 mb-6">
-                <SummaryChip label="Ongoing projects" value={ongoingProjects.length} accent="blue"  href="/projects" />
-                <SummaryChip label="Open tasks"       value={totalOpen}              accent="slate" href="/projects" />
-                <SummaryChip label="Overdue"          value={totalOverdue}           accent={totalOverdue > 0 ? 'red' : 'slate'} href="/projects" />
-                <SummaryChip label={dash.teamCount === 1 ? 'Team' : 'Teams'} value={dash.teamCount} accent="green" href="/teams" />
-              </div>
-            );
-          })()}
+          <div className="flex flex-wrap gap-2.5 mb-6">
+            <SummaryChip label="Ongoing projects" value={ongoingProjects.length} accent="blue"  href="/projects" />
+            <SummaryChip label="Open tasks"       value={openTasks.length}       accent="slate" onClick={() => setSummaryModal('open')} />
+            <SummaryChip label="Overdue"          value={overdueTasks.length}    accent={overdueTasks.length > 0 ? 'red' : 'slate'} onClick={() => setSummaryModal('overdue')} />
+            <SummaryChip label={dash.teamCount === 1 ? 'Team' : 'Teams'} value={dash.teamCount} accent="green" href="/teams" />
+          </div>
+          {summaryModal && (
+            <SummaryTaskPopup
+              title={summaryModal === 'open' ? 'Open tasks' : 'Overdue tasks'}
+              subtitle={summaryModal === 'open' ? 'Everything still moving across your visible work.' : 'Work that has crossed its target/due date.'}
+              tone={summaryModal === 'overdue' ? 'red' : 'blue'}
+              tasks={summaryModal === 'open' ? openTasks : overdueTasks}
+              onClose={() => setSummaryModal(null)}
+            />
+          )}
         </>
       )}
 
-      {/* ── Main layout: Projects (left) · Actions (right, same row) ───── */}
+      {/* ── Main layout: Projects (left) · Due Center (right, same row) ───── */}
       {!isFirstRun && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
 
@@ -276,17 +287,17 @@ export default function DashboardClient({
             tasksByProject={tasksByProject}
           />
 
-          {/* Right column — Actions + "My tasks" (for leads: also Contributors).
+          {/* Right column — Due Center + "My tasks" (for leads: also Contributors).
              Headers in both columns share the same vertical baseline so the
              dashboard reads as a single inline strip rather than two stacked
-             layouts. The Actions header carries the same uppercase tracking
+             layouts. The Due Center header carries the same uppercase tracking
              treatment as "Your team's projects" on the left.
              Flows with the page (no sticky/own-scroll): the previous
              sticky+max-height+overflow combo clipped the Individual
              Contributors list and made it feel like it "broke" mid-scroll
              when the column was taller than the viewport. */}
           <div className="space-y-4 pr-1">
-            <ActionsPanel tasks={visibleTasks} />
+            <DueCenterPanel tasks={visibleTasks} />
             <MyTasksPanel tasks={visibleTasks} myId={myId} />
             {/* Leads see workload across their ICs. Contributors don't need a
                per-project rollup of their own work here — "My tasks" above
@@ -304,7 +315,7 @@ export default function DashboardClient({
 }
 
 /* ── Full-screen overlay ──────────────────────────────────────────────────
-   Lets the Actions and Contributors panels expand to a distraction-free,
+   Lets the Due Center and Contributors panels expand to a distraction-free,
    full-page view (#12). Click the backdrop or the ✕ to close. */
 function FullScreenOverlay({
   title, icon, onClose, children,
@@ -339,24 +350,92 @@ function ExpandButton({ onClick }: { onClick: () => void }) {
 
 /* ── Summary chip ────────────────────────────────────────────────────────── */
 function SummaryChip({
-  label, value, accent, href,
-}: { label: string; value: number; accent: 'blue' | 'red' | 'slate' | 'green'; href: string }) {
+  label, value, accent, href, onClick,
+}: { label: string; value: number; accent: 'blue' | 'red' | 'slate' | 'green'; href?: string; onClick?: () => void }) {
   const styles = {
     blue:  'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
     red:   'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
     slate: 'bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-white/55',
     green: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
   }[accent];
-
-  // Clickable — each chip drills into the relevant view.
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all hover:brightness-95 hover:shadow-sm ${styles}`}
-    >
+  const className = `flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all hover:brightness-95 hover:shadow-sm ${styles}`;
+  const content = (
+    <>
       <span className="text-sm font-black">{value}</span>
       <span className="text-xs font-medium opacity-80">{label}</span>
-    </Link>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className} aria-label={`Show ${label.toLowerCase()}`}>
+        {content}
+      </button>
+    );
+  }
+
+  return <Link href={href || '#'} className={className}>{content}</Link>;
+}
+
+function SummaryTaskPopup({
+  title, subtitle, tasks, tone, onClose,
+}: { title: string; subtitle: string; tasks: TeamTask[]; tone: 'blue' | 'red'; onClose: () => void }) {
+  const sorted = [...tasks].sort((a, b) => {
+    const ad = a.ccTcd || a.dueDate;
+    const bd = b.ccTcd || b.dueDate;
+    return (ad ? new Date(ad).getTime() : Infinity) - (bd ? new Date(bd).getTime() : Infinity);
+  });
+  const icon = tone === 'red'
+    ? <AlertTriangle size={14} className="text-red-500" />
+    : <CheckCircle2 size={14} className="text-blue-500" />;
+
+  return (
+    <FullScreenOverlay title={title} icon={icon} onClose={onClose}>
+      <div className="px-5 pb-5">
+        <div className={`mb-3 rounded-xl border px-3 py-2.5 ${tone === 'red' ? 'border-red-100 bg-red-50 text-red-700' : 'border-blue-100 bg-blue-50 text-blue-700'}`}>
+          <div className="text-xs font-bold">{sorted.length} task{sorted.length === 1 ? '' : 's'}</div>
+          <div className="text-[11px] opacity-75 mt-0.5">{subtitle}</div>
+        </div>
+        {sorted.length === 0 ? (
+          <div className="py-12 text-center text-sm text-slate-400">Nothing to list here.</div>
+        ) : (
+          <ul className="divide-y divide-slate-100 dark:divide-white/[0.06] rounded-xl border border-slate-100 dark:border-white/[0.07] overflow-hidden">
+            {sorted.map((t) => {
+              const due = t.ccTcd || t.dueDate;
+              const dueIn = daysUntil(due);
+              const overdue = due && new Date(due) < new Date();
+              return (
+                <li key={t.id}>
+                  <Link href={`/tasks/${t.id}`} onClick={onClose}
+                    className={`block px-4 py-3 border-l-2 transition-colors ${overdue ? 'border-red-300 hover:bg-red-50/60' : 'border-blue-200 hover:bg-blue-50/60'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-bold text-slate-800 dark:text-white/80 line-clamp-1">{t.title}</div>
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-white/35 flex-wrap">
+                          <span className="font-semibold">{t.projectCode}</span>
+                          {t.assigneeName && <><span>·</span><span>{t.assigneeName}</span></>}
+                          {due && (
+                            <>
+                              <span>·</span>
+                              <span className={overdue ? 'text-red-600 font-semibold' : ''}>
+                                {dueIn === null ? formatDate(due) : dueIn < 0 ? `${Math.abs(dueIn)}d overdue` : dueIn === 0 ? 'today' : `in ${dueIn}d`}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${STATUS_COLORS[t.status] || 'bg-slate-100 text-slate-500'}`}>
+                        {STATUS_LABEL[t.status] || t.status}
+                      </span>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </FullScreenOverlay>
   );
 }
 
@@ -755,7 +834,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
             return (
               <li key={t.id}>
                 <Link href={`/tasks/${t.id}`}
-                  className="block px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group">
+                  className={`block px-4 py-2.5 transition-colors group border-l-2 ${overdue ? 'border-red-300 hover:bg-red-50/45 dark:hover:bg-red-500/[0.05]' : 'border-blue-200 hover:bg-blue-50/45 dark:hover:bg-blue-500/[0.05]'}`}>
                   <div className="flex items-start gap-2">
                     <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_COLORS[t.status] ? '' : 'bg-slate-300'}`}
                       style={{ background: t.status === 'in_progress' ? '#3B82F6' : t.status === 'review' ? '#8B5CF6' : t.status === 'blocked' ? '#EF4444' : '#94A3B8' }} />
@@ -798,9 +877,9 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/*  ACTIONS PANEL — right column top, due/overdue with filter chips           */
+/*  DUE CENTER PANEL — right column top, due/overdue with filter chips         */
 /* ────────────────────────────────────────────────────────────────────────── */
-function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
+function DueCenterPanel({ tasks }: { tasks: TeamTask[] }) {
   const [filter, setFilter] = useState<ActionFilter>('week');
   const [untilDate, setUntilDate] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -863,7 +942,7 @@ function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
         <div className="flex items-center gap-2 min-w-0">
           <TrendingUp size={14} className="text-slate-400 shrink-0" />
           <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 truncate">
-            Actions
+            Due Center
           </h2>
           <span className="text-[10px] text-slate-300 font-semibold shrink-0">{totalCount}</span>
         </div>
@@ -920,7 +999,7 @@ function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
           dotClass="bg-blue-400"
           tasks={due}
           showAll={expanded}
-          emptyHint={filter === 'untilDate' && !untilDate ? 'Pick a date to see upcoming actions.' : 'Nothing due — all clear.'}
+          emptyHint={filter === 'untilDate' && !untilDate ? 'Pick a date to see upcoming work.' : 'Nothing due — all clear.'}
         />
       </div>
     </section>
@@ -928,7 +1007,7 @@ function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
   );
 
   return expanded
-    ? <FullScreenOverlay title="Actions" icon={<TrendingUp size={14} className="text-blue-500" />}
+    ? <FullScreenOverlay title="Due Center" icon={<TrendingUp size={14} className="text-blue-500" />}
         onClose={() => setExpanded(false)}>{inner}</FullScreenOverlay>
     : inner;
 }
@@ -946,6 +1025,7 @@ function ActionGroup({
         <div className="flex items-center gap-1.5">
           {icon}
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/35">{title}</span>
+          {count > 0 && <span className="text-[9px] font-bold text-slate-300 dark:text-white/20">nearest first</span>}
         </div>
         <span className="text-[10px] font-bold text-slate-400 dark:text-white/25">{count}</span>
       </div>
@@ -962,7 +1042,7 @@ function ActionGroup({
             return (
               <li key={t.id}>
                 <Link href={`/tasks/${t.id}`}
-                  className="block px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group">
+                  className={`block px-4 py-2.5 transition-colors group border-l-2 ${isOverdue ? 'border-red-300 hover:bg-red-50/45 dark:hover:bg-red-500/[0.05]' : 'border-blue-200 hover:bg-blue-50/45 dark:hover:bg-blue-500/[0.05]'}`}>
                   <div className="flex items-start gap-2">
                     <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${dotClass}`} />
                     <div className="min-w-0 flex-1">

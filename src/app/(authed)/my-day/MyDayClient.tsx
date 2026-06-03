@@ -5,7 +5,7 @@ import { api } from '@/lib/client/api';
 import { useIsLead } from '@/components/CurrentUserContext';
 import {
   Plus, Check, Trash2, ArrowRight, X, Sparkles, Calendar, Zap,
-  ChevronDown, ChevronUp, Target, BookmarkCheck,
+  ChevronDown, ChevronUp, Target, BookmarkCheck, Shield, BrainCircuit, Bird, PenLine,
 } from 'lucide-react';
 import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
@@ -216,7 +216,7 @@ export default function MyDayClient({ initialData }: {
           <input
             ref={inputRef}
             className="flex-1 bg-transparent text-sm text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25 border-0 outline-none py-1.5 min-w-0"
-            placeholder="What's on your mind? Press Enter to add…"
+            placeholder="Empty your mind here — press Enter to capture…"
             value={text}
             onChange={(e) => setText(e.target.value)}
             autoFocus
@@ -230,6 +230,26 @@ export default function MyDayClient({ initialData }: {
           )}
         </div>
       </form>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-5">
+        {[
+          { icon: PenLine, title: 'Scribble board', body: 'Freeform whiteboard for rough thoughts.' },
+          { icon: BrainCircuit, title: 'Mind map', body: 'Branch ideas before turning them into tasks.' },
+          { icon: Bird, title: "Bird's-eye view", body: 'Coming next: project/team map of work → owners.' },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <button key={item.title} type="button" disabled
+              className="text-left rounded-xl border border-dashed border-slate-200 dark:border-white/[0.08] bg-white/55 dark:bg-white/[0.025] px-3 py-2.5 opacity-80">
+              <div className="flex items-center gap-2 mb-1">
+                <Icon size={13} className="text-blue-500" />
+                <span className="text-[11px] font-black text-slate-600 dark:text-white/55">{item.title}</span>
+              </div>
+              <p className="text-[10px] leading-snug text-slate-400 dark:text-white/30">{item.body}</p>
+            </button>
+          );
+        })}
+      </div>
 
       {/* ── Empty state ──────────────────────────────────────────────── */}
       {open.length === 0 && done.length === 0 && (
@@ -402,6 +422,7 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
   const [priority,    setPriority]  = useState('medium');
   const [assigneeId,  setAssignee]  = useState('');
   const [due,         setDue]       = useState('');
+  const [privateToMe, setPrivateToMe] = useState(false);
   const [loadingMeta, setLoadingMeta] = useState(false);
   const [saving,      setSaving]    = useState(false);
   const [err,         setErr]       = useState('');
@@ -417,20 +438,21 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
     setPhaseId(''); setAssignee('');
     const proj = projects.find((p) => p.id === projectId);
     setPhases((proj?.phases || []).map((ph: any) => ({ id: ph.id, name: ph.name })));
+    if (privateToMe) { setMembers([]); setLoadingMeta(false); return; }
     setLoadingMeta(true);
     api<any[]>(`/users${proj?.teamId ? `?teamId=${proj.teamId}` : ''}`)
       .then((r) => setMembers(r))
       .catch(() => setMembers([]))
       .finally(() => setLoadingMeta(false));
-  }, [projectId, projects]);
+  }, [projectId, projects, privateToMe]);
 
   async function go() {
     if (!projectId) { setErr('Pick a project.'); return; }
     setSaving(true); setErr('');
     try {
-      const body: any = { projectId, title: note.text, priority };
+      const body: any = { projectId, title: note.text, priority, privateToMe };
       if (phaseId)    body.phaseId    = phaseId;
-      if (assigneeId) body.assigneeId = assigneeId;
+      if (!privateToMe && assigneeId) body.assigneeId = assigneeId;
       if (due)        body.dueDate    = due;
       const task = await api<{ id: string }>('/tasks', { method: 'POST', body });
       await api(`/scratch/${note.id}`, { method: 'PATCH', body: { done: true, promotedTaskId: task.id } });
@@ -460,7 +482,7 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
                 </div>
                 <span className="text-base font-bold text-slate-900 dark:text-white/90">Add to project</span>
               </div>
-              <p className="text-xs text-slate-400 dark:text-white/35 ml-8">This note becomes a tracked task.</p>
+              <p className="text-xs text-slate-400 dark:text-white/35 ml-8">Turn this thought into project work — or keep it private to you.</p>
             </div>
             <button onClick={onClose}
               className="text-slate-300 dark:text-white/25 hover:text-slate-500 dark:hover:text-white/50 transition-colors p-0.5 rounded">
@@ -483,6 +505,25 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
             />
           </div>
 
+          <button
+            type="button"
+            onClick={() => setPrivateToMe((v) => !v)}
+            className={`w-full mb-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${privateToMe ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 dark:bg-white/[0.03]'}`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Shield size={14} className={privateToMe ? 'text-emerald-600' : 'text-slate-400'} />
+                <div>
+                  <div className="text-xs font-black">Track this task as private</div>
+                  <div className="text-[10px] opacity-70 mt-0.5">Visible only to you, while linked to the selected project.</div>
+                </div>
+              </div>
+              <span className={`w-9 h-5 rounded-full p-0.5 transition-colors ${privateToMe ? 'bg-emerald-500' : 'bg-slate-200'}`}>
+                <span className={`block w-4 h-4 rounded-full bg-white transition-transform ${privateToMe ? 'translate-x-4' : ''}`} />
+              </span>
+            </div>
+          </button>
+
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className="label">Phase</label>
@@ -496,7 +537,7 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
                 ]}
               />
             </div>
-            <div>
+            <div className={privateToMe ? 'hidden' : ''}>
               <label className="label">Priority</label>
               <Select
                 value={priority} onChange={setPriority} ariaLabel="Priority"
@@ -510,8 +551,8 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div>
+          <div className={`grid gap-3 mb-4 ${privateToMe ? 'grid-cols-1' : 'grid-cols-2'}`}> 
+            <div className={privateToMe ? 'hidden' : ''}>
               <label className="label">Assign to</label>
               <Select
                 value={assigneeId} onChange={setAssignee} ariaLabel="Assign to"

@@ -100,6 +100,10 @@ const TaskSchema = new Schema(
     subtasks: { type: [SubtaskSchema], default: [] },
     comments: { type: [CommentSchema], default: [] },
     effortLog: { type: [EffortEntrySchema], default: [] },
+    // Private task overlay: a user can track a personal follow-up against a
+    // shared project without exposing it to the team board. Only this user sees
+    // it in project/task/day surfaces.
+    privateToUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     lastActivityAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
@@ -107,6 +111,10 @@ const TaskSchema = new Schema(
 
 TaskSchema.index({ assigneeId: 1 });
 TaskSchema.index({ projectId: 1 });
+TaskSchema.index({ projectId: 1, position: 1, createdAt: 1 });
+TaskSchema.index({ projectId: 1, status: 1 });
+TaskSchema.index({ projectId: 1, privateToUserId: 1 });
+TaskSchema.index({ privateToUserId: 1, status: 1, dueDate: 1 });
 TaskSchema.index({ status: 1 });
 TaskSchema.index({ dueDate: 1 });
 // Compound indices that match the lead-dashboard aggregations directly —
