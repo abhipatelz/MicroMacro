@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { useIsAdmin } from '@/components/CurrentUserContext';
-import { ScrollText, RefreshCw, Sparkles, Search, ChevronRight, X } from 'lucide-react';
+import { ScrollText, RefreshCw, Sparkles, Search, ChevronRight, X, ShieldCheck } from 'lucide-react';
 
 interface LogRow {
   id: string;
@@ -141,6 +141,10 @@ export default function AuditClient({ initialRows, initialNextBefore = null }: {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/audit/alcoa"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 px-2.5 py-1.5 rounded-lg transition-colors">
+            <ShieldCheck size={13} /> ALCOA+ coverage
+          </Link>
           <Link href="/audit/changelog"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 px-2.5 py-1.5 rounded-lg transition-colors">
             <Sparkles size={13} /> Changelog
