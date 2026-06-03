@@ -69,6 +69,8 @@ const ProjectSchema = new Schema(
 ProjectSchema.index({ teamId: 1 });
 ProjectSchema.index({ status: 1 });
 ProjectSchema.index({ archived: 1 });
+ProjectSchema.index({ ownerId: 1 });
+ProjectSchema.index({ teamId: 1, archived: 1, status: 1 });
 
 export type ProjectDoc = InferSchemaType<typeof ProjectSchema> & { _id: mongoose.Types.ObjectId };
 

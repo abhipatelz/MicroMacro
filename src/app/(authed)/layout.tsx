@@ -3,37 +3,28 @@ import { redirect } from 'next/navigation';
 import { getCurrentUserFromCookie, normalizeRole } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { Notification } from '@/models/Notification';
 import AppShell from '@/components/AppShell';
 
 export default async function AuthedLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUserFromCookie();
   if (!user) redirect('/login');
 
-  // The JWT doesn't carry monogram-avatar fields (they're mutable, the JWT is
-  // signed), so pull them off the User document for SSR. Keeps the avatar in
-  // the sidebar in sync with the editor without a client-side refetch.
+  // Fetch only the current user's own avatar/settings — the workspace avatar
+  // registry and notification count are fetched client-side by their respective
+  // components (AvatarRegistry, NotificationBell) and don't need to block SSR.
   await connectDB();
-  const [dbUser, avatarRows, initialUnread] = await Promise.all([
-    User.findById(user.sub)
-      .select('avatarLetter avatarBg avatarFont soundDropEnabled hasSeenTour')
-      .lean(),
-    // Every customised avatar in the workspace, so the registry is fully
-    // populated on the first SSR paint — no flash as other users' monograms
-    // resolve. Only rows with a custom background count as customised, so the
-    // payload stays tiny.
-    User.find({ avatarBg: { $nin: [null, ''] } }, '_id avatarLetter avatarBg avatarFont').lean(),
-    // Unread notification count, seeded into the bell so the badge is right on
-    // first paint instead of popping in after the first client poll.
-    Notification.countDocuments({ userId: user.sub, read: false }),
-  ]);
+  const dbUser = await User.findById(user.sub)
+    .select('avatarLetter avatarBg avatarFont soundDropEnabled hasSeenTour')
+    .lean();
 
+  // Seed only the current user's own avatar so the sidebar self-portrait is
+  // correct on first paint. Other users' avatars stream in client-side.
   const initialAvatars: Record<string, { letter: string; bg: string; font: number }> = {};
-  for (const r of avatarRows as any[]) {
-    initialAvatars[String(r._id)] = {
-      letter: r.avatarLetter || '',
-      bg:     r.avatarBg || '',
-      font:   typeof r.avatarFont === 'number' ? r.avatarFont : 0,
+  if ((dbUser as any)?.avatarBg) {
+    initialAvatars[user.sub] = {
+      letter: (dbUser as any).avatarLetter || '',
+      bg:     (dbUser as any).avatarBg     || '',
+      font:   typeof (dbUser as any).avatarFont === 'number' ? (dbUser as any).avatarFont : 0,
     };
   }
 
@@ -68,7 +59,6 @@ export default async function AuthedLayout({ children }: { children: React.React
       initialDark={initialDark}
       initialSidebarCollapsed={initialSidebarCollapsed}
       initialAvatars={initialAvatars}
-      initialUnread={initialUnread}
     >
       {children}
     </AppShell>

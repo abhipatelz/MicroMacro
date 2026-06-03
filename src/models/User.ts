@@ -153,6 +153,7 @@ const UserSchema = new Schema(
 // unique indexes from their field definitions above.
 UserSchema.index({ role: 1 });
 UserSchema.index({ active: 1 });
+UserSchema.index({ avatarBg: 1 });
 
 export type UserDoc = InferSchemaType<typeof UserSchema> & { _id: mongoose.Types.ObjectId };
 
