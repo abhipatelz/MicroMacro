@@ -243,12 +243,12 @@ export default function LoginPage() {
           50%      { transform: translateY(-8px); }
         }
         @keyframes fade-up {
-          from { opacity: 0; transform: translateY(14px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
         @keyframes fade-in-soft {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
         @keyframes shimmer-line {
           0%   { transform: translateX(-100%); }
@@ -265,12 +265,12 @@ export default function LoginPage() {
           100% { transform: scale(1.55); opacity: 0; }
         }
         .logo-float    { animation: logo-float 5.5s ease-in-out infinite; }
-        .fade-up       { animation: fade-up 0.55s ease-out forwards; }
-        .fade-up-1     { animation: fade-up 0.55s 0.10s ease-out both; }
-        .fade-up-2     { animation: fade-up 0.55s 0.20s ease-out both; }
-        .fade-up-3     { animation: fade-up 0.55s 0.32s ease-out both; }
-        .fade-in-soft  { animation: fade-in-soft 0.35s ease-out both; }
-        .form-swap     { animation: fade-in-soft 0.32s ease-out both; }
+        .fade-up       { animation: fade-up 0.25s ease-out forwards; }
+        .fade-up-1     { animation: fade-up 0.25s ease-out both; }
+        .fade-up-2     { animation: fade-up 0.25s 0.05s ease-out both; }
+        .fade-up-3     { animation: fade-up 0.25s 0.10s ease-out both; }
+        .fade-in-soft  { animation: fade-in-soft 0.2s ease-out both; }
+        .form-swap     { animation: fade-in-soft 0.2s ease-out both; }
         .shimmer-line::after {
           content: '';
           position: absolute; inset: 0;
@@ -313,18 +313,15 @@ export default function LoginPage() {
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <div className="absolute aurora-1" style={{
               top: '-10%', left: '8%', width: 560, height: 560, borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(30,136,229,0.40) 0%, transparent 60%)',
-              filter: 'blur(28px)',
+              background: 'radial-gradient(circle, rgba(30,136,229,0.28) 0%, rgba(30,136,229,0.08) 45%, transparent 70%)',
             }} />
             <div className="absolute aurora-2" style={{
               top: '28%', right: '-12%', width: 480, height: 480, borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(46,125,50,0.32) 0%, transparent 62%)',
-              filter: 'blur(30px)',
+              background: 'radial-gradient(circle, rgba(46,125,50,0.22) 0%, rgba(46,125,50,0.06) 45%, transparent 70%)',
             }} />
             <div className="absolute aurora-3" style={{
               bottom: '-16%', left: '30%', width: 520, height: 520, borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 64%)',
-              filter: 'blur(34px)',
+              background: 'radial-gradient(circle, rgba(124,58,237,0.16) 0%, rgba(124,58,237,0.04) 45%, transparent 70%)',
             }} />
           </div>
 

@@ -1,11 +1,11 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { RoleBadge } from '@/components/ui';
 import { UserAvatar } from '@/components/AvatarRegistry';
 import { ActivityGraph } from '@/components/ActivityGraph';
-import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2, BarChart3, Search, UserX, RotateCcw, ScrollText } from 'lucide-react';
+import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2, BarChart3, Search, UserX, RotateCcw, ScrollText, CheckSquare, Square, MinusSquare } from 'lucide-react';
 
 /* ── Activity peek modal — team leaders click a teammate to see how they're
    tracking: contribution graph, streak and badges (read-only, no private
@@ -682,14 +682,80 @@ function DeactivateDialog({ user, onConfirm, onCancel, saving }: {
   );
 }
 
+/* ── Bulk action dialog ───────────────────────────────────────────────────
+   Multi-select deactivate / role-change. One e-signature (admin password +
+   justification) authorises the whole batch — 21 CFR Part 11 §11.200 — and the
+   server writes an individual audit row per affected user. Mirrors the single
+   user flow's sign-off requirement so bulk never becomes a compliance bypass. */
+type BulkAction = 'deactivate' | 'make_contributor' | 'promote_lead';
+const BULK_META: Record<BulkAction, { verb: string; tone: string; bg: string; note: string }> = {
+  deactivate:       { verb: 'Deactivate', tone: 'text-amber-700', bg: 'linear-gradient(135deg,#b45309,#d97706)', note: 'They lose access immediately but their accounts and task history are preserved. Reactivate any time.' },
+  make_contributor: { verb: 'Make contributor', tone: 'text-slate-700', bg: 'linear-gradient(135deg,#475569,#64748b)', note: 'Leads in the selection drop to contributor access. Their work stays intact.' },
+  promote_lead:     { verb: 'Promote to lead', tone: 'text-blue-700', bg: 'linear-gradient(135deg,#1d4ed8,#3b82f6)', note: 'Contributors in the selection gain lead access — create teams, allocate projects, assign tasks.' },
+};
+
+function BulkActionDialog({ action, count, onConfirm, onCancel, saving }: {
+  action: BulkAction; count: number;
+  onConfirm: (data: { password: string; reason: string }) => void;
+  onCancel: () => void; saving: boolean;
+}) {
+  const [reason, setReason] = useState('');
+  const [password, setPassword] = useState('');
+  const m = BULK_META[action];
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={onCancel}>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[440px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-col gap-4">
+          <div>
+            <div className="text-base font-black text-slate-900 tracking-tight">
+              {m.verb} {count} {count === 1 ? 'person' : 'people'}?
+            </div>
+            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">{m.note}</p>
+          </div>
+          <div>
+            <label className="label">Reason <span className="text-slate-300 font-normal normal-case">(audit trail · applied to each record)</span></label>
+            <textarea
+              className="textarea text-sm" rows={2}
+              placeholder="e.g. Quarterly access review · team restructure · offboarding cohort"
+              value={reason} onChange={(e) => setReason(e.target.value)} autoFocus
+            />
+          </div>
+          <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-1.5">Sign-off</div>
+            <label className="label">Your password</label>
+            <input type="password" className="input" autoComplete="current-password"
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="Confirm with your password" />
+          </div>
+          <div className="flex gap-2 w-full">
+            <button onClick={onCancel} className="btn-secondary flex-1 justify-center">Cancel</button>
+            <button
+              onClick={() => onConfirm({ password, reason: reason.trim() })}
+              disabled={saving || reason.trim().length < 4 || !password}
+              className="flex-1 justify-center btn text-white"
+              style={{ background: m.bg }}>
+              {saving ? 'Applying…' : `Sign & apply`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main page ────────────────────────────────────────────────────────── */
 interface PeopleClientProps {
   initialUsers: any[];
+  /** Total active contributors in the workspace (for "load more" + counts). */
+  contribTotal?: number;
+  /** Page size the server used for the first contributor batch. */
+  contribPage?: number;
   me:           any;
 }
 
-export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
+export default function PeopleClient({ initialUsers, contribTotal = 0, contribPage = 150, me }: PeopleClientProps) {
   const [users, setUsers] = useState<any[]>(initialUsers);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -708,7 +774,17 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
   // server-provided list (which includes deactivated accounts), so no fetch
   // fires on mount. The refetch must also ask for inactive accounts —
   // /api/users hides them by default so they never leak into assignee lists.
-  function load() { api<any[]>('/users?includeInactive=1').then(setUsers).catch(() => {}); }
+  // When a search is active we refetch that query so the view stays consistent
+  // with what the admin is looking at; otherwise we pull the full set.
+  function load() {
+    const sp = new URLSearchParams({ includeInactive: '1' });
+    const term = queryRef.current.trim();
+    if (term) sp.set('q', term);
+    api<any[]>(`/users?${sp.toString()}`).then(setUsers).catch(() => {});
+  }
+  // Mirror the live query into a ref so load() (called from many handlers) can
+  // read it without being recreated on every keystroke.
+  const queryRef = useRef('');
 
   async function confirmRoleChange(signoff: { password: string; reason: string }) {
     if (!roleConfirm) return;
@@ -840,6 +916,79 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
     (u.email || '').toLowerCase().includes(q) ||
     (u.employeeId || '').toLowerCase().includes(q);
 
+  // ── Server-backed search & pagination ───────────────────────────────────
+  // The first paint only carries one page of contributors. So that an admin
+  // can still find ANYONE in a large workspace, a non-empty query hits the
+  // server (regex across name/username/email/employeeId/title/dept/org), which
+  // returns every match regardless of what's been paged in. Clearing the box
+  // restores the original bounded first page (kept in a ref) — no unbounded
+  // "fetch everyone" ever fires from typing.
+  const initialRef = useRef<any[]>(initialUsers);
+  useEffect(() => { queryRef.current = query; }, [query]);
+  useEffect(() => {
+    const term = query.trim();
+    if (!term) { setUsers(initialRef.current); return; }
+    const t = setTimeout(() => {
+      api<any[]>(`/users?includeInactive=1&q=${encodeURIComponent(term)}`)
+        .then(setUsers).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  async function loadMoreContributors() {
+    const loaded = users.filter((u) => u.active !== false && u.role === 'contributor').length;
+    setLoadingMore(true);
+    try {
+      const res = await api<{ items: any[] }>(`/users?role=contributor&limit=${contribPage}&offset=${loaded}`);
+      const incoming = res.items || [];
+      setUsers((prev) => {
+        const seen = new Set(prev.map((u) => u.id));
+        return [...prev, ...incoming.filter((u) => !seen.has(u.id))];
+      });
+    } catch { /* keep what we have */ }
+    finally { setLoadingMore(false); }
+  }
+
+  // ── Bulk selection (contributors) ───────────────────────────────────────
+  // Multi-select on the contributor list drives one signed batch action. We
+  // track a Set of ids; the bulk bar appears when ≥1 is selected. Selecting is
+  // scoped to contributors — the regulated bulk gestures (deactivate, role
+  // change) only make sense there, and the admin/own row stay out of it.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<BulkAction | null>(null);
+  const [bulkSaving, setBulkSaving] = useState(false);
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function clearSelection() { setSelected(new Set()); }
+
+  async function confirmBulk(data: { password: string; reason: string }) {
+    if (!bulkAction) return;
+    setBulkSaving(true);
+    setRoleErr('');
+    try {
+      const res = await api<{ updatedCount: number; skippedCount: number }>(
+        '/admin/users/bulk-action',
+        { method: 'POST', body: { userIds: Array.from(selected), action: bulkAction, ...data } },
+      );
+      setBulkAction(null);
+      clearSelection();
+      const n = res.updatedCount;
+      setJustAdded(`${n} ${n === 1 ? 'account' : 'accounts'} updated${res.skippedCount ? ` · ${res.skippedCount} skipped` : ''}`);
+      setTimeout(() => setJustAdded(null), 4000);
+      await load();
+    } catch (e: any) {
+      setRoleErr(e.message || 'Bulk action failed.');
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
   // Active accounts drive the Leads/Contributors sections; deactivated
   // accounts move to their own record section at the bottom.
   const liveUsers = users.filter((u) => u.active !== false);
@@ -849,10 +998,12 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
   const isLeadOrAdmin = (me?.role === 'lead' || me?.role === 'admin');
   const isAdmin = me?.role === 'admin';
 
-  // Workspace-wide totals (unfiltered) for the summary strip.
-  const totalPeople  = liveUsers.length;
+  // Workspace-wide totals (unfiltered) for the summary strip. Leads and
+  // deactivated accounts are always loaded in full, so their counts are exact;
+  // contributors use the server-wide total (the list itself may be paged).
   const leadCount    = liveUsers.filter((u) => u.role === 'lead' || u.role === 'admin').length;
-  const icCount      = liveUsers.filter((u) => u.role === 'contributor').length;
+  const icCount      = contribTotal || liveUsers.filter((u) => u.role === 'contributor').length;
+  const totalPeople  = leadCount + icCount;
   const deactivatedCount = users.filter((u) => u.active === false).length;
 
   return (
@@ -896,6 +1047,15 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
           onConfirm={confirmRoleChange}
           onCancel={() => { setRoleConfirm(null); setRoleErr(''); }}
           saving={saving === roleConfirm.user.id}
+        />
+      )}
+      {bulkAction && (
+        <BulkActionDialog
+          action={bulkAction}
+          count={selected.size}
+          onConfirm={confirmBulk}
+          onCancel={() => setBulkAction(null)}
+          saving={bulkSaving}
         />
       )}
 
@@ -955,7 +1115,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         <Search size={14} className="absolute top-1/2 -translate-y-1/2 left-3 text-slate-400" />
         <input
           className="input pl-9"
-          placeholder="Search by name, username or member ID…"
+          placeholder="Search the whole workspace — name, username, email, member ID…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -1061,10 +1221,53 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
       {/* IC section */}
       <div className="card overflow-hidden">
         <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
+          {ics.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const ids = ics.map((u) => u.id);
+                const allOn = ids.length > 0 && ids.every((id) => selected.has(id));
+                setSelected((prev) => {
+                  const next = new Set(prev);
+                  if (allOn) ids.forEach((id) => next.delete(id));
+                  else ids.forEach((id) => next.add(id));
+                  return next;
+                });
+              }}
+              className="text-slate-400 hover:text-blue-600 transition-colors"
+              title="Select all shown contributors">
+              {ics.length > 0 && ics.every((u) => selected.has(u.id))
+                ? <CheckSquare size={15} className="text-blue-600" />
+                : ics.some((u) => selected.has(u.id))
+                  ? <MinusSquare size={15} className="text-blue-500" />
+                  : <Square size={15} />}
+            </button>
+          )}
           <User size={14} className="text-slate-400" />
           <h2 className="text-sm font-bold text-slate-700">Contributors</h2>
-          <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 ml-1">{ics.length}</span>
+          <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 ml-1">{q ? ics.length : (contribTotal || ics.length)}</span>
         </div>
+
+        {/* Bulk action bar — appears when ≥1 contributor is selected. Every
+            action routes through a signed batch (password + reason). */}
+        {selected.size > 0 && (
+          <div className="px-5 py-2.5 border-b border-blue-100 bg-blue-50/70 flex items-center gap-2 flex-wrap fade-in-soft">
+            <span className="text-xs font-bold text-blue-800">{selected.size} selected</span>
+            <button onClick={clearSelection}
+              className="text-xs text-slate-500 hover:text-slate-700 font-semibold px-2 py-1 rounded-lg hover:bg-white/60 transition-colors">
+              Clear
+            </button>
+            <div className="flex-1" />
+            <button onClick={() => setBulkAction('promote_lead')}
+              className="text-xs text-blue-700 hover:text-blue-900 font-semibold px-2.5 py-1.5 rounded-lg bg-white border border-blue-200 hover:bg-blue-50 transition-colors inline-flex items-center gap-1.5">
+              <Shield size={12} /> Promote to lead
+            </button>
+            <button onClick={() => setBulkAction('deactivate')}
+              className="text-xs text-amber-700 hover:text-amber-900 font-semibold px-2.5 py-1.5 rounded-lg bg-white border border-amber-200 hover:bg-amber-50 transition-colors inline-flex items-center gap-1.5">
+              <UserX size={12} /> Deactivate
+            </button>
+          </div>
+        )}
         {ics.length === 0 ? (
           <div className="px-5 py-5 text-sm text-slate-400">
             {q ? 'No contributors match your search.' : (
@@ -1077,7 +1280,14 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
         ) : (
           <div className="divide-y divide-slate-50">
             {ics.map((u) => (
-              <div key={u.id} className="flex items-center flex-wrap gap-x-3 gap-y-2 px-5 py-4">
+              <div key={u.id} className={`group flex items-center flex-wrap gap-x-3 gap-y-2 px-5 py-4 transition-colors ${selected.has(u.id) ? 'bg-blue-50/50' : ''}`}>
+                <button
+                  type="button"
+                  onClick={() => toggleSelect(u.id)}
+                  className={`shrink-0 transition-all ${selected.has(u.id) ? 'text-blue-600 opacity-100' : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-blue-500'}`}
+                  title={selected.has(u.id) ? 'Deselect' : 'Select for bulk action'}>
+                  {selected.has(u.id) ? <CheckSquare size={16} /> : <Square size={16} />}
+                </button>
                 <button
                   type="button"
                   onClick={() => isLeadOrAdmin && setActivityUser(u)}
@@ -1101,7 +1311,7 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   </span>
                 )}
                 <button
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all"
                   onClick={() => setEditUser(u)} title="Edit profile">
                   <Pencil size={13} />
                 </button>
@@ -1128,19 +1338,31 @@ export default function PeopleClient({ initialUsers, me }: PeopleClientProps) {
                   Promote to Lead
                 </button>
                 <button
-                  className="p-1.5 rounded-lg text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-300 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all"
                   onClick={() => setDeactivateTarget(u)}
                   disabled={saving === u.id}
                   title="Deactivate account (keeps the record)">
                   <UserX size={14} />
                 </button>
                 <button
-                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
                   onClick={() => setRemoveConfirm(u)} title="Permanently remove (deletes the record)">
                   <Trash2 size={13} />
                 </button>
               </div>
             ))}
+            {/* Load more — only meaningful when browsing (not searching), and
+               only while fewer contributors are loaded than the workspace has. */}
+            {!q && ics.length < contribTotal && (
+              <div className="px-5 py-3 text-center">
+                <button
+                  onClick={loadMoreContributors}
+                  disabled={loadingMore}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 disabled:opacity-50 inline-flex items-center gap-1.5">
+                  {loadingMore ? 'Loading…' : `Load more · showing ${ics.length} of ${contribTotal}`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

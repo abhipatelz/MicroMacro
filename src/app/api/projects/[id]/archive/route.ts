@@ -6,6 +6,7 @@ import { Project } from '@/models/Project';
 import { requireRole } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { project as projectS } from '@/lib/serialize';
+import { logOperation } from '@/lib/audit';
 
 export const runtime = 'nodejs';
 
@@ -43,6 +44,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { new: true },
     );
     if (!updated) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+
+    // Archiving changes who sees the record (and its tasks) — a visibility
+    // decision that belongs in the audit trail (ALCOA+ Enduring / Available).
+    await logOperation({
+      action: archived ? 'project.archive' : 'project.unarchive', category: 'project', actor: user,
+      targetType: 'project', targetId: params.id, targetLabel: (updated as any).name || '',
+      summary: `${archived ? 'Archived' : 'Unarchived'} project "${(updated as any).name || ''}"`,
+      meta: { archived, code: (updated as any).code || '' },
+    });
 
     return NextResponse.json({ ok: true, project: projectS(updated) });
   } catch (e) {

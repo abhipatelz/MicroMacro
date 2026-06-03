@@ -312,12 +312,12 @@ function FullScreenOverlay({
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-center p-3 sm:p-8 overflow-auto"
       onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-4xl my-2 shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl z-10">
+      <div className="bg-white dark:bg-[#262624] rounded-2xl w-full max-w-4xl my-2 shadow-2xl dark:border dark:border-white/[0.08]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.07] sticky top-0 bg-white dark:bg-[#262624] rounded-t-2xl z-10">
           {icon}
-          <h3 className="text-sm font-bold text-slate-800">{title}</h3>
+          <h3 className="text-sm font-bold text-slate-800 dark:text-white/85">{title}</h3>
           <button onClick={onClose} title="Close"
-            className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+            className="ml-auto p-1.5 rounded-lg text-slate-400 dark:text-white/35 hover:text-slate-700 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -342,10 +342,10 @@ function SummaryChip({
   label, value, accent, href,
 }: { label: string; value: number; accent: 'blue' | 'red' | 'slate' | 'green'; href: string }) {
   const styles = {
-    blue:  'bg-blue-50  text-blue-700',
-    red:   'bg-red-50   text-red-600',
-    slate: 'bg-slate-100 text-slate-700',
-    green: 'bg-emerald-50 text-emerald-700',
+    blue:  'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+    red:   'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
+    slate: 'bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-white/55',
+    green: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
   }[accent];
 
   // Clickable — each chip drills into the relevant view.
@@ -392,16 +392,16 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
     },
   ];
   const tints: Record<'blue' | 'teal' | 'green', string> = {
-    blue:  'bg-blue-50 text-blue-600',
-    teal:  'bg-teal-50 text-teal-600',
-    green: 'bg-emerald-50 text-emerald-600',
+    blue:  'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    teal:  'bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400',
+    green: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   };
 
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles size={14} className="text-blue-500" />
-        <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+        <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
           Let’s get you set up
         </h2>
       </div>
@@ -412,7 +412,7 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
             <Link
               key={s.href}
               href={s.href}
-              className="fluid-card group bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col"
+              className="fluid-card group bg-white dark:bg-[#2a2a28] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] p-5 flex flex-col"
               style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
             >
               <div className="flex items-center justify-between mb-3">
@@ -422,21 +422,21 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
                 {s.done ? (
                   <CheckCircle2 size={18} className="text-emerald-500" />
                 ) : (
-                  <span className="text-[11px] font-bold text-slate-300">STEP {i + 1}</span>
+                  <span className="text-[11px] font-bold text-slate-300 dark:text-white/20">STEP {i + 1}</span>
                 )}
               </div>
-              <div className="font-bold text-slate-800 text-sm mb-1 flex items-center gap-1">
+              <div className="font-bold text-slate-800 dark:text-white/80 text-sm mb-1 flex items-center gap-1">
                 {s.title}
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed flex-1">{s.body}</p>
-              <div className="mt-3 text-xs font-semibold text-blue-600 inline-flex items-center gap-1 group-hover:gap-1.5 transition-all">
+              <p className="text-xs text-slate-500 dark:text-white/40 leading-relaxed flex-1">{s.body}</p>
+              <div className="mt-3 text-xs font-semibold text-blue-600 dark:text-blue-400 inline-flex items-center gap-1 group-hover:gap-1.5 transition-all">
                 {s.done ? 'Review' : 'Start'} <ArrowRight size={13} />
               </div>
             </Link>
           );
         })}
       </div>
-      <p className="text-xs text-slate-400 mt-3 text-center">
+      <p className="text-xs text-slate-400 dark:text-white/25 mt-3 text-center">
         Your dashboard fills in automatically as you create projects and assign tasks.
       </p>
     </div>
@@ -466,11 +466,11 @@ function ProjectsColumn({
       </div>
 
       {projects.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200/80 text-center py-12 px-6"
+        <div className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] text-center py-12 px-6"
           style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-          <FolderKanban size={26} className="mx-auto text-slate-300 mb-3" />
-          <div className="text-sm font-semibold text-slate-600 mb-1">No ongoing projects</div>
-          <div className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+          <FolderKanban size={26} className="mx-auto text-slate-300 dark:text-white/20 mb-3" />
+          <div className="text-sm font-semibold text-slate-600 dark:text-white/55 mb-1">No ongoing projects</div>
+          <div className="text-xs text-slate-400 dark:text-white/30 max-w-xs mx-auto leading-relaxed">
             {isLead
               ? 'Spin up a project to start tracking work — it will show up here with all its tasks.'
               : "Once a lead assigns you to a team and a project, it will show up here with the tasks you're on."}
@@ -522,7 +522,7 @@ function DashboardTaskFlow({ tasks }: { tasks: TeamTask[] }) {
       {/* Header — tasks render by target date so the nearest deadline is on top
           and how far along the project is reads at a glance. */}
       <li aria-hidden className="px-3 pt-2 pb-1 flex items-center gap-2">
-        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/25">
           By target date · {doneCount}/{sorted.length} done
         </span>
         <span className="flex-1 h-px bg-slate-100 dark:bg-white/5" />
@@ -533,7 +533,7 @@ function DashboardTaskFlow({ tasks }: { tasks: TeamTask[] }) {
         return (
           <li
             key={t.id}
-            className="relative flex items-center gap-3 px-3 py-2 transition-colors hover:bg-slate-50/60"
+            className="relative flex items-center gap-3 px-3 py-2 transition-colors hover:bg-slate-50/60 dark:hover:bg-white/[0.03]"
           >
             <span className="shrink-0 w-1.5" />
 
@@ -547,10 +547,10 @@ function DashboardTaskFlow({ tasks }: { tasks: TeamTask[] }) {
 
             <Link
               href={`/tasks/${t.id}`}
-              className={`flex-1 min-w-0 text-xs leading-snug ${isDone ? 'text-slate-400' : 'text-slate-800 hover:text-blue-700'}`}
+              className={`flex-1 min-w-0 text-xs leading-snug ${isDone ? 'text-slate-400 dark:text-white/25' : 'text-slate-800 dark:text-white/75 hover:text-blue-700 dark:hover:text-blue-400'}`}
             >
-              <span className={`line-clamp-1 font-semibold ${isDone ? 'line-through decoration-slate-300' : ''}`}>{t.title}</span>
-              <span className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-400">
+              <span className={`line-clamp-1 font-semibold ${isDone ? 'line-through decoration-slate-300 dark:decoration-white/20' : ''}`}>{t.title}</span>
+              <span className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-400 dark:text-white/30">
                 <span className="truncate">{t.assigneeName || 'Unassigned'}</span>
                 {(t.ccTcd || t.dueDate) && <span>· {formatDate(t.ccTcd || t.dueDate)}</span>}
               </span>
@@ -559,7 +559,7 @@ function DashboardTaskFlow({ tasks }: { tasks: TeamTask[] }) {
         );
       })}
       {sorted.length > 20 && (
-        <li className="px-3 py-2 text-[10px] text-slate-400">
+        <li className="px-3 py-2 text-[10px] text-slate-400 dark:text-white/30">
           Showing 20 of {sorted.length} tasks — open the project for the full board.
         </li>
       )}
@@ -592,94 +592,64 @@ function ProjectRow({
   const dueUrgent = dueIn !== null && (dueIn < 0 || dueIn === 0);
 
   return (
-    <article className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden transition-all hover:border-slate-300/80"
+    <article className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden transition-all"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
       {/* Collapsed-state header — two readable rows, never a 5-piece chip strip.
           Row 1: title + identity badges (code, lifecycle, health). Row 2: the
           essential metrics — progress, tasks-done, due, owner. */}
       <header
         onClick={() => setOpen(o => !o)}
-        className="px-4 py-3 cursor-pointer hover:bg-slate-50/40 transition-colors select-none"
+        className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors select-none"
       >
-        <div className="flex items-start gap-2.5">
-          <button
-            aria-label={open ? 'Collapse project' : 'Expand project'}
-            className="mt-0.5 p-0.5 text-slate-300 hover:text-slate-500 transition-transform shrink-0"
-            style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-          >
-            <ChevronDown size={14} />
-          </button>
+        <button className="p-0.5 text-slate-400 dark:text-white/30 transition-transform" style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
+          <ChevronDown size={14} />
+        </button>
 
-          <div className="flex-1 min-w-0">
-            {/* Row 1 — identity */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}
-                className="text-sm font-bold text-slate-800 hover:text-blue-700 leading-snug min-w-0 truncate basis-full sm:basis-auto sm:max-w-[60%]">
-                {project.name}
-              </Link>
-              <span className="text-[10px] font-mono text-slate-300 tracking-wider shrink-0">{project.code}</span>
-              {cat && (
-                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
-                  {cat}
-                </span>
-              )}
-              {/* Hover reveals *why* — same reasoning a reviewer would point at.
-                  Stops propagation so the click doesn't toggle the panel. */}
-              <span
-                className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded cursor-help ${health.bg} ${health.text}`}
-                title={(project.healthReasons || []).join(' · ') || health.label}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${health.dot}`} />
-                {health.label}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            {/* On mobile the title claims the full first line and wraps to two
+                lines rather than truncating to "BOT Automa…"; the code + badges
+                flow onto the next line. */}
+            <Link href={`/projects/${project.id}`} onClick={e => e.stopPropagation()}
+              className="text-sm font-bold text-slate-800 dark:text-white/80 hover:text-blue-700 dark:hover:text-blue-400 basis-full sm:basis-auto sm:min-w-0 line-clamp-2 sm:truncate">
+              {project.name}
+            </Link>
+            <span className="text-[10px] font-bold text-slate-300 dark:text-white/20 tracking-wider shrink-0">{project.code}</span>
+            {cat && (
+              <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
+                {cat}
               </span>
             </div>
 
-            {/* Row 2 — at-a-glance metrics. Progress bar carries the visual
-                weight; the rest are short, dot-separated. */}
-            <div className="mt-2 flex items-center gap-3">
-              <div className="flex-1 min-w-0 max-w-[260px]">
-                <ProgressBar value={pct} />
-              </div>
-              <span className="text-[11px] font-bold text-slate-700 tabular-nums shrink-0">{pct}%</span>
-              <span className="text-[11px] text-slate-400 shrink-0">·</span>
-              <span className="text-[11px] text-slate-500 shrink-0 tabular-nums">
-                <span className="font-semibold text-slate-700">{done}</span>/<span>{total}</span> done
+          <div className="flex items-center gap-3 text-[11px] text-slate-400 dark:text-white/30 flex-wrap">
+            <span><span className="font-semibold text-slate-600 dark:text-white/50">{done}/{total}</span> tasks</span>
+            {project.overdueCount > 0 && (
+              <span className="text-red-600 dark:text-red-400 font-semibold">{project.overdueCount} overdue</span>
+            )}
+            {project.dueDate && (
+              <span className={dueIn !== null && dueIn < 0 ? 'text-red-600 dark:text-red-400 font-semibold' : ''}>
+                Due {formatDate(project.dueDate)}
+                {dueIn !== null && dueIn >= 0 && ` · ${dueIn === 0 ? 'today' : `${dueIn}d left`}`}
+                {dueIn !== null && dueIn < 0 && ` · ${Math.abs(dueIn)}d late`}
               </span>
-              {project.overdueCount > 0 && (
-                <>
-                  <span className="text-[11px] text-slate-300 shrink-0">·</span>
-                  <span className="text-[11px] font-semibold text-red-600 shrink-0">{project.overdueCount} overdue</span>
-                </>
-              )}
-              {dueLabel && (
-                <>
-                  <span className="text-[11px] text-slate-300 shrink-0 hidden sm:inline">·</span>
-                  <span className={`text-[11px] shrink-0 hidden sm:inline ${dueUrgent ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
-                    {dueLabel}
-                  </span>
-                </>
-              )}
-              {project.ownerName && (
-                <>
-                  <span className="text-[11px] text-slate-300 shrink-0 hidden md:inline">·</span>
-                  <span className="text-[11px] text-slate-500 shrink-0 hidden md:inline truncate max-w-[140px]">
-                    {project.ownerName}
-                  </span>
-                </>
-              )}
-            </div>
+            )}
+            {project.ownerName && <span>Owner: <span className="text-slate-600 dark:text-white/50">{project.ownerName}</span></span>}
           </div>
+        </div>
+
+        <div className="w-14 sm:w-28 shrink-0">
+          <ProgressBar value={pct} />
+          <div className="text-[10px] text-slate-400 dark:text-white/30 mt-1 text-right font-semibold">{pct}%</div>
         </div>
       </header>
 
       {/* Tasks table */}
       {open && (
-        <div className="border-t border-slate-100 fade-in-soft">
+        <div className="border-t border-slate-100 dark:border-white/[0.05] fade-in-soft">
           {tasks.length === 0 ? (
             <div className="py-8 text-center">
-              <CheckCircle2 size={18} className="mx-auto text-slate-200 mb-2" />
-              <div className="text-xs text-slate-400">No tasks yet for this project.</div>
+              <CheckCircle2 size={18} className="mx-auto text-slate-200 dark:text-white/15 mb-2" />
+              <div className="text-xs text-slate-400 dark:text-white/30">No tasks yet for this project.</div>
             </div>
           ) : (
             <DashboardTaskFlow tasks={tasks} />
@@ -758,12 +728,12 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
   if (myTasks.length === 0 && myDone === 0) return null;
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
+    <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-        <CheckCircle2 size={13} className="text-slate-400" />
-        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">My tasks</h3>
-        <span className="ml-auto text-[10px] font-bold text-slate-300">{myTasks.length} open</span>
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-white/[0.05] flex items-center gap-2">
+        <CheckCircle2 size={13} className="text-slate-400 dark:text-white/30" />
+        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">My tasks</h3>
+        <span className="ml-auto text-[10px] font-bold text-slate-300 dark:text-white/20">{myTasks.length} open</span>
         {myOverdue > 0 && (
           <span className="text-[10px] font-bold text-red-400">{myOverdue} overdue</span>
         )}
@@ -771,10 +741,10 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
       {myTasks.length === 0 ? (
         <div className="py-7 text-center">
           <CheckCircle2 size={18} className="mx-auto text-emerald-300 mb-1.5" />
-          <div className="text-[11px] text-slate-400">All caught up — {myDone} done.</div>
+          <div className="text-[11px] text-slate-400 dark:text-white/25">All caught up — {myDone} done.</div>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-50 max-h-72 overflow-y-auto">
+        <ul className="divide-y divide-slate-50 dark:divide-white/[0.04] max-h-72 overflow-y-auto">
           {myTasks.slice(0, 15).map(t => {
             const due = t.ccTcd || t.dueDate;
             const dueIn = daysUntil(due);
@@ -782,15 +752,15 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
             return (
               <li key={t.id}>
                 <Link href={`/tasks/${t.id}`}
-                  className="block px-4 py-2.5 hover:bg-slate-50 transition-colors group">
+                  className="block px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group">
                   <div className="flex items-start gap-2">
                     <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_COLORS[t.status] ? '' : 'bg-slate-300'}`}
                       style={{ background: t.status === 'in_progress' ? '#3B82F6' : t.status === 'review' ? '#8B5CF6' : t.status === 'blocked' ? '#EF4444' : '#94A3B8' }} />
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-medium text-slate-700 line-clamp-1 group-hover:text-blue-700">
+                      <div className="text-xs font-medium text-slate-700 dark:text-white/70 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400">
                         {t.title}
                       </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 flex-wrap">
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 dark:text-white/30 flex-wrap">
                         <span className="font-semibold">{t.projectCode}</span>
                         {due && (
                           <>
@@ -814,7 +784,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
             );
           })}
           {myTasks.length > 15 && (
-            <li className="px-4 py-2 text-[10px] text-slate-400 border-t border-slate-50">
+            <li className="px-4 py-2 text-[10px] text-slate-400 dark:text-white/30 border-t border-slate-50 dark:border-white/[0.04]">
               +{myTasks.length - 15} more — <Link href="/my-day" className="text-blue-600 font-semibold">view in My Day →</Link>
             </li>
           )}
@@ -896,9 +866,9 @@ function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
         </div>
         {!expanded && <ExpandButton onClick={() => setExpanded(true)} />}
       </div>
-    <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
+    <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      <div className="px-4 pt-3 pb-2 border-b border-slate-100">
+      <div className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
         <div className="flex gap-1 flex-wrap">
           {FILTERS.map(f => (
             <button key={f.key}
@@ -906,7 +876,7 @@ function ActionsPanel({ tasks }: { tasks: TeamTask[] }) {
               className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${
                 filter === f.key
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  : 'bg-slate-100 dark:bg-white/[0.06] text-slate-500 dark:text-white/40 hover:bg-slate-200 dark:hover:bg-white/[0.10]'
               }`}>
               {f.label}
             </button>
@@ -969,34 +939,34 @@ function ActionGroup({
   const limit = showAll ? tasks.length : 12;
   return (
     <div>
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-50/40 border-b border-slate-100">
+      <div className="flex items-center justify-between px-4 py-2 bg-slate-50/40 dark:bg-white/[0.03] border-b border-slate-100 dark:border-white/[0.05]">
         <div className="flex items-center gap-1.5">
           {icon}
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{title}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/35">{title}</span>
         </div>
-        <span className="text-[10px] font-bold text-slate-400">{count}</span>
+        <span className="text-[10px] font-bold text-slate-400 dark:text-white/25">{count}</span>
       </div>
       {tasks.length === 0 ? (
         <div className="px-4 py-5 text-center">
           <CheckCircle2 size={16} className="mx-auto text-emerald-300 mb-1.5" />
-          <div className="text-[11px] text-slate-400">{emptyHint || 'All clear'}</div>
+          <div className="text-[11px] text-slate-400 dark:text-white/25">{emptyHint || 'All clear'}</div>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-50">
+        <ul className="divide-y divide-slate-50 dark:divide-white/[0.04]">
           {tasks.slice(0, limit).map(t => {
             const due = t.ccTcd || t.dueDate;
             const dueIn = daysUntil(due);
             return (
               <li key={t.id}>
                 <Link href={`/tasks/${t.id}`}
-                  className="block px-4 py-2.5 hover:bg-slate-50 transition-colors group">
+                  className="block px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group">
                   <div className="flex items-start gap-2">
                     <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${dotClass}`} />
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-medium text-slate-700 line-clamp-1 group-hover:text-blue-700">
+                      <div className="text-xs font-medium text-slate-700 dark:text-white/70 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400">
                         {t.title}
                       </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 flex-wrap">
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 dark:text-white/30 flex-wrap">
                         <span className="font-semibold">{t.projectCode}</span>
                         {due && (
                           <>
@@ -1023,7 +993,7 @@ function ActionGroup({
             );
           })}
           {tasks.length > limit && (
-            <li className="px-4 py-2 text-[10px] text-slate-400">+{tasks.length - limit} more</li>
+            <li className="px-4 py-2 text-[10px] text-slate-400 dark:text-white/30">+{tasks.length - limit} more</li>
           )}
         </ul>
       )}
@@ -1046,11 +1016,11 @@ function ContributorsPanel({
 
   if (people.length === 0) {
     return (
-      <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
+      <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
         style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
         <div className="px-4 py-3 flex items-center gap-2">
-          <UsersIcon size={13} className="text-slate-400" />
-          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Individual Contributors</h3>
+          <UsersIcon size={13} className="text-slate-400 dark:text-white/30" />
+          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">Individual Contributors</h3>
         </div>
       </section>
     );
@@ -1060,23 +1030,23 @@ function ContributorsPanel({
   const sorted = [...people].sort((a, b) => b.loadScore - a.loadScore);
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
+    <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
       <div
-        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 select-none transition-colors"
+        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors"
         onClick={() => setPanelOpen(o => !o)}
       >
-        <UsersIcon size={13} className="text-slate-400" />
-        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+        <UsersIcon size={13} className="text-slate-400 dark:text-white/30" />
+        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
           Individual Contributors
         </h3>
-        <span className="ml-auto text-[10px] text-slate-300 font-semibold">{people.length}</span>
-        <ChevronDown size={12} className="text-slate-400 transition-transform duration-200"
+        <span className="ml-auto text-[10px] text-slate-300 dark:text-white/20 font-semibold">{people.length}</span>
+        <ChevronDown size={12} className="text-slate-400 dark:text-white/30 transition-transform duration-200"
           style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
       </div>
 
       {panelOpen && (
-        <ul className="divide-y divide-slate-50 border-t border-slate-100">
+        <ul className="divide-y divide-slate-50 dark:divide-white/[0.04] border-t border-slate-100 dark:border-white/[0.05]">
           {sorted.map(p => (
             <ContributorRow key={p.id} person={p} tasks={tasksByAssignee.get(p.id) || []}
               onViewActivity={() => setActivityPerson(p)} />
@@ -1137,34 +1107,34 @@ function MyFocusPanel({
     .sort((a, b) => b.overdue - a.overdue || b.tasks.length - a.tasks.length);
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden"
+    <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
       <div
-        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 select-none transition-colors"
+        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors"
         onClick={() => setPanelOpen((o) => !o)}
       >
-        <FolderKanban size={13} className="text-slate-400" />
-        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Focus by project</h3>
-        <span className="ml-auto text-[10px] text-slate-300 font-semibold">{rows.length}</span>
-        <ChevronDown size={12} className="text-slate-400 transition-transform duration-200"
+        <FolderKanban size={13} className="text-slate-400 dark:text-white/30" />
+        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">Focus by project</h3>
+        <span className="ml-auto text-[10px] text-slate-300 dark:text-white/20 font-semibold">{rows.length}</span>
+        <ChevronDown size={12} className="text-slate-400 dark:text-white/30 transition-transform duration-200"
           style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
       </div>
 
       {panelOpen && (
-        <ul className="divide-y divide-slate-50 border-t border-slate-100">
+        <ul className="divide-y divide-slate-50 dark:divide-white/[0.04] border-t border-slate-100 dark:border-white/[0.05]">
           {rows.map((r) => (
             <li key={r.projectId}>
               <Link href={`/projects/${r.projectId}`}
-                className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50/60 transition-colors">
+                className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors">
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold text-slate-700 truncate">
+                  <div className="text-xs font-semibold text-slate-700 dark:text-white/70 truncate">
                     {r.project?.name || 'Project'}
                   </div>
                   {r.project?.code && (
-                    <div className="text-[10px] font-mono text-slate-400 mt-0.5">{r.project.code}</div>
+                    <div className="text-[10px] font-mono text-slate-400 dark:text-white/30 mt-0.5">{r.project.code}</div>
                   )}
                 </div>
-                <span className="text-[10px] font-bold text-slate-500 shrink-0">{r.tasks.length} open</span>
+                <span className="text-[10px] font-bold text-slate-500 dark:text-white/35 shrink-0">{r.tasks.length} open</span>
                 {r.overdue > 0 && (
                   <span className="text-[10px] font-bold text-red-500 shrink-0">{r.overdue} overdue</span>
                 )}
@@ -1191,9 +1161,9 @@ function ContributorRow({ person, tasks, onViewActivity }: { person: DashPerson;
   });
 
   const loadBadge = {
-    overloaded: 'bg-red-50 text-red-600',
-    busy:       'bg-amber-50 text-amber-700',
-    healthy:    'bg-emerald-50 text-emerald-700',
+    overloaded: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
+    busy:       'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    healthy:    'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
   }[person.loadLevel];
 
   const loadLabel = { overloaded: 'Overloaded', busy: 'Busy', healthy: 'Steady' }[person.loadLevel];
@@ -1201,14 +1171,14 @@ function ContributorRow({ person, tasks, onViewActivity }: { person: DashPerson;
   return (
     <li>
       <div
-        className="group px-4 py-2.5 cursor-pointer hover:bg-slate-50/60 transition-colors"
+        className="group px-4 py-2.5 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors"
         onClick={() => setOpen(o => !o)}
       >
         <div className="flex items-center gap-2">
           <UserAvatar userId={person.id} name={person.name} size={26} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-slate-800 truncate">{person.name}</span>
+              <span className="text-xs font-semibold text-slate-800 dark:text-white/75 truncate">{person.name}</span>
               {/* Activity deep-dive — same gesture as the team & people pages.
                   Always visible (no hover-reveal) so a viewer doesn't need to
                   discover that the row is clickable. */}
@@ -1216,21 +1186,21 @@ function ContributorRow({ person, tasks, onViewActivity }: { person: DashPerson;
                 <button
                   onClick={(e) => { e.stopPropagation(); onViewActivity(); }}
                   title={`View ${person.name}'s activity`}
-                  className="text-slate-400 hover:text-blue-600 transition-colors shrink-0">
+                  className="text-slate-400 dark:text-white/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0">
                   <BarChart3 size={13} />
                 </button>
               )}
             </div>
-            <div className="text-[10px] text-slate-400 truncate">
+            <div className="text-[10px] text-slate-400 dark:text-white/30 truncate">
               {person.openTasks} open
-              {person.overdueCount > 0 && <span className="text-red-600 font-semibold ml-1.5">· {person.overdueCount} overdue</span>}
-              {person.completedThisWeek > 0 && <span className="text-emerald-600 ml-1.5">· {person.completedThisWeek} done·7d</span>}
+              {person.overdueCount > 0 && <span className="text-red-600 dark:text-red-400 font-semibold ml-1.5">· {person.overdueCount} overdue</span>}
+              {person.completedThisWeek > 0 && <span className="text-emerald-600 dark:text-emerald-400 ml-1.5">· {person.completedThisWeek} done·7d</span>}
             </div>
           </div>
           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${loadBadge}`}>
             {loadLabel}
           </span>
-          <button className="p-0.5 text-slate-400 transition-transform"
+          <button className="p-0.5 text-slate-400 dark:text-white/30 transition-transform"
             style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
             <ChevronDown size={12} />
           </button>
@@ -1240,7 +1210,7 @@ function ContributorRow({ person, tasks, onViewActivity }: { person: DashPerson;
       {open && (
         <div className="pb-2 fade-in-soft">
           {sorted.length === 0 ? (
-            <div className="px-4 pb-3 text-[11px] text-slate-400 italic">
+            <div className="px-4 pb-3 text-[11px] text-slate-400 dark:text-white/25 italic">
               No open assignments — capacity available.
             </div>
           ) : (
@@ -1250,12 +1220,12 @@ function ContributorRow({ person, tasks, onViewActivity }: { person: DashPerson;
                 const dueIn = daysUntil(due);
                 const overdue = due && new Date(due) < new Date();
                 return (
-                  <li key={t.id} className="text-[11px] bg-slate-50/60 rounded-lg p-2 border border-slate-100">
+                  <li key={t.id} className="text-[11px] bg-slate-50/60 dark:bg-white/[0.03] rounded-lg p-2 border border-slate-100 dark:border-white/[0.05]">
                     <Link href={`/tasks/${t.id}`}
-                      className="font-semibold text-slate-700 hover:text-blue-700 line-clamp-1 block">
+                      className="font-semibold text-slate-700 dark:text-white/70 hover:text-blue-700 dark:hover:text-blue-400 line-clamp-1 block">
                       {t.title}
                     </Link>
-                    <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                    <div className="text-[10px] text-slate-400 dark:text-white/30 mt-0.5 flex items-center gap-1.5 flex-wrap">
                       <span className="font-semibold">{t.projectCode}</span>
                       <span>·</span>
                       <span className={`px-1 py-0 rounded ${STATUS_COLORS[t.status] || 'bg-slate-100 text-slate-500'} text-[9px] font-bold`}>
@@ -1283,7 +1253,7 @@ function ContributorRow({ person, tasks, onViewActivity }: { person: DashPerson;
                 );
               })}
               {sorted.length > 5 && (
-                <li className="text-[10px] text-slate-400 pt-1">+{sorted.length - 5} more</li>
+                <li className="text-[10px] text-slate-400 dark:text-white/30 pt-1">+{sorted.length - 5} more</li>
               )}
             </ul>
           )}

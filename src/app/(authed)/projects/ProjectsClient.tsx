@@ -107,7 +107,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
       <div className="card p-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[180px]">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/40 pointer-events-none" />
             <input
               className="input pl-8 text-sm"
               placeholder="Search projects…"
@@ -118,7 +118,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
           {/* Filters stack full-width on mobile (so a long team name never
               overflows the card) and sit inline from sm: up. */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-            <SlidersHorizontal size={13} className="text-slate-400 shrink-0 hidden sm:block" />
+            <SlidersHorizontal size={13} className="text-slate-400 dark:text-white/40 shrink-0 hidden sm:block" />
             <Select
               className="w-full sm:w-44" value={team} onChange={setTeam} ariaLabel="Filter by team"
               placeholder="All teams"
@@ -215,7 +215,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
               </div>
 
               {/* Progress bar */}
-              <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: '#f1f5f9' }}>
+              <div className="h-1.5 rounded-full overflow-hidden mb-2 bg-slate-100 dark:bg-white/10">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{

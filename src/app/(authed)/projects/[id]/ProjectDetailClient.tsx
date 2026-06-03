@@ -9,6 +9,7 @@ import {
   TaskLink, formatDate, useToast,
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
+import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { useIsDark } from '@/lib/client/useIsDark';
 import { weightedProgress } from '@/lib/progress';
@@ -464,8 +465,8 @@ function KanbanBoardMobile({ tasks, onMove, isLead, onDelete }: {
 }
 
 /* ── Quick-add task ───────────────────────────────────────────────────────── */
-function QuickAddTask({ projectId, phaseId, users, onAdded }: {
-  projectId: string; phaseId?: string; users: any[]; onAdded: () => void;
+function QuickAddTask({ projectId, phaseId, teamId, onAdded }: {
+  projectId: string; phaseId?: string; teamId?: string | null; onAdded: () => void;
 }) {
   const [open, setOpen]       = useState(false);
   const [title, setTitle]     = useState('');
@@ -494,36 +495,41 @@ function QuickAddTask({ projectId, phaseId, users, onAdded }: {
   if (!open) {
     return (
       <button onClick={() => setOpen(true)}
-        className="mt-2 w-full flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-dashed border-slate-200 text-xs text-slate-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/40 transition-all group">
-        <Plus size={12} className="group-hover:text-blue-600 transition-colors" />
+        className="mt-2 w-full flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-dashed border-slate-200 dark:border-white/[0.07] text-xs text-slate-400 dark:text-white/25 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-500/40 hover:bg-blue-50/40 dark:hover:bg-blue-500/[0.06] transition-all group">
+        <Plus size={12} className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
         Add a task
       </button>
     );
   }
 
   return (
-    <form onSubmit={add} className="mt-2 rounded-xl border-2 border-blue-200 overflow-hidden bg-blue-50/20 fade-in-soft">
+    <form onSubmit={add} className="mt-2 rounded-xl border-2 border-blue-200 dark:border-blue-500/30 overflow-hidden bg-blue-50/20 dark:bg-blue-500/[0.05] fade-in-soft">
       <input
         ref={inputRef}
-        className="w-full px-3 py-2.5 text-sm bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-400 font-medium"
+        className="w-full px-3 py-2.5 text-sm bg-transparent border-none outline-none text-slate-800 dark:text-white/85 placeholder:text-slate-400 dark:placeholder:text-white/25 font-medium"
         placeholder="Task title — press Enter to add"
         value={title}
         onChange={e => setTitle(e.target.value)}
         onKeyDown={e => { if (e.key === 'Escape') { setOpen(false); setTitle(''); } }}
       />
-      <div className="flex items-center gap-2 px-2.5 py-1.5 border-t border-blue-100 bg-white/60">
-        <select className="flex-1 text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 focus:outline-none focus:border-blue-300"
-          value={assignee} onChange={e => setAssignee(e.target.value)}>
-          <option value="">Unassigned</option>
-          {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
-        </select>
+      <div className="flex items-center gap-2 px-2.5 py-1.5 border-t border-blue-100 dark:border-blue-500/20 bg-white/60 dark:bg-white/[0.02]">
+        <UserPicker
+          className="flex-1"
+          value={assignee}
+          onChange={setAssignee}
+          teamId={teamId}
+          excludeAdmin
+          size="sm"
+          placeholder="Search to assign…"
+          ariaLabel="Assignee"
+        />
         <DatePicker value={due} onChange={v => setDue(v || '')} placeholder="Due date" size="sm" />
         <button type="submit" disabled={!title.trim() || saving}
           className="px-3 py-1 text-xs font-bold rounded-lg bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700 transition-colors shrink-0">
           {saving ? '…' : 'Add'}
         </button>
         <button type="button" onClick={() => { setOpen(false); setTitle(''); }}
-          className="p-1 text-slate-400 hover:text-slate-600 rounded transition-colors">
+          className="p-1 text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white/60 rounded transition-colors">
           <X size={13} />
         </button>
       </div>
@@ -723,7 +729,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   // byte. The client still refetches on mount to stay live; SSR is the fast
   // first paint, the client fetch is the freshness pass.
   const [project, setProject] = useState<any>(initialProject);
-  const [users, setUsers]     = useState<any[]>([]);
   const [me, setMe]           = useState<any>(initialMe);
   const [view, setView]       = useState<'phases' | 'board'>('phases');
   // The owner of a personal project may fully manage it even as an IC — that
@@ -752,14 +757,10 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
 
   async function load() {
     try {
-      // Fetch the project first so we know its team — then pull only that
-      // team's roster for the assignee dropdown. Falls back to all users
-      // when a project hasn't been assigned to a team yet.
+      // The assignee picker (UserPicker) fetches its own paginated roster
+      // scoped to the project's team, so we only need the project here.
       const p = await api<any>(`/projects/${id}`);
-      const u = await api<any[]>(`/users${p.teamId ? `?teamId=${p.teamId}` : ''}`);
-      // The admin is the workspace owner, never a task assignee — keep them
-      // out of every picker.
-      setProject(p); setUsers(u.filter((x) => x.role !== 'admin')); setLoadErr(null);
+      setProject(p); setLoadErr(null);
     } catch (e: any) { setLoadErr(e?.message || 'Could not load this project.'); }
   }
 
@@ -1116,6 +1117,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
               admin-only. */}
           <div className="flex flex-wrap items-center md:justify-end gap-2">
             <ExportMenu
+              onExcel={project.isPersonal ? undefined : () => { window.location.href = `/api/projects/${project.id}/export`; }}
               onPdf={() => printProjectReport(project, phases)}
               onHtml={() => downloadProjectReport(project, phases)}
               onCsv={() => downloadProjectCsv(project, phases)}
@@ -1260,7 +1262,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                         {t.dueDate && <span className="text-xs text-slate-400 font-mono">{formatDate(t.dueDate)}</span>}
                         {canManage && (
                           <button onClick={() => deleteTask(t.id)} aria-label="Delete task"
-                            className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-all shrink-0">
                             <Trash2 size={13} />
                           </button>
                         )}
@@ -1270,7 +1272,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                   })}
                 </div>
                 {canManage && (
-                  <QuickAddTask projectId={project.id} phaseId={ph.id} users={users} onAdded={load} />
+                  <QuickAddTask projectId={project.id} phaseId={ph.id} teamId={project.teamId} onAdded={load} />
                 )}
               </Card>
             );
@@ -1315,7 +1317,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                     {t.dueDate && <span className="text-xs text-slate-400 font-mono">{formatDate(t.dueDate)}</span>}
                     {canManage && (
                       <button onClick={() => deleteTask(t.id)} aria-label="Delete task"
-                        className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-all shrink-0">
                         <Trash2 size={13} />
                       </button>
                     )}
@@ -1328,7 +1330,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
               )}
             </div>
             {canManage && (
-              <QuickAddTask projectId={project.id} users={users} onAdded={load} />
+              <QuickAddTask projectId={project.id} teamId={project.teamId} onAdded={load} />
             )}
           </Card>
         </div>

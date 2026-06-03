@@ -600,6 +600,165 @@ function buildTeamScheduleSheet(wb: ExcelJS.Workbook, project: any, tasks: any[]
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
+   SHEET 0 — Live Tracker (INTERACTIVE: edit, filter, sort, recompute)
+   ----------------------------------------------------------------------------
+   Unlike the presentation sheets above, this one is meant to be *worked in*.
+   It's a real Excel Table (so every column header carries a filter/sort arrow),
+   Status / Priority / GxP are dropdowns (data-validation lists), the row colour
+   follows the status via conditional formatting, "Days Late" is a live formula,
+   and the KPI strip at the top recomputes with COUNTIF as you edit. The header
+   row is frozen so it stays put while scrolling.
+════════════════════════════════════════════════════════════════════════════ */
+function buildLiveTrackerSheet(wb: ExcelJS.Workbook, project: any, tasks: any[], users: any[]) {
+  const ws = wb.addWorksheet('✏️ Live Tracker', { properties: { tabColor: { argb: C.done } } });
+  const userMap = new Map(users.map(u => [String(u._id), u.name]));
+  const phaseMap = new Map((project.phases || []).map((p: any) => [String(p._id), p.name]));
+
+  // A=# B=Task C=Phase D=Assignee E=Status F=Priority G=Type H=GxP
+  // I=Start J=Due K=Completed L=Days Late M=Remarks
+  ws.columns = [
+    { width: 5 }, { width: 40 }, { width: 18 }, { width: 18 }, { width: 14 },
+    { width: 12 }, { width: 13 }, { width: 8 }, { width: 13 }, { width: 13 },
+    { width: 13 }, { width: 11 }, { width: 34 },
+  ];
+  const COLS = 13;
+  const HEADER_ROW = 6;
+  const dataStart = HEADER_ROW + 1;
+  const n = tasks.length;
+  const dataEnd = Math.max(dataStart, dataStart + n - 1);
+  const statusRange = `E${dataStart}:E${dataEnd}`;
+
+  // ── Title + instructions ────────────────────────────────────────────────
+  ws.mergeCells(1, 1, 1, COLS);
+  ws.getCell(1, 1).value = `  ${String(project.name).toUpperCase()}  —  LIVE TRACKER`;
+  ws.getCell(1, 1).font = { name: 'Calibri', size: 14, bold: true, color: { argb: C.headerFg } };
+  ws.getCell(1, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.headerBg } };
+  ws.getCell(1, 1).alignment = { vertical: 'middle', horizontal: 'center' };
+  ws.getRow(1).height = 28;
+
+  ws.mergeCells(2, 1, 2, COLS);
+  ws.getCell(2, 1).value =
+    '  Editable sheet — change Status / Priority / GxP from the dropdowns; row colour, "Days Late" and the KPIs below update automatically. Use the header arrows to filter & sort.';
+  ws.getCell(2, 1).font = { name: 'Calibri', size: 9, italic: true, color: { argb: C.textMuted } };
+  ws.getCell(2, 1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  ws.getRow(2).height = 20;
+
+  // ── KPI strip (row 4) — live COUNTIF formulas over the Status column ──────
+  const kpis: Array<[string, any, string]> = [
+    ['Total',        { formula: `COUNTA(B${dataStart}:B${dataEnd})` },                              C.brandBlue],
+    ['Done',         { formula: `COUNTIF(${statusRange},"Done")` },                                  C.done],
+    ['In Progress',  { formula: `COUNTIF(${statusRange},"In Progress")` },                           C.inProgress],
+    ['Blocked',      { formula: `COUNTIF(${statusRange},"Blocked")` },                               C.blocked],
+    ['% Complete',   { formula: `IFERROR(COUNTIF(${statusRange},"Done")/COUNTA(B${dataStart}:B${dataEnd}),0)` }, C.brandDark],
+    ['Overdue',      { formula: `COUNTIFS(${statusRange},"<>Done",J${dataStart}:J${dataEnd},"<"&TODAY())` },     C.critical],
+  ];
+  let kc = 1;
+  for (const [label, formula, color] of kpis) {
+    const span = label === '% Complete' || label === 'In Progress' ? 3 : 2;
+    ws.mergeCells(4, kc, 4, kc + span - 1);
+    const cell = ws.getCell(4, kc);
+    cell.value = formula;
+    cell.font = { name: 'Calibri', size: 12, bold: true, color: { argb: color } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: C.subHeaderBg } };
+    if (label === '% Complete') cell.numFmt = '0%';
+    // label sits just above as a small caption (row 3)
+    ws.mergeCells(3, kc, 3, kc + span - 1);
+    const lab = ws.getCell(3, kc);
+    lab.value = label;
+    lab.font = { name: 'Calibri', size: 8, bold: true, color: { argb: C.textMuted } };
+    lab.alignment = { vertical: 'middle', horizontal: 'center' };
+    kc += span;
+  }
+  ws.getRow(3).height = 14;
+  ws.getRow(4).height = 22;
+
+  // ── The editable table ────────────────────────────────────────────────────
+  const STATUS_UI: Record<string, string> = { todo: 'To Do', in_progress: 'In Progress', review: 'Review', blocked: 'Blocked', done: 'Done' };
+  const toDate = (d: any) => (d ? new Date(d) : null);
+
+  const rows = tasks.map((t, i) => [
+    i + 1,
+    safeCellValue(t.title || ''),
+    phaseMap.get(String(t.phaseId)) || '—',
+    userMap.get(String(t.assigneeId)) || 'Unassigned',
+    STATUS_UI[t.status] || 'To Do',
+    (t.priority || 'low').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+    String(t.taskType || 'task').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+    t.gxpCritical ? 'Yes' : 'No',
+    toDate(t.startDate),
+    toDate(t.dueDate),
+    toDate(t.completedAt),
+    // Days Late — live formula; cached result so it shows before recalculation.
+    { formula: `IF(OR(E${dataStart + i}="Done",J${dataStart + i}=""),"",TODAY()-J${dataStart + i})`,
+      result: (t.status !== 'done' && t.dueDate) ? Math.max(0, daysOverdue(t.dueDate) ?? 0) : '' },
+    safeCellValue(t.remarks || ''),
+  ]);
+
+  ws.addTable({
+    name: 'LiveTracker',
+    ref: `A${HEADER_ROW}`,
+    headerRow: true,
+    style: { theme: 'TableStyleMedium9', showRowStripes: true },
+    columns: [
+      { name: '#' }, { name: 'Task' }, { name: 'Phase' }, { name: 'Assignee' },
+      { name: 'Status' }, { name: 'Priority' }, { name: 'Type' }, { name: 'GxP' },
+      { name: 'Start' }, { name: 'Due' }, { name: 'Completed' }, { name: 'Days Late' },
+      { name: 'Remarks' },
+    ],
+    rows: rows.length ? rows : [[0, '(no tasks yet)', '', '', 'To Do', 'Low', 'Task', 'No', null, null, null, '', '']],
+  });
+
+  // Date formatting on the three date columns.
+  for (let r = dataStart; r <= dataEnd; r++) {
+    for (const col of [9, 10, 11]) ws.getCell(r, col).numFmt = 'dd mmm yyyy';
+    ws.getCell(r, 1).alignment = { horizontal: 'center' };
+    ws.getCell(r, 12).alignment = { horizontal: 'center' };
+    ws.getCell(r, 8).alignment = { horizontal: 'center' };
+  }
+
+  // ── Dropdowns (data validation) so edits stay within the allowed values ──
+  // Set per-cell (the typed ExcelJS API) across each column's data range.
+  for (let r = dataStart; r <= dataEnd && n > 0; r++) {
+    ws.getCell(r, 5).dataValidation = {
+      type: 'list', allowBlank: false,
+      formulae: ['"To Do,In Progress,Review,Blocked,Done"'],
+      showErrorMessage: true, errorStyle: 'warning',
+      promptTitle: 'Status', prompt: 'Pick a workflow status',
+    };
+    ws.getCell(r, 6).dataValidation = {
+      type: 'list', allowBlank: false,
+      formulae: ['"Low,Medium,High,Critical"'],
+      showErrorMessage: true, errorStyle: 'warning',
+    };
+    ws.getCell(r, 8).dataValidation = {
+      type: 'list', allowBlank: false, formulae: ['"Yes,No"'],
+    };
+  }
+
+  // ── Conditional formatting — the row reacts to the Status dropdown ────────
+  const cfRange = `A${dataStart}:M${dataEnd}`;
+  ws.addConditionalFormatting({
+    ref: cfRange,
+    rules: [
+      { type: 'expression', priority: 1, formulae: [`$E${dataStart}="Blocked"`],
+        style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: C.blockedBg } },
+                 font: { color: { argb: C.blocked }, bold: true } } },
+      { type: 'expression', priority: 2,
+        formulae: [`AND($E${dataStart}<>"Done",$J${dataStart}<>"",$J${dataStart}<TODAY())`],
+        style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: C.criticalBg } },
+                 font: { color: { argb: C.critical } } } },
+      { type: 'expression', priority: 3, formulae: [`$E${dataStart}="Done"`],
+        style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: C.doneBg } },
+                 font: { color: { argb: C.done } } } },
+    ],
+  });
+
+  // Freeze everything above + including the table header so it stays on screen.
+  ws.views = [{ state: 'frozen', ySplit: HEADER_ROW, xSplit: 0, showGridLines: false }];
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
    ROUTE HANDLER
 ════════════════════════════════════════════════════════════════════════════ */
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -631,6 +790,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     wb.properties.date1904 = false;
 
     buildSummarySheet(wb, project, tasks as any[], phaseMap);
+    buildLiveTrackerSheet(wb, project, tasks as any[], users as any[]);
     buildTasksSheet(wb, project, tasks as any[], users as any[]);
     buildTeamScheduleSheet(wb, project, tasks as any[], users as any[]);
     buildBottleneckSheet(wb, project, tasks as any[], users as any[]);

@@ -56,7 +56,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // priority, compliance flags, reference fields — stays lead-owned, and a
     // task assigned to someone else (or unassigned) is fully read-only for an
     // IC. Exception: inside their own personal project the owner edits freely.
-    if (!canMutate(user!.role) && !ownsPersonal) {
+    //
+    // The permission check uses `current.assigneeId`, but we close the TOCTOU
+    // race (a concurrent lead re-assignment sneaking between the permission
+    // read and the actual write) by folding the assignee guard into the update
+    // filter for contributor-scoped edits. If the task was reassigned before
+    // our write lands, findOneAndUpdate returns null and we surface a 403
+    // rather than silently mutating a task the caller no longer owns.
+    const icEdit = !canMutate(user!.role) && !ownsPersonal;
+    if (icEdit) {
       const isAssignee = current.assigneeId && String(current.assigneeId) === String(user!.sub);
       const keys = Object.keys(body).filter(k => body[k as keyof typeof body] !== undefined);
       const IC_EDITABLE = new Set(['description', 'dueDate']);
@@ -78,8 +86,20 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.status === 'done' && current.status !== 'done') set.completedAt = new Date();
     else if (body.status && body.status !== 'done') set.completedAt = null;
     set.lastActivityAt = new Date();
-    await Task.updateOne({ _id: params.id }, { $set: set });
-    const fresh = await Task.findById(params.id).lean();
+
+    // For contributor edits we add `assigneeId` to the update filter so the
+    // write is atomic with the permission check — if the task was re-assigned
+    // concurrently the update is a no-op and we return 403.
+    const updateFilter = icEdit
+      ? { _id: params.id, assigneeId: user!.sub }
+      : { _id: params.id };
+    const fresh = await Task.findOneAndUpdate(updateFilter, { $set: set }, { new: true }).lean();
+    if (!fresh) {
+      return NextResponse.json(
+        { error: icEdit ? 'Task is no longer assigned to you.' : 'Not found' },
+        { status: icEdit ? 403 : 404 },
+      );
+    }
 
     // ── Notifications ────────────────────────────────────────────────
     // Reassigned → tell the new assignee. Marked done by an assignee →

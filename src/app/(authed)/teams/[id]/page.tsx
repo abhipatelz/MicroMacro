@@ -18,7 +18,7 @@ import { UserAvatar } from '@/components/AvatarRegistry';
 import { ActivityGraph } from '@/components/ActivityGraph';
 import { downloadTeamReport, printTeamReport, downloadTeamCsv } from './report';
 import { ExportMenu } from '@/components/ExportMenu';
-import { Select } from '@/components/Select';
+import { UserPicker } from '@/components/UserPicker';
 
 const FUNCTION_LABEL: Record<string, string> = {
   general: 'General',
@@ -37,7 +37,6 @@ export default function TeamDetailPage() {
   const [team, setTeam] = useState<any>(null);
   const [board, setBoard] = useState<any[]>([]);
   const [progress, setProgress] = useState<any>(null);
-  const [users, setUsers] = useState<any[]>([]);
   const [loadError, setLoadError] = useState<string>('');
   const [adding, setAdding] = useState(false);
   const [newMember, setNewMember] = useState('');
@@ -70,9 +69,6 @@ export default function TeamDetailPage() {
   }
   useEffect(() => {
     load();
-    // The user list only feeds the add-member dropdown (owner/admin only); a
-    // failure here must never block the team view from rendering.
-    api<any[]>('/users').then(setUsers).catch(() => {});
   }, [id]);
 
   if (loadError) {
@@ -136,8 +132,6 @@ export default function TeamDetailPage() {
     await api(`/teams/${id}/members/${uid}`, { method: 'DELETE' });
     load();
   }
-
-  const availableUsers = users.filter((u) => u.role !== 'admin' && !team.members.find((m: any) => m.id === u.id));
 
   // Only the team's owner (its lead) or the workspace admin can edit the team
   // — add/remove members, etc. (mirrors the API guard).
@@ -213,13 +207,12 @@ export default function TeamDetailPage() {
             )}
             {adding && isOwnerOrAdmin && (
               <div className="flex gap-2 mb-3">
-                <Select
+                <UserPicker
                   className="flex-1" value={newMember} onChange={setNewMember} ariaLabel="Select user to add"
-                  placeholder="Select user…"
-                  options={[
-                    { value: '', label: 'Select user…' },
-                    ...availableUsers.map((u: any) => ({ value: u.id, label: u.name })),
-                  ]}
+                  placeholder="Search people to add…"
+                  allowUnassigned={false}
+                  excludeAdmin
+                  excludeIds={team.members.map((m: any) => m.id)}
                 />
                 <button className="btn-primary" onClick={addMember}>
                   Add

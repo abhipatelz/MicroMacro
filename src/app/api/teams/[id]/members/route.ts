@@ -10,7 +10,10 @@ import mongoose from 'mongoose';
 
 export const runtime = 'nodejs';
 
-const Body = z.object({ userId: z.string() });
+// userId must be a real ObjectId — validated here so a malformed value is
+// rejected with a clean 400 (via readBody -> ZodError -> handleError) rather
+// than throwing a 500 inside `new mongoose.Types.ObjectId()` below.
+const Body = z.object({ userId: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid userId') });
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {

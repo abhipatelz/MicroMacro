@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth';
 import { getTaskAccess } from '@/lib/taskAccess';
 import { handleError, readBody } from '@/lib/http';
 import { subtask as subS } from '@/lib/serialize';
+import { logOperation } from '@/lib/audit';
 import mongoose from 'mongoose';
 
 export const runtime = 'nodejs';
@@ -49,6 +50,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     };
     (t as any).subtasks.push(sub);
     await t.save();
+
+    // Structural change to a (possibly GxP) record → audit trail.
+    await logOperation({
+      action: 'task.subtask.add', category: 'task', actor: user,
+      targetType: 'task', targetId: params.id, targetLabel: (t as any).title || '',
+      summary: `Added subtask "${body.title}"`,
+      meta: { subtaskId: String(sub._id), title: body.title, gxpCritical: !!(t as any).gxpCritical },
+    });
+
     return NextResponse.json(subS(sub));
   } catch (e) {
     return handleError(e);

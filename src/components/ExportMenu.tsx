@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Download, FileText, Sheet, FileCode2, ChevronDown } from 'lucide-react';
+import { Download, FileText, Sheet, FileCode2, ChevronDown, FileSpreadsheet } from 'lucide-react';
 
 /**
  * A single "Export" button that opens a small menu of formats (PDF, CSV, HTML).
@@ -12,8 +12,10 @@ import { Download, FileText, Sheet, FileCode2, ChevronDown } from 'lucide-react'
  * only and the actual report generation lives next to the data.
  */
 export function ExportMenu({
-  onPdf, onCsv, onHtml, label = 'Export', disabled = false,
+  onExcel, onPdf, onCsv, onHtml, label = 'Export', disabled = false,
 }: {
+  /** Optional rich, interactive .xlsx (tables, dropdowns, live formulas). */
+  onExcel?: () => void;
   onPdf: () => void;
   onCsv: () => void;
   onHtml: () => void;
@@ -33,8 +35,9 @@ export function ExportMenu({
   }, [open]);
 
   const items = [
+    ...(onExcel ? [{ key: 'xlsx', label: 'Excel (interactive)', hint: 'Editable — dropdowns, filters, live totals', icon: FileSpreadsheet, onClick: onExcel, tint: '#15803d' }] : []),
     { key: 'pdf',  label: 'PDF',  hint: 'Print-ready, for meetings', icon: FileText,  onClick: onPdf,  tint: '#dc2626' },
-    { key: 'csv',  label: 'CSV',  hint: 'Spreadsheet — pivot & filter', icon: Sheet,     onClick: onCsv,  tint: '#16a34a' },
+    { key: 'csv',  label: 'CSV',  hint: 'Flat data — pivot & filter', icon: Sheet,     onClick: onCsv,  tint: '#16a34a' },
     { key: 'html', label: 'HTML', hint: 'Self-contained web page',  icon: FileCode2, onClick: onHtml, tint: '#2563eb' },
   ];
 

@@ -29,34 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en" className={dark ? 'dark' : undefined}>
-      <head>
-        {/* General Sans — distinctive display face for the Pragati wordmark
-            + headings. Loaded NON-render-blocking (media="print" flipped to
-            "all" once the CSS arrives): the page paints immediately in the
-            system fallback, then swaps to General Sans. A render-blocking
-            third-party <link rel="stylesheet"> was delaying First
-            Contentful Paint across every route. */}
-        <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="" />
-        <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="" />
-        <link
-          id="fontshare-css"
-          rel="stylesheet"
-          href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700,800&display=swap"
-          media="print"
-        />
-        <noscript>
-          <link
-            rel="stylesheet"
-            href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700,800&display=swap"
-          />
-        </noscript>
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "(function(){var l=document.getElementById('fontshare-css');if(!l)return;if(l.sheet){l.media='all';}else{l.addEventListener('load',function(){l.media='all';});}})();",
-          }}
-        />
-      </head>
+      <head />
       <body>
         <ToastProvider>{children}</ToastProvider>
         {/* Vercel telemetry — already ships with defer; loading them at the

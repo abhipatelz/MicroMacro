@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { api } from '@/lib/client/api';
 import { useIsLead } from '@/components/CurrentUserContext';
-import { Plus, Check, Trash2, ArrowRight, X, Sparkles } from 'lucide-react';
+import {
+  Plus, Check, Trash2, ArrowRight, X, Sparkles, Calendar, Zap,
+  ChevronDown, ChevronUp, Target, BookmarkCheck,
+} from 'lucide-react';
 import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
 
@@ -11,33 +14,90 @@ interface Note { id: string; text: string; done: boolean; promotedTaskId: string
 
 function greeting() {
   const h = new Date().getHours();
-  if (h < 5) return 'Still going';
+  if (h < 5)  return 'Night shift';
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 21) return 'Good evening';
+  return 'Good night';
+}
+
+/* Live clock day/date — suppresses hydration mismatch via suppressHydrationWarning */
+function useDateLabel() {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    const fmt = () => {
+      const d = new Date();
+      const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      setLabel(`${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`);
+    };
+    fmt();
+    const t = setInterval(fmt, 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return label;
+}
+
+/* Circular SVG ring that fills as notes are checked off */
+function ProgressRing({ done, total }: { done: number; total: number }) {
+  const r = 22;
+  const circ = 2 * Math.PI * r;
+  const pct  = total ? done / total : 0;
+  const offset = circ * (1 - pct);
+  const allDone = total > 0 && done === total;
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: 60, height: 60 }}>
+      <svg width={60} height={60} className="-rotate-90">
+        <circle cx={30} cy={30} r={r} fill="none" strokeWidth={3.5}
+          className="stroke-slate-200 dark:stroke-white/[0.08]" />
+        <circle cx={30} cy={30} r={r} fill="none" strokeWidth={3.5}
+          strokeDasharray={circ} strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-700 ease-out"
+          style={{ stroke: allDone ? '#22c55e' : '#1769C8' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        {total === 0 ? (
+          <Target size={14} className="text-slate-300 dark:text-white/20" />
+        ) : allDone ? (
+          <Check size={16} className="text-green-500" strokeWidth={3} />
+        ) : (
+          <>
+            <span className="text-[14px] font-black leading-none text-slate-700 dark:text-white/85 tabular-nums">{done}</span>
+            <span className="text-[9px] font-bold text-slate-400 dark:text-white/30 leading-none mt-px tabular-nums">/{total}</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function MyDayClient({ initialData }: {
   initialData: { open: Note[]; done: Note[] };
 }) {
-  const isLead = useIsLead();
+  const isLead  = useIsLead();
+  const dateLabel = useDateLabel();
+
   const [open, setOpen]   = useState<Note[]>(initialData.open);
   const [done, setDone]   = useState<Note[]>(initialData.done);
   const [text, setText]   = useState('');
   const [showDone, setShowDone] = useState(false);
   const [promote, setPromote] = useState<Note | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editText, setEditText]   = useState('');
-  // Timestamp of the last successful write — drives a subtle "Saved" indicator
-  // so the user is assured their notes persisted (they save on blur, which is
-  // otherwise invisible).
-  const [savedAt, setSavedAt]     = useState<Date | null>(null);
+  const [editingId, setEditingId]   = useState<string | null>(null);
+  const [editText,  setEditText]    = useState('');
+  const [savedAt,   setSavedAt]     = useState<Date | null>(null);
+  const [justDone,  setJustDone]    = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function markSaved() { setSavedAt(new Date()); }
+  const total   = open.length + done.length;
+  const allDone = total > 0 && done.length === total;
 
+  function markSaved() { setSavedAt(new Date()); }
   function startEdit(n: Note) { setEditingId(n.id); setEditText(n.text); }
-  function cancelEdit() { setEditingId(null); setEditText(''); }
+  function cancelEdit()       { setEditingId(null); setEditText(''); }
+
   async function saveEdit(n: Note) {
     const t = editText.trim();
     if (!t || t === n.text) { cancelEdit(); return; }
@@ -46,12 +106,12 @@ export default function MyDayClient({ initialData }: {
     try { await api(`/scratch/${n.id}`, { method: 'PATCH', body: { text: t } }); markSaved(); } finally { load(); }
   }
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       const res = await api<{ open: Note[]; done: Note[] }>('/scratch');
       setOpen(res.open); setDone(res.done);
-    } catch { /* silent refresh failure */ }
-  }
+    } catch {}
+  }, []);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -65,6 +125,10 @@ export default function MyDayClient({ initialData }: {
   }
 
   async function toggle(n: Note) {
+    if (!n.done) {
+      setJustDone(n.id);
+      setTimeout(() => setJustDone(null), 700);
+    }
     if (n.done) {
       setDone((d) => d.filter((x) => x.id !== n.id));
       setOpen((o) => [{ ...n, done: false }, ...o]);
@@ -82,139 +146,232 @@ export default function MyDayClient({ initialData }: {
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-12">
-      {/* Header */}
-      <div className="mb-5 pt-1">
-        <div className="flex items-center gap-1.5 mb-1">
-          <Sparkles size={12} className="text-blue-400" />
-          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">My Day</span>
-          {savedAt && (
-            <span key={savedAt.getTime()}
-              className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 fade-in-soft"
-              title={`Last saved at ${savedAt.toLocaleTimeString()}`}>
-              <Check size={11} /> Saved {savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
+    <div className="max-w-2xl mx-auto pb-14">
+
+      {/* ── Hero header ──────────────────────────────────────────────── */}
+      <div className="mb-7 pt-1">
+        <div className="flex items-start justify-between gap-4">
+          {/* Left: greeting + date */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 dark:text-white/30">
+                My Day
+              </span>
+              {savedAt && (
+                <span key={savedAt.getTime()}
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400/80 fade-in-soft"
+                  title={`Last saved ${savedAt.toLocaleTimeString()}`}
+                >
+                  <Check size={10} strokeWidth={3} /> Saved
+                </span>
+              )}
+            </div>
+            <h1 className="text-[1.75rem] font-black tracking-tight leading-tight">
+              <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}.</span>
+            </h1>
+            {dateLabel && (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <Calendar size={11} className="text-slate-400 dark:text-white/25 shrink-0" />
+                <span className="text-[12px] text-slate-500 dark:text-white/40 font-medium">
+                  {dateLabel}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Right: circular progress ring */}
+          <div className="shrink-0 mt-0.5">
+            <ProgressRing done={done.length} total={total} />
+          </div>
         </div>
-        <h1 className="text-2xl font-black tracking-tight">
-          <span className="brand-shimmer-text" suppressHydrationWarning>{greeting()}.</span>
-        </h1>
-        <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-          Jot anything on your mind — tap a note to edit, or promote it to a tracked task.
-        </p>
+
+        {/* All-done celebration banner */}
+        {allDone && (
+          <div className="mt-4 rounded-xl border border-emerald-200/80 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/[0.08] px-4 py-3 flex items-center gap-3 fade-in-soft">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+              <Sparkles size={14} className="text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-emerald-800 dark:text-emerald-300">All done for today.</div>
+              <div className="text-[11px] text-emerald-700/70 dark:text-emerald-400/60 mt-0.5">
+                You cleared everything. Come back tomorrow or add more below.
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Capture */}
-      <form onSubmit={add} className="flex gap-2 mb-5">
-        <input
-          ref={inputRef}
-          className="input text-sm"
-          placeholder="What's on your mind? Press Enter to add…"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          autoFocus
-          maxLength={2000}
-        />
-        <button type="submit" className="btn-primary gap-1.5 shrink-0" disabled={!text.trim()}>
-          <Plus size={15} /> Add
-        </button>
+      {/* ── Capture bar ──────────────────────────────────────────────── */}
+      <form onSubmit={add} className="mb-5">
+        <div className={`
+          flex gap-2 items-center pl-2 pr-2 py-1.5 rounded-xl border transition-all duration-200
+          bg-white dark:bg-white/[0.03]
+          border-slate-200 dark:border-white/[0.08]
+          focus-within:border-blue-300 dark:focus-within:border-white/20
+          focus-within:shadow-[0_0_0_3px_rgba(21,101,192,0.08)] dark:focus-within:shadow-[0_0_0_3px_rgba(255,255,255,0.04)]
+        `}>
+          <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-500/15 flex items-center justify-center shrink-0">
+            <Plus size={13} className="text-blue-500 dark:text-blue-400" />
+          </div>
+          <input
+            ref={inputRef}
+            className="flex-1 bg-transparent text-sm text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25 border-0 outline-none py-1.5 min-w-0"
+            placeholder="What's on your mind? Press Enter to add…"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            autoFocus
+            maxLength={2000}
+          />
+          {text.trim() && (
+            <button type="submit"
+              className="btn-primary shrink-0 py-1.5 px-3 text-xs gap-1 fade-in-soft">
+              <Plus size={12} /> Add
+            </button>
+          )}
+        </div>
       </form>
 
-      {/* Empty state */}
+      {/* ── Empty state ──────────────────────────────────────────────── */}
       {open.length === 0 && done.length === 0 && (
-        <div className="card p-10 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-3">
-            <Sparkles size={22} className="text-blue-400" />
+        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.08] p-12 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10 flex items-center justify-center mx-auto mb-3">
+            <Sparkles size={22} className="text-blue-400 dark:text-blue-400/70" />
           </div>
-          <div className="text-sm font-semibold text-slate-600 mb-1">A clear head starts here</div>
-          <div className="text-xs text-slate-400 max-w-xs mx-auto">
-            Throw in everything you're holding onto. Unfinished lines carry over to tomorrow on their own.
+          <div className="text-sm font-bold text-slate-700 dark:text-white/60 mb-1">A clear head starts here</div>
+          <div className="text-xs text-slate-400 dark:text-white/25 max-w-xs mx-auto leading-relaxed">
+            Jot anything — ideas, blockers, follow-ups. Unfinished notes carry over automatically.
           </div>
         </div>
       )}
 
-      <div className="space-y-1.5">
-        {open.map((n) => (
-          <div key={n.id} className="group flex items-start min-w-0 gap-3 bg-white border border-slate-200/80 rounded-xl px-3.5 py-3 fluid-card">
-            <button
-              onClick={() => toggle(n)}
-              aria-label="Mark done"
-              className="w-5 h-5 rounded-md border border-slate-300 hover:border-emerald-400 flex items-center justify-center shrink-0 transition-colors mt-0.5"
-            />
-            {editingId === n.id ? (
-              <textarea
-                autoFocus
-                rows={1}
-                className="input min-w-0 flex-1 text-sm py-1 resize-none leading-snug whitespace-pre-wrap break-words overflow-hidden"
-                value={editText}
-                maxLength={2000}
-                onFocus={(e) => {
-                  e.currentTarget.style.height = 'auto';
-                  e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
-                  const len = e.currentTarget.value.length;
-                  e.currentTarget.setSelectionRange(len, len);
-                }}
-                onChange={(e) => {
-                  setEditText(e.target.value);
-                  e.target.style.height = 'auto';
-                  e.target.style.height = e.target.scrollHeight + 'px';
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(n); }
-                  if (e.key === 'Escape') cancelEdit();
-                }}
-                onBlur={() => saveEdit(n)}
-              />
-            ) : (
-              <span
-                className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm text-slate-700 cursor-text hover:text-slate-900"
-                onClick={() => startEdit(n)}
-                title="Tap to edit"
+      {/* ── Open notes list ──────────────────────────────────────────── */}
+      {open.length > 0 && (
+        <div className="space-y-1.5">
+          {open.map((n) => {
+            const isChecking = justDone === n.id;
+            return (
+              <div
+                key={n.id}
+                className={`
+                  group flex items-start min-w-0 gap-3 rounded-xl px-3.5 py-3 border
+                  transition-all duration-200
+                  ${isChecking
+                    ? 'border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/80 dark:bg-emerald-500/[0.08] scale-[0.995]'
+                    : 'border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] hover:border-slate-300 dark:hover:border-white/12 hover:shadow-sm dark:hover:bg-white/[0.045]'
+                  }
+                `}
               >
-                {n.text}
-              </span>
-            )}
-            {n.promotedTaskId ? (
-              <a href={`/tasks/${n.promotedTaskId}`} className="text-[11px] font-semibold text-emerald-600 shrink-0 mt-0.5">→ tracked</a>
-            ) : isLead && editingId !== n.id ? (
-              <button
-                onClick={() => setPromote(n)}
-                title="Add to a project as a tracked task"
-                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                Add to project <ArrowRight size={12} />
-              </button>
-            ) : null}
-            <button onClick={() => remove(n)} aria-label="Delete"
-              className="text-slate-300 hover:text-red-500 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Trash2 size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
+                {/* Checkbox */}
+                <button
+                  onClick={() => toggle(n)}
+                  aria-label="Mark done"
+                  className={`
+                    w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0
+                    transition-all duration-200 mt-[3px]
+                    ${isChecking
+                      ? 'border-emerald-500 bg-emerald-500'
+                      : 'border-slate-300 dark:border-white/20 hover:border-emerald-400 dark:hover:border-emerald-400/50 hover:bg-emerald-50 dark:hover:bg-emerald-400/[0.08]'
+                    }
+                  `}
+                  style={isChecking ? { transform: 'scale(1.15)' } : {}}
+                >
+                  {isChecking && <Check size={11} className="text-white" strokeWidth={3} />}
+                </button>
 
-      {/* Done */}
+                {/* Note text / inline editor */}
+                {editingId === n.id ? (
+                  <textarea
+                    autoFocus
+                    rows={1}
+                    className="input min-w-0 flex-1 text-sm py-1 resize-none leading-relaxed whitespace-pre-wrap break-words overflow-hidden"
+                    value={editText}
+                    maxLength={2000}
+                    onFocus={(e) => {
+                      e.currentTarget.style.height = 'auto';
+                      e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
+                      const len = e.currentTarget.value.length;
+                      e.currentTarget.setSelectionRange(len, len);
+                    }}
+                    onChange={(e) => {
+                      setEditText(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(n); }
+                      if (e.key === 'Escape') cancelEdit();
+                    }}
+                    onBlur={() => saveEdit(n)}
+                  />
+                ) : (
+                  <span
+                    className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm text-slate-700 dark:text-white/80 cursor-text hover:text-slate-900 dark:hover:text-white leading-relaxed"
+                    onClick={() => startEdit(n)}
+                    title="Click to edit"
+                  >
+                    {n.text}
+                  </span>
+                )}
+
+                {/* Hover actions */}
+                <div className="shrink-0 flex items-center gap-1.5 mt-[3px] opacity-0 group-hover:opacity-100 transition-opacity">
+                  {n.promotedTaskId ? (
+                    <a href={`/tasks/${n.promotedTaskId}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300">
+                      <BookmarkCheck size={12} strokeWidth={2.5} /> tracked
+                    </a>
+                  ) : isLead && editingId !== n.id ? (
+                    <button
+                      onClick={() => setPromote(n)}
+                      title="Promote to tracked task"
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                    >
+                      <Zap size={11} strokeWidth={2.5} /> track
+                    </button>
+                  ) : null}
+                  <button onClick={() => remove(n)} aria-label="Delete"
+                    className="p-0.5 rounded text-slate-300 dark:text-white/15 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Done section ─────────────────────────────────────────────── */}
       {done.length > 0 && (
         <div className="mt-6">
-          <button onClick={() => setShowDone((s) => !s)}
-            className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors">
-            {showDone ? '▾' : '▸'} Done ({done.length})
+          <button
+            onClick={() => setShowDone((s) => !s)}
+            className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/25 hover:text-slate-600 dark:hover:text-white/45 transition-colors"
+          >
+            <div className="w-[18px] h-[18px] rounded-[5px] bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <Check size={10} className="text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
+            </div>
+            <span>Done · {done.length}</span>
+            {showDone ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
           </button>
+
           {showDone && (
-            <div className="space-y-1.5 mt-2">
+            <div className="space-y-0.5 mt-2.5 fade-in-soft">
               {done.map((n) => (
-                <div key={n.id} className="group flex items-center gap-3 px-3.5 py-2.5">
+                <div key={n.id}
+                  className="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-slate-50/80 dark:hover:bg-white/[0.03] transition-colors">
                   <button
                     onClick={() => toggle(n)}
                     aria-label="Reopen"
-                    className="w-5 h-5 rounded-md bg-emerald-500 border border-emerald-500 flex items-center justify-center shrink-0"
+                    className="w-[18px] h-[18px] rounded-[5px] bg-emerald-500 border border-emerald-500 flex items-center justify-center shrink-0 hover:bg-emerald-400 transition-colors"
                   >
-                    <Check size={12} className="text-white" />
+                    <Check size={11} className="text-white" strokeWidth={3} />
                   </button>
-                  <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm text-slate-400 line-through">{n.text}</span>
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm text-slate-400 dark:text-white/25 line-through leading-relaxed">
+                    {n.text}
+                  </span>
                   <button onClick={() => remove(n)} aria-label="Delete"
-                    className="text-slate-300 hover:text-red-500 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Trash2 size={14} />
+                    className="p-0.5 rounded text-slate-300 dark:text-white/15 hover:text-red-500 dark:hover:text-red-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Trash2 size={13} />
                   </button>
                 </div>
               ))}
@@ -223,29 +380,36 @@ export default function MyDayClient({ initialData }: {
         </div>
       )}
 
+      {/* Promote modal */}
       {promote && (
-        <PromoteModal note={promote} onClose={() => setPromote(null)} onDone={() => { setPromote(null); load(); }} />
+        <PromoteModal
+          note={promote}
+          onClose={() => setPromote(null)}
+          onDone={() => { setPromote(null); load(); }}
+        />
       )}
     </div>
   );
 }
 
-/* Convert a scratch note into a real, tracked project task. Lead/admin only. */
+/* ── Promote modal ────────────────────────────────────────────────────── */
 function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => void; onDone: () => void }) {
-  const [projects, setProjects] = useState<any[]>([]);
-  const [projectId, setProjectId] = useState('');
-  const [phases, setPhases]   = useState<{ id: string; name: string }[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
-  const [phaseId, setPhaseId]     = useState('');
-  const [priority, setPriority]   = useState('medium');
-  const [assigneeId, setAssignee] = useState('');
-  const [due, setDue]         = useState('');
+  const [projects,    setProjects]  = useState<any[]>([]);
+  const [projectId,   setProjectId] = useState('');
+  const [phases,      setPhases]    = useState<{ id: string; name: string }[]>([]);
+  const [members,     setMembers]   = useState<any[]>([]);
+  const [phaseId,     setPhaseId]   = useState('');
+  const [priority,    setPriority]  = useState('medium');
+  const [assigneeId,  setAssignee]  = useState('');
+  const [due,         setDue]       = useState('');
   const [loadingMeta, setLoadingMeta] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
+  const [saving,      setSaving]    = useState(false);
+  const [err,         setErr]       = useState('');
 
   useEffect(() => {
-    api<any[]>('/projects').then((p) => { setProjects(p); if (p[0]) setProjectId(p[0].id); }).catch(() => {});
+    api<any[]>('/projects')
+      .then((p) => { setProjects(p); if (p[0]) setProjectId(p[0].id); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -255,7 +419,7 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
     setPhases((proj?.phases || []).map((ph: any) => ({ id: ph.id, name: ph.name })));
     setLoadingMeta(true);
     api<any[]>(`/users${proj?.teamId ? `?teamId=${proj.teamId}` : ''}`)
-      .then((roster) => setMembers(roster))
+      .then((r) => setMembers(r))
       .catch(() => setMembers([]))
       .finally(() => setLoadingMeta(false));
   }, [projectId, projects]);
@@ -265,9 +429,9 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
     setSaving(true); setErr('');
     try {
       const body: any = { projectId, title: note.text, priority };
-      if (phaseId) body.phaseId = phaseId;
+      if (phaseId)    body.phaseId    = phaseId;
       if (assigneeId) body.assigneeId = assigneeId;
-      if (due) body.dueDate = due;
+      if (due)        body.dueDate    = due;
       const task = await api<{ id: string }>('/tasks', { method: 'POST', body });
       await api(`/scratch/${note.id}`, { method: 'PATCH', body: { done: true, promotedTaskId: task.id } });
       onDone();
@@ -277,19 +441,37 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/45 overlay-in" onClick={onClose}>
+    <div className="fixed inset-0 z-50 overflow-y-auto overlay-in" style={{ background: 'rgba(0,0,0,0.45)' }}
+      onClick={onClose}>
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-sm modal-in" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="w-full max-w-sm modal-in rounded-2xl border p-6 shadow-2xl"
+          style={{
+            background: 'var(--bg-page) ',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
           <div className="flex items-start justify-between mb-4">
             <div>
-              <div className="text-base font-bold text-slate-900">Add to project</div>
-              <div className="text-xs text-slate-400 mt-0.5">This note becomes a tracked task.</div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-500/15 flex items-center justify-center">
+                  <ArrowRight size={13} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="text-base font-bold text-slate-900 dark:text-white/90">Add to project</span>
+              </div>
+              <p className="text-xs text-slate-400 dark:text-white/35 ml-8">This note becomes a tracked task.</p>
             </div>
-            <button onClick={onClose} className="text-slate-300 hover:text-slate-500"><X size={18} /></button>
+            <button onClick={onClose}
+              className="text-slate-300 dark:text-white/25 hover:text-slate-500 dark:hover:text-white/50 transition-colors p-0.5 rounded">
+              <X size={18} />
+            </button>
           </div>
-          <div className="rounded-lg border-l-4 border-blue-300 bg-blue-50/70 px-3 py-2.5 text-sm text-slate-700 mb-4">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mb-0.5">Note</div>
-            {note.text}
+
+          {/* Note preview */}
+          <div className="rounded-lg border-l-4 border-blue-300 dark:border-blue-500/50 bg-blue-50/70 dark:bg-blue-500/[0.08] px-3 py-2.5 mb-4">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 dark:text-blue-400/70 mb-0.5">Note</div>
+            <p className="text-sm text-slate-700 dark:text-white/75 leading-relaxed">{note.text}</p>
           </div>
 
           <label className="label">Project</label>
@@ -319,16 +501,16 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
               <Select
                 value={priority} onChange={setPriority} ariaLabel="Priority"
                 options={[
-                  { value: 'low', label: 'Low' },
-                  { value: 'medium', label: 'Medium' },
-                  { value: 'high', label: 'High' },
+                  { value: 'low',      label: 'Low' },
+                  { value: 'medium',   label: 'Medium' },
+                  { value: 'high',     label: 'High' },
                   { value: 'critical', label: 'Critical' },
                 ]}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
               <label className="label">Assign to</label>
               <Select
@@ -342,15 +524,26 @@ function PromoteModal({ note, onClose, onDone }: { note: Note; onClose: () => vo
               />
             </div>
             <div>
-              <label className="label">Target completion</label>
+              <label className="label">Due date</label>
               <DatePicker value={due} onChange={(v) => setDue(v || '')} block />
             </div>
           </div>
 
-          {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 mt-3">{err}</div>}
-          <div className="flex gap-2 mt-5">
-            <button onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
-            <button onClick={go} disabled={saving || !projectId} className="btn-primary flex-1 justify-center">
+          {err && (
+            <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-3 py-2.5 mb-4">
+              {err}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button onClick={onClose} className="btn-secondary flex-1 justify-center text-sm">
+              Cancel
+            </button>
+            <button
+              onClick={go}
+              disabled={saving || !projectId}
+              className="btn-primary flex-1 justify-center text-sm"
+            >
               {saving ? 'Creating…' : 'Create task'}
             </button>
           </div>

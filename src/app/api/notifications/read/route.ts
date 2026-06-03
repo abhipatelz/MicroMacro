@@ -8,8 +8,10 @@ import { handleError } from '@/lib/http';
 export const runtime = 'nodejs';
 
 const Body = z.object({
-  // Mark a single notification read, or omit `id` to mark all read.
-  id: z.string().optional(),
+  // Mark a single notification read, or omit `id` to mark all read. When
+  // present it must be a valid ObjectId so a malformed value is rejected
+  // cleanly instead of triggering a Mongoose CastError 500 on the filter.
+  id: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid notification id').optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -18,9 +20,11 @@ export async function POST(req: NextRequest) {
     if (error) return error;
     await connectDB();
 
-    const body = await req.json().catch(() => ({}));
-    const parsed = Body.safeParse(body);
-    const id = parsed.success ? parsed.data.id : undefined;
+    const parsed = Body.safeParse(await req.json().catch(() => ({})));
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid notification id' }, { status: 400 });
+    }
+    const id = parsed.data.id;
 
     // Scope every write to the caller's own notifications.
     const filter: any = { userId: user.sub, read: false };

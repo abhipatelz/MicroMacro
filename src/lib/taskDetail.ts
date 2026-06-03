@@ -16,21 +16,18 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
   try {
     await connectDB();
 
-    // Visibility gate: the task's project must fall inside the viewer's scope.
-    // A bad/stale id throws a CastError from Mongoose — swallow it and return
-    // null so the page renders the client shell (which surfaces a graceful
-    // error message) instead of crashing into the global error boundary.
-    const ref = await Task.findById(id).select('projectId').lean();
-    if (!ref) return null;
+    // Fetch the task once, then gate on visibility: its project must fall inside
+    // the viewer's scope. A bad/stale id throws a CastError from Mongoose —
+    // swallow it (see catch) and return null so the page renders the client
+    // shell (which surfaces a graceful error) instead of crashing the boundary.
+    const t = await Task.findById(id).lean();
+    if (!t) return null;
     const scope = await getLeadScope(userId, role);
     const proj = await Project.findOne({
-      _id: (ref as any).projectId,
+      _id: (t as any).projectId,
       ...projectsVisibleFilter(scope),
     }).select('_id').lean();
     if (!proj) return null;
-
-    const t = await Task.findById(id).lean();
-    if (!t) return null;
 
     const [project, assignee, qa, commentUsers] = await Promise.all([
       Project.findById((t as any).projectId).lean(),
