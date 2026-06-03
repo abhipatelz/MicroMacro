@@ -330,8 +330,13 @@ export function MindMap() {
         {editing && (() => {
           const n = nodes.find((x) => x.id === editing);
           if (!n) return null;
+          // Clamp the editor to the canvas so a node near the right or top
+          // edge doesn't push the input off-screen on a phone.
+          const EDITOR_W = 160;
+          const left = Math.max(4, Math.min(size.w - EDITOR_W - 4, n.x - EDITOR_W / 2));
+          const top  = Math.max(4, n.y - 16);
           return (
-            <div className="absolute" style={{ left: n.x - 80, top: n.y - 16, width: 160 }}>
+            <div className="absolute" style={{ left, top, width: EDITOR_W }}>
               <input
                 autoFocus
                 value={pendingText}

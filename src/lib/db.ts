@@ -12,9 +12,13 @@ async function resolveUri(): Promise<string> {
     const { MongoMemoryServer } = await import('mongodb-memory-server');
     const g = global as any;
     if (!g.__mongoMemoryServer) {
+      // mongodb-memory-server downloads a binary at first start. Some Mongo
+      // patch versions stop being hosted upstream over time (we hit a 403
+      // on 7.0.14 for Ubuntu 22.04 in mid-2026), so prefer a known-stable
+      // minor release and let the operator override via MONGOMS_VERSION.
       g.__mongoMemoryServer = await MongoMemoryServer.create({
         instance: { dbName: 'pragati' },
-        binary: { version: process.env.MONGOMS_VERSION || '7.0.14' },
+        binary: { version: process.env.MONGOMS_VERSION || '7.0.7' },
       });
       console.log(`[db] in-memory Mongo @ ${g.__mongoMemoryServer.getUri()}`);
     }

@@ -168,7 +168,11 @@ function layout(data: BirdsEyeData, opts: { collapseTasks: boolean }): {
       };
       children.push({ node: countNode, children: [], height: NODE_HEIGHT.count });
     } else {
-      for (const t of tasks.slice(0, 24)) {
+      // Render up to TASK_CAP per project. Beyond that the SVG starts to
+      // out-scroll a typical viewport; we surface a clear "+N more" chip
+      // so it's never silently truncated when shown to leadership.
+      const TASK_CAP = 60;
+      for (const t of tasks.slice(0, TASK_CAP)) {
         const n: PositionedNode = {
           kind: 'task', id: nodeKey('task', t.id),
           x: 0, y: 0, width: childW, height: childH,
@@ -178,11 +182,12 @@ function layout(data: BirdsEyeData, opts: { collapseTasks: boolean }): {
         };
         children.push({ node: n, children: [], height: childH });
       }
-      if (tasks.length > 24) {
+      if (tasks.length > TASK_CAP) {
         const more: PositionedNode = {
           kind: 'count', id: `more:${p.id}`,
           x: 0, y: 0, width: NODE_WIDTH.count, height: NODE_HEIGHT.count,
-          label: `+${tasks.length - 24} more`,
+          label: `+${tasks.length - TASK_CAP} more — group to see all`,
+          sub: 'click Group tasks',
         };
         children.push({ node: more, children: [], height: NODE_HEIGHT.count });
       }
@@ -417,15 +422,16 @@ export function BirdsEyeView({ data, onClose }: { data: BirdsEyeData; onClose: (
   if (!mounted) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm overlay-in" onClick={onClose}>
-      <div className="absolute inset-4 sm:inset-8 rounded-2xl bg-white shadow-2xl flex flex-col modal-in overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100">
+      <div className="absolute inset-2 sm:inset-8 rounded-2xl bg-white shadow-2xl flex flex-col modal-in overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* Header — stacks the title block and the toolbar on phones so the
+            buttons stay accessible. On desktop they sit on one line. */}
+        <div className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-4 py-3 border-b border-slate-100">
           <div className="min-w-0">
             <div className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Bird&apos;s-eye view</div>
             <div className="text-base font-black text-slate-900 truncate">{data.rootLabel}</div>
             {data.rootSubLabel && <div className="text-[11px] text-slate-400 truncate">{data.rootSubLabel}</div>}
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:shrink-0">
             <button onClick={() => setCollapseTasks((v) => !v)} title={collapseTasks ? 'Show every task' : 'Collapse tasks'}
               className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
               {collapseTasks ? 'Show tasks' : 'Group tasks'}
@@ -434,9 +440,12 @@ export function BirdsEyeView({ data, onClose }: { data: BirdsEyeData; onClose: (
             <span className="text-[11px] font-bold text-slate-600 tabular-nums w-10 text-center">{Math.round(zoom * 100)}%</span>
             <button onClick={() => setZoom((z) => Math.min(2, z + 0.1))} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" title="Zoom in"><ZoomIn size={15} /></button>
             <button onClick={() => setZoom(1)} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" title="Reset zoom"><Maximize2 size={15} /></button>
-            <span className="w-px h-5 bg-slate-200 mx-1" />
+            <span className="w-px h-5 bg-slate-200 mx-1 hidden sm:block" />
             <button onClick={exportSvg} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" title="Save as SVG"><Download size={15} /></button>
-            <button onClick={printAsPdf} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">Export PDF</button>
+            <button onClick={printAsPdf} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+              <span className="hidden sm:inline">Export PDF</span>
+              <span className="sm:hidden">PDF</span>
+            </button>
             <button onClick={onClose} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" title="Close"><X size={16} /></button>
           </div>
         </div>
