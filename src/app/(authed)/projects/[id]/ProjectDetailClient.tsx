@@ -13,7 +13,8 @@ import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { useIsDark } from '@/lib/client/useIsDark';
 import { weightedProgress } from '@/lib/progress';
-import { GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight, Lock, Pencil, ShieldCheck, ScrollText, Eye, Sparkles, Compass } from 'lucide-react';
+import { GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight, Lock, Pencil, ShieldCheck, ScrollText, Eye, Sparkles } from 'lucide-react';
+import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { chimeIfEnabled, playDropTick } from '@/lib/sound';
 import { Celebration } from '@/components/Celebration';
 import { TaskCompletePop } from '@/components/TaskCompletePop';
@@ -1167,17 +1168,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           {/* Actions — Export (PDF/CSV/HTML) for everyone; Archive + Delete
               admin-only. */}
           <div className="flex flex-wrap items-center md:justify-end gap-2">
-            {/* Bird's-eye view trigger — icon-only. Tooltip carries the
-                meaning; no shouted label. */}
-            <button
-              type="button"
-              onClick={() => setShowBirdEye(true)}
-              title="Bird's-eye view"
-              aria-label="Open bird's-eye view"
-              className="inline-flex items-center justify-center w-9 h-9 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-            >
-              <Compass size={17} />
-            </button>
+            <BirdEyeButton scopeKey={`project:${id}`} onClick={() => setShowBirdEye(true)} />
             <ExportMenu
               onExcel={project.isPersonal ? undefined : () => { window.location.href = `/api/projects/${project.id}/export`; }}
               onPdf={() => printProjectReport(project, phases, me?.name || me?.email || '')}
@@ -1433,6 +1424,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       {showBirdEye && project && (
         <BirdsEyeView
           onClose={() => setShowBirdEye(false)}
+          onChange={load}
           data={{
             rootLabel: project.name,
             rootSubLabel: `${project.code || 'Project'} · ${(tasks || []).length} task${(tasks || []).length === 1 ? '' : 's'}`,

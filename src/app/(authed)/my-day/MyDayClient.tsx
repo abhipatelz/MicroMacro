@@ -268,35 +268,41 @@ export default function MyDayClient({ initialData }: {
           board, not a mind-map: drag-to-draw, switch tools, erase, start
           over. Forces real thinking rather than the pre-formatted polish of
           a node graph. */}
-      <div className="mb-5">
-        <button type="button"
-          onClick={() => setMindMapOpen((v) => !v)}
-          className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3 py-2 transition-colors text-left ${
-            mindMapOpen
-              ? 'border-blue-200/70 bg-blue-50/40 dark:bg-blue-500/[0.07] dark:border-blue-500/25'
-              : 'border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.025] hover:border-slate-300'
-          }`}>
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+      {/* Whiteboard — a tiny side affordance, NOT a full-width banner. Sits to
+          the right of the capture row above (when closed) so the focused
+          "what's on your mind" capture stays the page's centre of gravity.
+          When opened, the canvas expands beneath. */}
+      {mindMapOpen ? (
+        <div className="mb-5 fade-in-soft">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/40">Whiteboard</div>
+            <button
+              type="button"
+              onClick={() => setMindMapOpen(false)}
+              className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:text-white/40 dark:hover:text-white/70 inline-flex items-center gap-1"
+            >
+              Close <ChevronUp size={11} />
+            </button>
+          </div>
+          <Whiteboard />
+        </div>
+      ) : (
+        <div className="mb-5 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setMindMapOpen(true)}
+            title="Open whiteboard — draw, erase, start over"
+            aria-label="Open whiteboard"
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-white/35 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
+          >
+            <span className="w-5 h-5 rounded-md flex items-center justify-center"
               style={{ background: 'linear-gradient(135deg, #1565C0, #22C55E)' }}>
-              <BrainCircuit size={13} className="text-white" />
-            </div>
-            <div>
-              <div className="text-[12px] font-bold text-slate-700 dark:text-white/75">Whiteboard</div>
-              <div className="text-[10px] text-slate-400/75 dark:text-white/30">Draw, erase, start over. Nothing precious.</div>
-            </div>
-          </div>
-          <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-white/35 border border-slate-200 dark:border-white/10 rounded-md px-2 py-0.5">
-            {mindMapOpen ? 'Close' : 'Open'}
-            {mindMapOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-          </span>
-        </button>
-        {mindMapOpen && (
-          <div className="mt-3 fade-in-soft">
-            <Whiteboard />
-          </div>
-        )}
-      </div>
+              <BrainCircuit size={11} className="text-white" />
+            </span>
+            Whiteboard
+          </button>
+        </div>
+      )}
 
       {/* ── Empty state ──────────────────────────────────────────────── */}
       {open.length === 0 && done.length === 0 && (

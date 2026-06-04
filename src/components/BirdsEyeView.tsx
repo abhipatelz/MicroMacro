@@ -1,7 +1,10 @@
 'use client';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ZoomIn, ZoomOut, Scan, Download, FileDown, Layers } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, Scan, Download, FileDown, Layers, RotateCcw, Pencil, Check } from 'lucide-react';
+import { api } from '@/lib/client/api';
+import { DatePicker } from '@/components/DatePicker';
+import { Select } from '@/components/Select';
 
 /**
  * Bird's-Eye View — a clean, executive top-down map of a workspace / team /
@@ -502,10 +505,25 @@ function edgePath(from: PositionedNode, to: PositionedNode): string {
 /* ── Component ─────────────────────────────────────────────────────────────
    Renders inside a portal so the modal sits above the app sidebar/header and
    the Bird's-eye header is never clipped. */
-export function BirdsEyeView({ data, onClose }: { data: BirdsEyeData; onClose: () => void }) {
+export function BirdsEyeView({ data, onClose, onChange }: {
+  data: BirdsEyeData;
+  onClose: () => void;
+  /** Fires after a Bird's-Eye edit (assignee/TCD) persists — lets the host
+   *  page re-fetch its data without forcing a hard reload. */
+  onChange?: () => void;
+}) {
   const [mounted, setMounted] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [collapseTasks, setCollapseTasks] = useState(data.tasks.length > 120);
+  const [editing, setEditing] = useState<{ node: PositionedNode; clientX: number; clientY: number } | null>(null);
+  // Per-node drag overrides {id → {dx,dy}} — applied on top of the computed
+  // layout. localStorage-backed per scope+root so the user's arrangement is
+  // preserved across opens but doesn't bleed between views.
+  const overrideKey = `pragati-bve-pos:${data.scope}:${data.rootLabel}`;
+  const [overrides, setOverrides] = useState<Record<string, { dx: number; dy: number }>>(() => {
+    if (typeof window === 'undefined') return {};
+    try { return JSON.parse(localStorage.getItem(overrideKey) || '{}'); } catch { return {}; }
+  });
   const svgRef = useRef<SVGSVGElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Tracks whether the user has taken manual control of the zoom; until they
@@ -514,15 +532,37 @@ export function BirdsEyeView({ data, onClose }: { data: BirdsEyeData; onClose: (
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
-    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') editing ? setEditing(null) : onClose(); };
     window.addEventListener('keydown', onEsc);
     return () => window.removeEventListener('keydown', onEsc);
-  }, [onClose]);
+  }, [onClose, editing]);
 
-  const { nodes, edges, width, height } = useMemo(
+  // Persist overrides whenever they change.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try { localStorage.setItem(overrideKey, JSON.stringify(overrides)); } catch {}
+  }, [overrides, overrideKey]);
+
+  const { nodes: baseNodes, edges, width: baseWidth, height: baseHeight } = useMemo(
     () => layout(data, { collapseTasks }),
     [data, collapseTasks],
   );
+
+  // Apply drag overrides to the computed layout (and expand canvas if dragged
+  // beyond its bounds so edges & scroll still reach the moved node).
+  const { nodes, width, height } = useMemo(() => {
+    let w = baseWidth, h = baseHeight;
+    const arr = baseNodes.map((n) => {
+      const o = overrides[n.id];
+      if (!o) return n;
+      const moved = { ...n, x: n.x + o.dx, y: n.y + o.dy };
+      if (moved.x + moved.width  + PADDING > w) w = moved.x + moved.width  + PADDING;
+      if (moved.y + moved.height + PADDING > h) h = moved.y + moved.height + PADDING;
+      return moved;
+    });
+    return { nodes: arr, width: w, height: h };
+  }, [baseNodes, baseWidth, baseHeight, overrides]);
+
   const nodeIndex = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
   // Compute the zoom that frames the whole tree in the current viewport, then
@@ -569,23 +609,65 @@ export function BirdsEyeView({ data, onClose }: { data: BirdsEyeData; onClose: (
   };
   const resetView = () => { userZoomed.current = false; fitToViewport(); };
 
-  // Drag-to-pan on empty canvas. Clicking a node (an <a>) still navigates —
-  // we only start a pan when the press lands on blank space.
+  // Pointer handling — two modes share one set of handlers:
+  //   • Node drag  : press on a [data-be-node] element moves only that node.
+  //                  Suppresses the native <a> click on release so the node
+  //                  isn't navigated to after a drag.
+  //   • Canvas pan : press on blank space scrolls the viewport, as before.
   const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const drag = useRef<{ id: string; startX: number; startY: number; baseDx: number; baseDy: number; moved: boolean } | null>(null);
+
   const onPointerDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('a')) return; // let node links through
+    const target = e.target as HTMLElement;
+    const nodeEl = target.closest('[data-be-node]') as HTMLElement | null;
+    if (nodeEl) {
+      const id = nodeEl.getAttribute('data-be-node') || '';
+      // Root is fixed (it's the brand anchor); count chips aren't user-data.
+      const kind = nodeEl.getAttribute('data-be-kind');
+      if (kind === 'root' || kind === 'count') return;
+      const existing = overrides[id] || { dx: 0, dy: 0 };
+      drag.current = { id, startX: e.clientX, startY: e.clientY, baseDx: existing.dx, baseDy: existing.dy, moved: false };
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+      return;
+    }
     const el = scrollRef.current;
     if (!el) return;
     pan.current = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop };
     el.setPointerCapture?.(e.pointerId);
   };
+
   const onPointerMove = (e: React.PointerEvent) => {
+    if (drag.current) {
+      const dx = (e.clientX - drag.current.startX) / zoom;
+      const dy = (e.clientY - drag.current.startY) / zoom;
+      if (!drag.current.moved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) drag.current.moved = true;
+      if (drag.current.moved) {
+        setOverrides((o) => ({ ...o, [drag.current!.id]: { dx: drag.current!.baseDx + dx, dy: drag.current!.baseDy + dy } }));
+      }
+      return;
+    }
+    if (!pan.current) return;
     const el = scrollRef.current;
-    if (!el || !pan.current) return;
+    if (!el) return;
     el.scrollLeft = pan.current.left - (e.clientX - pan.current.x);
     el.scrollTop = pan.current.top - (e.clientY - pan.current.y);
   };
-  const endPan = () => { pan.current = null; };
+
+  const endPointer = (e: React.PointerEvent) => {
+    // Suppress the click on the underlying <a> if the user actually dragged
+    // — otherwise releasing the drag opens the task page.
+    if (drag.current?.moved) {
+      const stopClick = (ev: MouseEvent) => { ev.stopPropagation(); ev.preventDefault(); window.removeEventListener('click', stopClick, true); };
+      window.addEventListener('click', stopClick, true);
+    }
+    drag.current = null;
+    pan.current = null;
+  };
+
+  function resetLayout() {
+    setOverrides({});
+  }
 
   function exportSvg() {
     if (!svgRef.current) return;
@@ -644,6 +726,13 @@ export function BirdsEyeView({ data, onClose }: { data: BirdsEyeData; onClose: (
             <span className="text-[11px] font-bold text-slate-600 tabular-nums w-10 text-center">{Math.round(zoom * 100)}%</span>
             <button onClick={() => zoomBy(0.1)} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" title="Zoom in"><ZoomIn size={15} /></button>
             <button onClick={resetView} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" title="Reset · fit to screen"><Scan size={15} /></button>
+            {Object.keys(overrides).length > 0 && (
+              <button onClick={resetLayout}
+                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                title="Reset node positions to the computed layout">
+                <RotateCcw size={15} />
+              </button>
+            )}
             <span className="w-px h-5 bg-slate-200 mx-0.5 hidden sm:block" />
             <button onClick={exportSvg} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" title="Download SVG"><Download size={15} /></button>
             <button onClick={printAsPdf} className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors" title="Export as PDF">
@@ -659,7 +748,7 @@ export function BirdsEyeView({ data, onClose }: { data: BirdsEyeData; onClose: (
             edges without clipping. */}
         <div ref={scrollRef}
           className="flex-1 overflow-auto bg-[radial-gradient(circle_at_1px_1px,#e2e8f0_1px,transparent_0)] [background-size:22px_22px] bg-slate-50 cursor-grab active:cursor-grabbing"
-          onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endPan} onPointerLeave={endPan}>
+          onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endPointer} onPointerLeave={endPointer}>
           <div className="inline-block min-w-full">
             <div className="flex justify-center">
               <div style={{ width: width * zoom, height: height * zoom }}>
@@ -681,12 +770,46 @@ export function BirdsEyeView({ data, onClose }: { data: BirdsEyeData; onClose: (
                     const navHref = n.kind === 'task' ? `/tasks/${(n.data as BirdsEyeTask).id}`
                       : n.kind === 'project' ? `/projects/${(n.data as BirdsEyeProject).id}`
                       : n.kind === 'team' ? `/teams/${(n.data as BirdsEyeTeam).id}` : null;
-                    const shape = <NodeShape key={n.id} n={n} />;
-                    if (!navHref) return shape;
+                    const isTask = n.kind === 'task';
+                    const dragProps = {
+                      'data-be-node': n.id,
+                      'data-be-kind': n.kind,
+                      style: { cursor: n.kind === 'root' || n.kind === 'count' ? 'default' : 'grab' },
+                    } as const;
+                    const shape = <NodeShape key={`s-${n.id}`} n={n} />;
+
+                    // Task nodes get an inline edit affordance — a tiny pencil
+                    // button in the top-right corner of the card. Clicking it
+                    // pops the inline editor with assignee + TCD fields.
+                    const editBtn = isTask ? (
+                      <g
+                        onClick={(e) => {
+                          e.preventDefault(); e.stopPropagation();
+                          setEditing({ node: n, clientX: (e as any).clientX, clientY: (e as any).clientY });
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <circle cx={n.x + n.width - 11} cy={n.y + 11} r={8} fill="#ffffff" stroke="#cbd5e1" strokeWidth={0.8} />
+                        <path d={`M ${n.x + n.width - 14} ${n.y + 13} l 4 -4 l 2 2 l -4 4 z M ${n.x + n.width - 10} ${n.y + 9} l 1 1`}
+                          stroke="#475569" strokeWidth={0.9} fill="none" strokeLinecap="round" />
+                      </g>
+                    ) : null;
+
+                    if (!navHref) {
+                      return (
+                        <g key={n.id} {...dragProps}>
+                          {shape}
+                          {editBtn}
+                        </g>
+                      );
+                    }
                     return (
-                      <a key={n.id} href={navHref} target="_blank" rel="noreferrer" style={{ cursor: 'pointer' }}>
-                        {shape}
-                      </a>
+                      <g key={n.id} {...dragProps}>
+                        <a href={navHref} target="_blank" rel="noreferrer">
+                          {shape}
+                        </a>
+                        {editBtn}
+                      </g>
                     );
                   })}
                 </svg>
@@ -710,11 +833,127 @@ export function BirdsEyeView({ data, onClose }: { data: BirdsEyeData; onClose: (
               <span>{k.l}</span>
             </span>
           ))}
-          <span className="ml-auto text-slate-400 hidden sm:inline">Drag to pan · scroll to move · tap a node to open it.</span>
+          <span className="ml-auto text-slate-400 hidden sm:inline">Drag a node to rearrange · pencil to edit · tap to open.</span>
         </div>
+
+        {editing && (
+          <BirdsEyeTaskEditor
+            task={editing.node.data as BirdsEyeTask}
+            anchorX={editing.clientX}
+            anchorY={editing.clientY}
+            onClose={() => setEditing(null)}
+            onSaved={() => { setEditing(null); onChange?.(); }}
+          />
+        )}
       </div>
     </div>,
     document.body,
+  );
+}
+
+/* ── Inline task editor ────────────────────────────────────────────────────
+   Anchored popover for the pencil affordance on task nodes. Two fields only —
+   the two the user said matter most from the bird's-eye altitude (assignee
+   and TCD/due-date) — so a lead can rebalance work without diving into the
+   task page. Persists via the same PATCH /tasks/:id endpoint the task page
+   uses, so audit-trail and validation behave identically. */
+function BirdsEyeTaskEditor({ task, anchorX, anchorY, onClose, onSaved }: {
+  task: BirdsEyeTask;
+  anchorX: number;
+  anchorY: number;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [assigneeId, setAssigneeId] = useState('');
+  const [due, setDue] = useState('');
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // Pull the live task so we have the canonical assignee/TCD + project to
+      // pick the members list from. The bird's-eye payload only carries
+      // labels, not ids.
+      try {
+        const t = await api<any>(`/tasks/${task.id}`);
+        if (cancelled) return;
+        setAssigneeId(t.assigneeId || '');
+        setDue(t.ccTcd || t.dueDate || '');
+        const projectId = t.projectId;
+        if (projectId) {
+          const proj = await api<any>(`/projects/${projectId}`).catch(() => null);
+          const teamId = proj?.teamId;
+          const users = await api<any[]>(`/users${teamId ? `?teamId=${teamId}` : ''}`).catch(() => []);
+          if (!cancelled) setMembers(users.map((u: any) => ({ id: u.id, name: u.name })));
+        }
+      } catch (e: any) {
+        if (!cancelled) setErr(e?.message || 'Could not load task');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [task.id]);
+
+  async function save() {
+    setSaving(true); setErr('');
+    try {
+      const body: any = {};
+      body.assigneeId = assigneeId || null;
+      body.ccTcd = due || null;
+      await api(`/tasks/${task.id}`, { method: 'PATCH', body });
+      onSaved();
+    } catch (e: any) {
+      setErr(e?.message || 'Save failed');
+    } finally { setSaving(false); }
+  }
+
+  // Anchor against the viewport but keep the popover fully on-screen.
+  const POP_W = 280;
+  const POP_H = 260;
+  const left = Math.min(Math.max(8, anchorX - POP_W / 2), (typeof window !== 'undefined' ? window.innerWidth : 1024) - POP_W - 8);
+  const top  = Math.min(Math.max(8, anchorY + 12), (typeof window !== 'undefined' ? window.innerHeight : 768) - POP_H - 8);
+
+  return (
+    <>
+      {/* Click-away catcher (sits between modal and popover) */}
+      <div className="fixed inset-0 z-[70]" onClick={onClose} />
+      <div
+        className="fixed z-[71] rounded-xl border border-slate-200 bg-white shadow-2xl p-3 modal-in"
+        style={{ left, top, width: POP_W }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="min-w-0">
+            <div className="text-[9px] font-bold uppercase tracking-widest text-blue-600">Quick edit</div>
+            <div className="text-[12px] font-bold text-slate-800 truncate" title={task.title}>{task.title}</div>
+          </div>
+          <button onClick={onClose} className="p-0.5 text-slate-400 hover:text-slate-700"><X size={14} /></button>
+        </div>
+
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-2 mb-1">Assignee</label>
+        <Select
+          value={assigneeId}
+          onChange={setAssigneeId}
+          ariaLabel="Assignee"
+          placeholder="Unassigned"
+          options={[{ value: '', label: 'Unassigned' }, ...members.map((u) => ({ value: u.id, label: u.name }))]}
+        />
+
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-3 mb-1">Target completion date</label>
+        <DatePicker value={due || null} onChange={(v) => setDue(v || '')} block />
+
+        {err && <div className="mt-2 text-[11px] text-red-600">{err}</div>}
+
+        <div className="flex gap-2 mt-3">
+          <button onClick={onClose} className="flex-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">Cancel</button>
+          <button onClick={save} disabled={saving}
+            className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+            <Check size={12} /> {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 

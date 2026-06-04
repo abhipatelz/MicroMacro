@@ -32,6 +32,7 @@ const BirdsEyeView = dynamic2(
   { ssr: false, loading: () => null },
 );
 import type { BirdsEyeData } from '@/components/BirdsEyeView';
+import { BirdEyeButton } from '@/components/BirdEyeButton';
 
 /* ── Types matching /api/lead-dashboard ──────────────────────────────────── */
 interface TeamTask {
@@ -301,17 +302,9 @@ export default function DashboardClient({
             <span className="text-[0.7em] translate-y-[0.05em] opacity-80" suppressHydrationWarning>{greetingEmoji()}</span>
           </h1>
         </div>
-        {/* Bird's-eye view trigger — icon-only, aligned with the greeting row. */}
+        {/* Bird's-eye view trigger — custom icon, blinks once per session. */}
         {!isFirstRun && (
-          <button
-            type="button"
-            onClick={() => setBirdsEyeOpen(true)}
-            title="Bird's-eye view"
-            aria-label="Open bird's-eye view"
-            className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-          >
-            <Compass size={18} />
-          </button>
+          <BirdEyeButton scopeKey="dashboard" onClick={() => setBirdsEyeOpen(true)} className="shrink-0" />
         )}
       </div>
       {/* Subline removed. The summary chips below (Ongoing / Open / Overdue
@@ -850,10 +843,10 @@ function ProjectRow({
           essential metrics — progress, tasks-done, due, owner. */}
       <header
         onClick={() => setOpen(o => !o)}
-        className="px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors select-none"
+        className={`px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors select-none ${nudgeExpand && !open ? 'pragati-row-expand-blink' : ''}`}
       >
         <button
-          className={`p-0.5 text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform rounded-full shrink-0 ${nudgeExpand && !open ? 'dashboard-expand-nudge' : ''}`}
+          className="p-0.5 text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform rounded-full shrink-0"
           aria-label={open ? 'Collapse project tasks' : 'Expand project tasks'}
           style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}
         >
@@ -1354,7 +1347,7 @@ function ContributorsPanel({
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
       <div
-        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors"
+        className={`px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
         onClick={() => setPanelOpen(o => !o)}
       >
         <UsersIcon size={13} className="text-slate-400 dark:text-white/30" />
@@ -1364,7 +1357,7 @@ function ContributorsPanel({
         <span className="ml-auto text-[10px] text-slate-300 dark:text-white/20 font-semibold">{people.length}</span>
         <ChevronDown
           size={12}
-          className={`text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full ${showExpandNudge && !panelOpen ? 'dashboard-expand-nudge' : ''}`}
+          className="text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full"
           style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
         />
       </div>
@@ -1440,7 +1433,7 @@ function MyFocusPanel({
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
       <div
-        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors"
+        className={`px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
         onClick={() => setPanelOpen((o) => !o)}
       >
         <FolderKanban size={13} className="text-slate-400 dark:text-white/30" />
@@ -1448,7 +1441,7 @@ function MyFocusPanel({
         <span className="ml-auto text-[10px] text-slate-300 dark:text-white/20 font-semibold">{rows.length}</span>
         <ChevronDown
           size={12}
-          className={`text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full ${showExpandNudge && !panelOpen ? 'dashboard-expand-nudge' : ''}`}
+          className="text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full"
           style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
         />
       </div>

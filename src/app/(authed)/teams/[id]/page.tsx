@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { useCurrentUser } from '@/components/CurrentUserContext';
-import { Trash2, BarChart3, X, Compass } from 'lucide-react';
+import { Trash2, BarChart3, X } from 'lucide-react';
+import { BirdEyeButton } from '@/components/BirdEyeButton';
 import dynamic from 'next/dynamic';
 // Heavy interactive SVG canvas — defer it until a viewer opens the modal.
 const BirdsEyeView = dynamic(
@@ -184,16 +185,7 @@ export default function TeamDetailPage() {
             this is purely a UI gate. */}
         {(isOwnerOrAdmin || isLead) && (
           <div className="shrink-0 flex items-center gap-2 flex-wrap">
-            {/* Bird's-eye view trigger — icon-only across the app. */}
-            <button
-              type="button"
-              onClick={() => setShowBirdEye(true)}
-              title="Bird's-eye view"
-              aria-label="Open bird's-eye view"
-              className="inline-flex items-center justify-center w-9 h-9 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-            >
-              <Compass size={17} />
-            </button>
+            <BirdEyeButton scopeKey={`team:${id}`} onClick={() => setShowBirdEye(true)} />
             <ExportMenu
               onPdf={() => printTeamReport(team, progress, board, me?.name || me?.email || '')}
               onCsv={() => downloadTeamCsv(team, board, me?.name || me?.email || '')}
@@ -476,6 +468,7 @@ export default function TeamDetailPage() {
       {showBirdEye && team && (
         <BirdsEyeView
           onClose={() => setShowBirdEye(false)}
+          onChange={load}
           data={{
             rootLabel: team.name,
             rootSubLabel: `${(team.projects || []).length} project${(team.projects || []).length === 1 ? '' : 's'} · ${(board || []).length} task${(board || []).length === 1 ? '' : 's'}`,
