@@ -533,7 +533,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 ariaLabel="Assignee"
                 teamId={teamId}
                 excludeAdmin
-                onChange={(v) => isLead && update({ assigneeId: v || null })}
+                onChange={(v: string) => isLead && update({ assigneeId: v || null })}
               />
             </div>
             {/* Waiting on — who the task is stuck/pending with (QA, a person,

@@ -339,9 +339,11 @@ interface AvatarProps {
   bg?: string | null;
   /** Index into AVATAR_FONTS. */
   font?: number | null;
+  /** Render a subtle white ring border around the avatar. */
+  ring?: boolean;
 }
 
-export function Avatar({ name, size = 28, letter, bg, font }: AvatarProps) {
+export function Avatar({ name, size = 28, letter, bg, font, ring }: AvatarProps) {
   // Initials: first letter of first word + first letter of last word.
   // Single-word names render a single letter. Coloured deterministically by name.
   const trimmed = (name || '').trim();
@@ -379,7 +381,9 @@ export function Avatar({ name, size = 28, letter, bg, font }: AvatarProps) {
         // instead of a plain circle. Proportional radius so it reads the same
         // at every size (matches PragatiMark's ~0.26–0.28 factor).
         borderRadius: Math.max(4, Math.round(size * 0.28)),
-        boxShadow: useMonogram
+        boxShadow: ring
+          ? '0 0 0 2px rgba(255,255,255,0.9), 0 1px 3px rgba(15,23,42,0.15)'
+          : useMonogram
           ? '0 1px 2px rgba(15,23,42,0.12)'
           : 'inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 2px rgba(15,23,42,0.12)',
         lineHeight: 1,
