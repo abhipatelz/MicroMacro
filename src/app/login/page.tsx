@@ -125,6 +125,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [notice, setNotice] = useState('');
+  const [showForgot, setShowForgot] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -672,19 +673,39 @@ export default function LoginPage() {
             )}
 
             {mode !== 'unlock' && (
-            <p className="mt-5 text-center text-sm text-slate-400">
+            <div className="mt-5 text-center">
               {mode === 'setup' ? (
-                <>
+                <p className="text-sm text-slate-400">
                   Already have an account?{' '}
                   <button onClick={() => { setMode('login'); setErr(''); }}
                     className="text-blue-600 font-semibold hover:underline">Sign in</button>
-                </>
+                </p>
               ) : (
-                <span className="text-xs text-slate-300">
-                  Forgot your password? Ask the admin to reset it for you.
-                </span>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgot((v) => !v)}
+                    className="text-xs text-slate-400 hover:text-blue-600 underline underline-offset-2 transition-colors"
+                  >
+                    Forgot your password?
+                  </button>
+                  {showForgot && (
+                    <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-left fade-in-soft">
+                      <p className="text-[12px] font-semibold text-blue-800 mb-1">How to reset your password</p>
+                      <ol className="text-[11px] text-blue-700 space-y-1 list-decimal list-inside leading-snug">
+                        <li>Contact your workspace admin or lead.</li>
+                        <li>Ask them to open <strong>People → Reset password</strong> on your account.</li>
+                        <li>They'll share a temporary password with you verbally or over chat.</li>
+                        <li>Sign in with the temporary password — you'll be prompted to set a new one immediately.</li>
+                      </ol>
+                      <p className="text-[10px] text-blue-500 mt-2 leading-snug">
+                        If you <em>are</em> the admin, use your recovery key on the password field, or ask your master admin.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
-            </p>
+            </div>
             )}
 
             </div>{/* end white card */}

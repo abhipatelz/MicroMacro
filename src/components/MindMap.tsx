@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, Save, RotateCcw, Pencil, Check, Link2, ListChecks } from 'lucide-react';
+import { Plus, Trash2, Save, RotateCcw, Pencil, Check, Link2, ListChecks, Download } from 'lucide-react';
 import { api } from '@/lib/client/api';
 import { MindMapToTasksModal } from '@/components/MindMapToTasksModal';
 
@@ -200,6 +200,79 @@ export function MindMap() {
     mark();
   }
 
+  function exportPng() {
+    const scale = 2; // retina
+    const W = size.w * scale;
+    const H = size.h * scale;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(scale, scale);
+
+    // Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size.w, size.h);
+    // Dot grid
+    ctx.fillStyle = 'rgba(203,213,225,0.45)';
+    for (let x = 0; x < size.w; x += 24) {
+      for (let y = 0; y < size.h; y += 24) {
+        ctx.beginPath();
+        ctx.arc(x + 0.6, y + 0.6, 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Edges
+    edges.forEach((e) => {
+      const a = nodes.find((n) => n.id === e.from);
+      const b = nodes.find((n) => n.id === e.to);
+      if (!a || !b) return;
+      const mx = (a.x + b.x) / 2;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.bezierCurveTo((a.x + mx) / 2, a.y, (b.x + mx) / 2, b.y, b.x, b.y);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    // Nodes
+    nodes.forEach((n) => {
+      const color = n.color || '#1565C0';
+      // Fill
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, NODE_R, 0, Math.PI * 2);
+      ctx.fillStyle = color + '1e'; // ~12% opacity
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Text
+      ctx.fillStyle = color;
+      ctx.font = 'bold 11px system-ui,sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const words = n.text.split(' ');
+      const maxW = (NODE_R * 2) - 14;
+      const lines: string[] = [];
+      let line = '';
+      words.forEach((w) => {
+        const test = line ? `${line} ${w}` : w;
+        if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+        else { line = test; }
+      });
+      if (line) lines.push(line);
+      const lineH = 14;
+      const startY = n.y - ((lines.length - 1) * lineH) / 2;
+      lines.forEach((l, i) => ctx.fillText(l, n.x, startY + i * lineH, maxW));
+    });
+
+    const link = document.createElement('a');
+    link.download = `mindmap-${new Date().toISOString().slice(0, 10)}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
   return (
     <div className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden flex flex-col"
       style={{ minHeight: 460 }}>
@@ -233,6 +306,12 @@ export function MindMap() {
             className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.05] disabled:opacity-40 transition-colors">
             <Save size={14} />
           </button>
+          {nodes.length > 0 && (
+            <button onClick={exportPng} title="Export as PNG"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-white/[0.05] transition-colors">
+              <Download size={14} />
+            </button>
+          )}
           <button onClick={clearAll} title="Clear all"
             className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/[0.08] transition-colors">
             <RotateCcw size={14} />

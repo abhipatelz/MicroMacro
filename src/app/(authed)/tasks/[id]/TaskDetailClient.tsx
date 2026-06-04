@@ -538,6 +538,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 excludeAdmin
                 onChange={(v) => isLead && update({ assigneeId: v || null })}
               />
+              {task.assigneeId && task.assigneeActive === false && (
+                <div className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
+                  <span aria-hidden="true">⚠</span> Assignee account deactivated — consider reassigning
+                </div>
+              )}
             </div>
             {/* Waiting on — who the task is stuck/pending with (QA, a person,
                a department). Editable by the assignee or a lead. */}
