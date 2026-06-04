@@ -233,7 +233,7 @@ export async function GET(req: NextRequest) {
         id: `load-${worstOverload.id}`,
         title: `Rebalance ${worstOverload.name.split(' ')[0]}'s workload`,
         why: `${worstOverload.openTasks} open${worstOverload.overdueCount > 0 ? `, ${worstOverload.overdueCount} overdue` : ''} — move 2-3 tasks to a teammate this week.`,
-        link: `/people/${worstOverload.id}`,
+        link: `/org`,
         kind: 'overload',
       });
     }

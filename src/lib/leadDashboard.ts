@@ -210,6 +210,8 @@ export async function getLeadDashboardData(
       subtasksDone: ((t as any).subtasks || []).filter((s: any) => s.status === 'done').length,
       subtaskTitles: ((t as any).subtasks || []).slice(0, 3).map((s: any) => s.title),
       gxpCritical:  !!(t as any).gxpCritical,
+      lastActivityAt: toIso((t as any).lastActivityAt || t.updatedAt || t.createdAt),
+      pendingWith:  (t as any).pendingWith || '',
     };
   });
 

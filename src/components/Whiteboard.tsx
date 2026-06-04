@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pen, Eraser, Undo2, Redo2, Save, RotateCcw, Highlighter, Type as TypeIcon, Square, Circle, ArrowRight as ArrowIcon, Download } from 'lucide-react';
 import { api } from '@/lib/client/api';
+// onSaveToNotes removed — whiteboard is a scratch surface; notes are independent
 
 /**
  * Whiteboard — a free-form drawing surface for My Day.
@@ -47,7 +48,7 @@ const COLORS: { value: string; label: string }[] = [
 
 const PEN_SIZES = [1.5, 2.5, 4, 6];
 
-export function Whiteboard({ onSaveToNotes }: { onSaveToNotes?: (strokes: Stroke[]) => void } = {}) {
+export function Whiteboard() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState({ w: 800, h: 480 });
@@ -381,9 +382,6 @@ export function Whiteboard({ onSaveToNotes }: { onSaveToNotes?: (strokes: Stroke
           <ToolBtn label="Undo" icon={<Undo2 size={14} />} onClick={undo} disabled={pointer === 0} />
           <ToolBtn label="Redo" icon={<Redo2 size={14} />} onClick={redo} disabled={pointer >= doc.strokes.length} />
           <ToolBtn label="Export as PNG" icon={<Download size={14} />} onClick={exportPng} disabled={visibleStrokes.length === 0} />
-          {onSaveToNotes && (
-            <ToolBtn label="Save to Notes" icon={<Save size={14} />} onClick={() => onSaveToNotes(visibleStrokes)} disabled={visibleStrokes.length === 0} />
-          )}
           <ToolBtn label="Save now" icon={<Save size={14} />} onClick={() => void save()} disabled={busy} />
           <ToolBtn label="Clear board" icon={<RotateCcw size={14} />} onClick={clearAll} dangerous />
         </div>
@@ -411,15 +409,17 @@ export function Whiteboard({ onSaveToNotes }: { onSaveToNotes?: (strokes: Stroke
             onBlur={commitText}
             onKeyDown={(e) => {
               if (e.key === 'Escape') { setEditingText(null); }
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { commitText(); }
+              // Enter commits; Shift+Enter inserts a newline for multi-line text.
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitText(); }
             }}
-            className="absolute outline-none border-2 border-dashed border-slate-300 bg-white/90 rounded-md p-1 text-sm"
+            className="absolute outline-none border-2 border-dashed border-blue-400 bg-white/95 rounded-md p-1 text-sm shadow-sm"
             style={{
               left: editingText.x, top: editingText.y - 2,
-              minWidth: 80, minHeight: 24,
+              minWidth: 100, minHeight: 28,
               color, font: `${Math.round(penSize * 6)}px ui-sans-serif, system-ui, sans-serif`,
+              zIndex: 10,
             }}
-            placeholder="type & blur to drop"
+            placeholder="Type here · Enter to place"
           />
         )}
 

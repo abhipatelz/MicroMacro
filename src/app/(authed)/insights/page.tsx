@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { api } from '@/lib/client/api';
 import { Card, LifecycleTag } from '@/components/ui';
 import { UserAvatar } from '@/components/AvatarRegistry';
-import { ChevronRight, Pause, TrendingUp, TrendingDown } from 'lucide-react';
+import { ChevronRight, Pause, TrendingUp, TrendingDown, AlertTriangle, Zap, Users, AlertCircle } from 'lucide-react';
 
 const VelocityChart = dynamic(() => import('./VelocityChart'), {
   ssr: false,
@@ -36,8 +36,14 @@ interface ArchiveProject {
   taskCount: number; tasksDone: number; completedAt: string | null;
 }
 
+interface TopAction {
+  id: string; title: string; why: string; link: string;
+  kind: 'gxp' | 'stuck' | 'overload' | 'critical' | 'atrisk';
+}
+
 interface InsightsData {
   brief: string[];
+  topActions: TopAction[];
   velocityHeadline: string;
   movers: { risingStars: ProjectInsight[]; needAttention: ProjectInsight[] };
   projects: ProjectInsight[];
@@ -51,6 +57,14 @@ const LOAD_CONFIG = {
   healthy:    { dot: '🟢', label: 'Healthy',    bg: 'bg-forest-50',  text: 'text-forest-700'  },
   busy:       { dot: '🟡', label: 'Busy',       bg: 'bg-amber-50',   text: 'text-amber-700'   },
   overloaded: { dot: '🔴', label: 'Overloaded', bg: 'bg-red-50',     text: 'text-red-700'     },
+};
+
+const ACTION_META: Record<TopAction['kind'], { icon: React.ReactNode; bg: string; border: string; label: string }> = {
+  gxp:      { icon: <AlertTriangle size={14} />, bg: 'bg-red-50',    border: 'border-red-200',    label: 'GxP Critical' },
+  stuck:    { icon: <Pause         size={14} />, bg: 'bg-amber-50',  border: 'border-amber-200',  label: 'Stuck task'   },
+  overload: { icon: <Users         size={14} />, bg: 'bg-orange-50', border: 'border-orange-200', label: 'Overloaded'   },
+  critical: { icon: <AlertCircle   size={14} />, bg: 'bg-red-50',    border: 'border-red-200',    label: 'Critical'     },
+  atrisk:   { icon: <Zap           size={14} />, bg: 'bg-amber-50',  border: 'border-amber-200',  label: 'At risk'      },
 };
 
 export default function InsightsPage() {
@@ -91,6 +105,45 @@ export default function InsightsPage() {
           <Link href="/org" className="ml-1 text-brand-600 hover:underline">See today's project health →</Link>
         </p>
       </div>
+
+      {/* Executive brief */}
+      {data.brief?.length > 0 && (
+        <div className="rounded-xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#1e1e1c] p-4 space-y-1.5"
+          style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.05)' }}>
+          {data.brief.map((line, i) => (
+            <p key={i} className="text-sm text-slate-600 dark:text-white/60 leading-snug">{line}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Top 3 Actions Today */}
+      {data.topActions?.length > 0 && (
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-white/30 mb-2">Top actions today</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {data.topActions.map((action, i) => {
+              const meta = ACTION_META[action.kind];
+              return (
+                <Link key={action.id} href={action.link}
+                  className={`flex flex-col gap-2 p-4 rounded-xl border ${meta.bg} ${meta.border} hover:opacity-90 transition-opacity group`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${meta.bg} border ${meta.border}`}>
+                      {meta.icon}
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{meta.label}</span>
+                    <span className="ml-auto text-[10px] font-black text-slate-400">#{i + 1}</span>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white leading-snug">{action.title}</p>
+                  <p className="text-xs text-slate-500 dark:text-white/50 leading-relaxed">{action.why}</p>
+                  <span className="text-xs text-brand-600 font-medium group-hover:underline mt-auto">
+                    Go → <ChevronRight size={11} className="inline -mt-0.5" />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Velocity headline */}
       <div className="rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-3">

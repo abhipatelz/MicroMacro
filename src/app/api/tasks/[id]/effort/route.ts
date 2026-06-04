@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/auth';
 import { getTaskAccess, canActOnOwnTask } from '@/lib/taskAccess';
 import { handleError, readBody } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
+import { recordTaskFlowEvent } from '@/lib/flowSignal';
 
 export const runtime = 'nodejs';
 
@@ -58,6 +59,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     t.lastActivityAt = new Date();
 
     await t.save();
+
+    void recordTaskFlowEvent({
+      taskId:    params.id,
+      projectId: String((t as any).projectId || ''),
+      userId:    user.sub,
+      eventType: 'effort_logged',
+      payload:   { minutes: body.minutes, source: body.source || 'manual' },
+    });
+
     return NextResponse.json(taskS(t));
   } catch (e) {
     return handleError(e);

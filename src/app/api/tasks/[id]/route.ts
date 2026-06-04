@@ -12,6 +12,7 @@ import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { getTaskDetail } from '@/lib/taskDetail';
 import { notify } from '@/lib/notify';
 import { logOperation } from '@/lib/audit';
+import { recordTaskFlowEvent } from '@/lib/flowSignal';
 
 export const runtime = 'nodejs';
 
@@ -139,8 +140,34 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const statusChanged = !!body.status && body.status !== current.status;
+    const assigneeChanged =
+      body.assigneeId !== undefined &&
+      String(body.assigneeId || '') !== String(current.assigneeId || '');
     const proj = await Project.findById((fresh as any)?.projectId).select('isPersonal code').lean();
-    if (!isPrivateTask && !((proj as any)?.isPersonal || String((proj as any)?.code || '').startsWith('PRSN-'))) {
+    const isPersonalProj = !!(proj as any)?.isPersonal || String((proj as any)?.code || '').startsWith('PRSN-');
+
+    if (!isPrivateTask && !isPersonalProj) {
+      if (statusChanged) {
+        void recordTaskFlowEvent({
+          taskId:    params.id,
+          projectId: String((fresh as any)?.projectId || ''),
+          userId:    user!.sub,
+          eventType: 'status_changed',
+          payload:   { from: current.status, to: body.status },
+        });
+      }
+      if (assigneeChanged) {
+        void recordTaskFlowEvent({
+          taskId:    params.id,
+          projectId: String((fresh as any)?.projectId || ''),
+          userId:    user!.sub,
+          eventType: 'assignee_changed',
+          payload:   { newAssigneeId: body.assigneeId || null },
+        });
+      }
+    }
+
+    if (!isPrivateTask && !isPersonalProj) {
       await logOperation({
         action: statusChanged ? 'task.status' : 'task.update', category: 'task', actor: user,
         targetType: 'task', targetId: params.id, targetLabel: (fresh as any)?.title || '',

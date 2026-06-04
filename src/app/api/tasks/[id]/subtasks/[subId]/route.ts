@@ -8,6 +8,7 @@ import { getTaskAccess, canActOnOwnTask } from '@/lib/taskAccess';
 import { handleError, readBody } from '@/lib/http';
 import { subtask as subS } from '@/lib/serialize';
 import { logOperation } from '@/lib/audit';
+import { recordTaskFlowEvent } from '@/lib/flowSignal';
 
 export const runtime = 'nodejs';
 
@@ -59,7 +60,19 @@ export async function PATCH(
     }
     if (body.assigneeId !== undefined) sub.assigneeId = body.assigneeId || null;
     if (body.dueDate !== undefined) sub.dueDate = body.dueDate ? new Date(body.dueDate) : null;
+    (t as any).lastActivityAt = new Date();
     await t.save();
+
+    if (body.status !== undefined && body.status !== prev) {
+      void recordTaskFlowEvent({
+        taskId:    params.id,
+        projectId: String((t as any).projectId || ''),
+        userId:    user.sub,
+        eventType: 'subtask_toggled',
+        payload:   { subtaskId: params.subId, prevStatus: prev, newStatus: body.status },
+      });
+    }
+
     return NextResponse.json(subS(sub));
   } catch (e) {
     return handleError(e);

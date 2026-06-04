@@ -306,78 +306,14 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
   );
 }
 
-/* ── Save-to-notes modal (triggered from whiteboard) ────────────────────── */
-function SaveToNotesModal({
-  strokes, onClose, onSaved,
-}: { strokes: any[]; onClose: () => void; onSaved: () => void }) {
-  const [title, setTitle] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  async function save() {
-    setSaving(true);
-    try {
-      await api('/scratch/notes', {
-        method: 'POST',
-        body: {
-          title: title.trim() || 'Whiteboard brainstorm',
-          content: `Whiteboard snapshot — ${new Date().toLocaleString()}`,
-          type: 'whiteboard',
-          whiteboardData: { strokes },
-        },
-      });
-      onSaved();
-    } catch {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl border p-6 shadow-2xl bg-white dark:bg-[#262624] border-slate-200 dark:border-white/[0.10]"
-        onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2 mb-4">
-          <FileText size={16} className="text-amber-500" />
-          <span className="text-sm font-bold text-slate-900 dark:text-white/90">Save whiteboard to Notes</span>
-          <button onClick={onClose} className="ml-auto text-slate-300 hover:text-slate-500 transition-colors">
-            <X size={16} />
-          </button>
-        </div>
-        <label className="label">Title</label>
-        <input
-          autoFocus
-          className="input w-full mb-4"
-          placeholder="Whiteboard brainstorm"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') void save(); }}
-          maxLength={200}
-        />
-        <div className="flex gap-2">
-          <button onClick={onClose} className="btn-secondary flex-1 justify-center text-sm">Cancel</button>
-          <button onClick={() => void save()} disabled={saving}
-            className="btn-primary flex-1 justify-center text-sm">
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ── Whiteboard FAB & drawer ────────────────────────────────────────────── */
 function WhiteboardFAB() {
-  const [open, setOpen]           = useState(false);
-  const [blink, setBlink]         = useState(true);
-  const [saveModal, setSaveModal] = useState<any[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [blink, setBlink] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setBlink(false), 3000);
     return () => clearTimeout(t);
   }, []);
-
-  function handleSaveToNotes(strokes: any[]) {
-    setSaveModal(strokes);
-  }
 
   return (
     <>
@@ -387,7 +323,7 @@ function WhiteboardFAB() {
         onClick={() => setOpen(true)}
         title="Open whiteboard"
         aria-label="Open whiteboard"
-        className={`fixed bottom-6 right-6 z-40 w-13 h-13 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 ${blink ? 'my-day-fab-blink' : ''}`}
+        className={`fixed bottom-6 right-6 z-40 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 ${blink ? 'my-day-fab-blink' : ''}`}
         style={{
           width: 52, height: 52,
           background: 'linear-gradient(135deg, #1565C0 0%, #22C55E 100%)',
@@ -400,9 +336,7 @@ function WhiteboardFAB() {
       {/* Whiteboard drawer */}
       {open && (
         <div className="fixed inset-0 z-50 flex">
-          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
-          {/* Panel */}
           <div className="relative ml-auto w-full max-w-4xl h-full bg-white dark:bg-[#1e1e1c] shadow-2xl flex flex-col fade-in-soft">
             <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-white/[0.07] shrink-0"
               style={{ background: 'linear-gradient(to right, rgba(21,101,192,0.06), transparent)' }}>
@@ -411,29 +345,17 @@ function WhiteboardFAB() {
               </div>
               <div>
                 <div className="text-sm font-black text-slate-800 dark:text-white/90">Whiteboard</div>
-                <div className="text-[10px] text-slate-400 dark:text-white/30">Drag to draw · shapes · export PNG · save to notes</div>
+                <div className="text-[10px] text-slate-400 dark:text-white/30">Drag to draw · shapes · text · export PNG</div>
               </div>
-              <div className="ml-auto flex items-center gap-1">
-                <button onClick={() => setOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 dark:text-white/35 hover:text-slate-700 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
-                  <X size={18} />
-                </button>
-              </div>
+              <button onClick={() => setOpen(false)} className="ml-auto p-1.5 rounded-lg text-slate-400 dark:text-white/35 hover:text-slate-700 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
+                <X size={18} />
+              </button>
             </div>
             <div className="flex-1 min-h-0 overflow-hidden p-4">
-              <Whiteboard onSaveToNotes={handleSaveToNotes} />
+              <Whiteboard />
             </div>
           </div>
         </div>
-      )}
-
-      {/* Save-to-notes modal */}
-      {saveModal && (
-        <SaveToNotesModal
-          strokes={saveModal}
-          onClose={() => setSaveModal(null)}
-          onSaved={() => { setSaveModal(null); }}
-        />
       )}
     </>
   );

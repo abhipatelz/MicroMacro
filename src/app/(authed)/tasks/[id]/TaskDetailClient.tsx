@@ -11,7 +11,7 @@ import { Select } from '@/components/Select';
 import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { chimeIfEnabled } from '@/lib/sound';
-import { ChevronRight, Shield, FileText, MessageSquare, Timer, Activity, Clock, Trash2, ScrollText, Check } from 'lucide-react';
+import { ChevronRight, Shield, FileText, MessageSquare, Timer, Activity, Clock, Trash2, ScrollText, Check, Bell, TrendingUp, AlertTriangle, Pause } from 'lucide-react';
 
 // TaskCompletePop is only shown on task completion — off the critical render
 // path so deferring it improves FCP/LCP.
@@ -239,6 +239,25 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const canEditStatus = isLead || isAssignee;
   const canComment = isLead || isAssignee;
 
+  const fs = task?.flowSignal;
+  const showFlowStrip = fs && fs.signal !== 'on_track' && fs.signal !== 'done';
+
+  async function sendNudge() {
+    try {
+      await api(`/tasks/${id}/flow-check`, { method: 'POST', body: { nudge: true } });
+      showToast('Nudge sent to assignee', 'ok');
+      load();
+    } catch (e: any) {
+      showToast(e?.message || 'Failed to send nudge', 'err');
+    }
+  }
+
+  const FLOW_STRIP_META: Record<string, { label: string; bg: string; border: string; text: string; icon: any }> = {
+    slow:    { label: 'Slowing down',  bg: 'bg-amber-50  dark:bg-amber-500/10',  border: 'border-amber-200  dark:border-amber-500/25',  text: 'text-amber-700  dark:text-amber-300',  icon: TrendingUp    },
+    stalled: { label: 'Stalled',       bg: 'bg-red-50    dark:bg-red-500/10',    border: 'border-red-200    dark:border-red-500/25',    text: 'text-red-700    dark:text-red-300',    icon: AlertTriangle },
+    blocked: { label: 'Blocked',       bg: 'bg-orange-50 dark:bg-orange-500/10', border: 'border-orange-200 dark:border-orange-500/25', text: 'text-orange-700 dark:text-orange-300', icon: Pause         },
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
       {ToastEl}
@@ -297,6 +316,39 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
             )}
           </div>
         </div>
+
+        {/* ── FLOW SIGNAL strip ─────────────────────────────────────── */}
+        {showFlowStrip && (() => {
+          const meta = FLOW_STRIP_META[fs.signal] ?? FLOW_STRIP_META.stalled;
+          const Icon = meta.icon;
+          return (
+            <div className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl border ${meta.bg} ${meta.border}`}>
+              <Icon size={14} className={meta.text} />
+              <div className="flex-1 min-w-0">
+                <span className={`text-[12px] font-bold ${meta.text}`}>{meta.label}</span>
+                {fs.daysSinceActivity > 0 && (
+                  <span className="text-[11px] text-slate-500 dark:text-white/40 ml-2">
+                    {fs.daysSinceActivity}d since last activity
+                  </span>
+                )}
+                {task.pendingWith && (
+                  <span className="text-[11px] text-slate-500 dark:text-white/40 ml-2">
+                    · waiting on <span className="font-semibold">{task.pendingWith}</span>
+                  </span>
+                )}
+              </div>
+              {isLead && task.assigneeId && task.status !== 'done' && (
+                <button
+                  onClick={sendNudge}
+                  className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/[0.08] transition-colors"
+                  title="Send a nudge notification to the assignee"
+                >
+                  <Bell size={11} /> Nudge
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Description */}
         <Card title="Description">
