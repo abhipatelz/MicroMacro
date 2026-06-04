@@ -6,7 +6,7 @@ import { Task } from '@/models/Task';
 import { requireUser } from '@/lib/auth';
 import { getTaskAccess } from '@/lib/taskAccess';
 import { handleError, readBody } from '@/lib/http';
-import { computeFlowSignal } from '@/lib/flowSignal';
+import { computeFlowSignal } from '@/lib/flowSignal.compute';
 import { notify } from '@/lib/notify';
 
 export const runtime = 'nodejs';

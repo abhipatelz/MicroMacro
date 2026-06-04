@@ -1,6 +1,8 @@
 import { connectDB } from './db';
 import { Project } from '@/models/Project';
 import { TaskFlowEvent } from '@/models/TaskFlowEvent';
+export { computeFlowSignal, FLOW_THRESHOLDS } from './flowSignal.compute';
+export type { FlowSignal } from './flowSignal.compute';
 
 /* ── Flow signal computation (fact-based, no ML) ────────────────────────────
  *
@@ -8,52 +10,10 @@ import { TaskFlowEvent } from '@/models/TaskFlowEvent';
  * or going quiet. It is derived purely from observable fact: lastActivityAt,
  * task status, pendingWith, and priority-based staleness thresholds.
  *
- * Priority thresholds (hours to first warning / hours to "stalled"):
- *   critical  →  24h / 48h
- *   high      →  48h / 96h
- *   medium    →  72h / 144h
- *   low       → 168h / 336h
+ * Pure computation lives in flowSignal.compute.ts (zero dependencies) so it
+ * is safe to import in client components. This file adds the server-only
+ * event recording layer on top.
  */
-
-export type FlowSignal = 'on_track' | 'slow' | 'stalled' | 'blocked' | 'done';
-
-const THRESHOLDS: Record<string, { warn: number; stall: number }> = {
-  critical: { warn:  24, stall:  48  },
-  high:     { warn:  48, stall:  96  },
-  medium:   { warn:  72, stall: 144  },
-  low:      { warn: 168, stall: 336  },
-};
-
-export function computeFlowSignal(t: {
-  status:         string;
-  priority?:      string | null;
-  pendingWith?:   string | null;
-  lastActivityAt?: string | Date | null;
-}): { signal: FlowSignal; daysSinceActivity: number; warnHours: number; stallHours: number } {
-  const thr = THRESHOLDS[t.priority || 'medium'] ?? THRESHOLDS.medium;
-
-  if (t.status === 'done') {
-    return { signal: 'done', daysSinceActivity: 0, warnHours: thr.warn, stallHours: thr.stall };
-  }
-  if (t.status === 'blocked' || (t.pendingWith && t.pendingWith.trim())) {
-    return { signal: 'blocked', daysSinceActivity: 0, warnHours: thr.warn, stallHours: thr.stall };
-  }
-
-  const last = t.lastActivityAt ? new Date(t.lastActivityAt as string) : null;
-  if (!last || isNaN(last.getTime())) {
-    return { signal: 'on_track', daysSinceActivity: 0, warnHours: thr.warn, stallHours: thr.stall };
-  }
-
-  const hours = (Date.now() - last.getTime()) / 3_600_000;
-  const days  = Math.round((hours / 24) * 10) / 10;
-
-  const signal: FlowSignal =
-    hours >= thr.stall ? 'stalled' :
-    hours >= thr.warn  ? 'slow'    :
-    'on_track';
-
-  return { signal, daysSinceActivity: days, warnHours: thr.warn, stallHours: thr.stall };
-}
 
 export type FlowEventType =
   | 'status_changed'

@@ -24,7 +24,7 @@ import {
   ChevronDown, TrendingUp, Clock, Sparkles, ArrowRight, UserPlus, Plus,
   Maximize2, X, BarChart3, Bell, Zap, ChevronRight,
 } from 'lucide-react';
-import { computeFlowSignal } from '@/lib/flowSignal';
+import { computeFlowSignal } from '@/lib/flowSignal.compute';
 // Lazy — the bird's-eye view is a heavy SVG layout component and most
 // visits won't open it. Keep it out of the dashboard's first paint.
 const BirdsEyeView = dynamic(

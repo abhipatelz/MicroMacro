@@ -1,6 +1,6 @@
 // helpers to turn Mongoose docs into plain JSON-safe shapes
 
-import { computeFlowSignal } from './flowSignal';
+import { computeFlowSignal } from './flowSignal.compute';
 
 type Any = Record<string, any>;
 
