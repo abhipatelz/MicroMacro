@@ -79,11 +79,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     // ── E-signature gate for sensitive changes (21 CFR Part 11 §11.200) ───
-    // Identity (name/username/email/employeeId), role, and deactivation all
+    // Identity (name/username/email/employeeId), role, and *deactivation* all
     // require the admin to re-enter their own password + a justification.
+    // Reactivation (active: true) does NOT need a signature — it is an
+    // administrative restoration gesture, not a regulated removal of access.
+    const isDeactivation = body.active === false && (target as any).active !== false;
     const sensitiveTouched =
       body.role !== undefined ||
-      (body.active !== undefined && body.active !== ((target as any).active !== false)) ||
+      isDeactivation ||
       body.username !== undefined ||
       body.email !== undefined ||
       body.employeeId !== undefined ||

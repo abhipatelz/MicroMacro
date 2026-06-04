@@ -62,8 +62,13 @@ export async function api<T = any>(
     // the user is signed in but not permitted, and redirecting them to
     // /login would masquerade as a logout. 403 falls through to throw.
     if (res.status === 401 && !isAuthEndpoint(path) && typeof window !== 'undefined') {
-      window.location.replace('/login');
-      throw new Error('Session expired — please log in again');
+      // Distinguish a deactivated account from a plain expired session so the
+      // login page can show a clear, actionable message rather than a generic
+      // "session expired" line.
+      const isDeactivated = (res as any)._deactivated ||
+        (typeof msg === 'string' && msg.toLowerCase().includes('deactivated'));
+      window.location.replace(isDeactivated ? '/login?reason=deactivated' : '/login');
+      throw new Error(isDeactivated ? 'Account deactivated' : 'Session expired — please log in again');
     }
 
     // Stale JWT pointing to a deleted user — same bounce.

@@ -56,11 +56,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const current = await Task.findById(params.id).select('status assigneeId privateToUserId').lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // Contributors may edit only the description and due date, and only on a
-    // task that is assigned to them. Everything else — status, assignee,
-    // priority, compliance flags, reference fields — stays lead-owned, and a
-    // task assigned to someone else (or unassigned) is fully read-only for an
-    // IC. Exception: inside their own personal project the owner edits freely.
+    // Contributors may edit the description, due date, and status, but only on
+    // a task assigned to them. Everything else — assignee, priority, compliance
+    // flags, reference fields — stays lead-owned. A task assigned to someone
+    // else (or unassigned) is fully read-only for an IC. Exception: inside
+    // their own personal project the owner edits freely.
     //
     // The permission check uses `current.assigneeId`, but we close the TOCTOU
     // race (a concurrent lead re-assignment sneaking between the permission
@@ -72,11 +72,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (icEdit) {
       const isAssignee = current.assigneeId && String(current.assigneeId) === String(user!.sub);
       const keys = Object.keys(body).filter(k => body[k as keyof typeof body] !== undefined);
-      const IC_EDITABLE = new Set(['description', 'dueDate']);
+      const IC_EDITABLE = new Set(['description', 'dueDate', 'status']);
       const onlyAllowed = isAssignee && keys.length > 0 && keys.every(k => IC_EDITABLE.has(k));
       if (!onlyAllowed) {
         return NextResponse.json(
-          { error: 'Contributors can edit only the description and due date of a task assigned to them; everything else is read-only.' },
+          { error: 'Contributors can edit only the description, due date, and status of a task assigned to them; everything else is read-only.' },
           { status: 403 },
         );
       }

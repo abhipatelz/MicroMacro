@@ -10,6 +10,12 @@ import { AvatarRegistryProvider } from './AvatarRegistry';
 import { NotificationBell } from './NotificationBell';
 import { api } from '@/lib/client/api';
 
+// Floating mind-map FAB + drawer — lazy so the MindMap bundle stays out of
+// every page's initial load and only fetches when the drawer is first opened.
+const FloatingMindMap = dynamic(
+  () => import('./FloatingMindMap').then((m) => m.FloatingMindMap),
+  { ssr: false, loading: () => null },
+);
 // Force-password modal — only ships when a user has mustChangePassword set.
 // Keeps the long form code (strength meter, validators) out of the main bundle.
 const ForcePasswordModal = dynamic(
@@ -581,6 +587,9 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
           }}
         />
       )}
+
+      {/* Floating mind-map FAB + drawer */}
+      <FloatingMindMap />
 
       {/* Sign-out confirmation — fixed centered modal, works in both expanded and collapsed sidebar */}
       {confirmLogout && (

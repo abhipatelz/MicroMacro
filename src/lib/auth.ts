@@ -239,7 +239,7 @@ export async function validateSession(payload: JwtPayload): Promise<JwtPayload |
   // A deactivated account is denied on its very next request, so an admin
   // turning someone off mid-session logs them out everywhere immediately
   // (defence-in-depth alongside the sessionVersion bump on deactivation).
-  if (u.active === false) return null;
+  if (u.active === false) throw new Error('ACCOUNT_DEACTIVATED');
   if (typeof payload.sv === 'number' && (u.sessionVersion ?? 0) !== payload.sv) return null;
   if (payload.sid && u.activeSessionId && u.activeSessionId !== payload.sid) return null;
 
@@ -258,17 +258,21 @@ export async function validateSession(payload: JwtPayload): Promise<JwtPayload |
 
 export async function getCurrentUserFromRequest(
   req: NextRequest
-): Promise<JwtPayload | null> {
+): Promise<{ user: JwtPayload | null; deactivated?: boolean }> {
   const token = getTokenFromRequest(req);
-  if (!token) return null;
+  if (!token) return { user: null };
   try {
-    return await validateSession(verifyToken(token));
-  } catch {
-    return null;
+    const user = await validateSession(verifyToken(token));
+    return { user };
+  } catch (e: any) {
+    if (e?.message === 'ACCOUNT_DEACTIVATED') return { user: null, deactivated: true };
+    return { user: null };
   }
 }
 
-// Server component helper (uses cookies())
+// Server component helper (uses cookies()). Returns the session payload, or
+// null. The `deactivated` flag lets the layout distinguish a closed account
+// from a plain missing/expired token so it can redirect with the right reason.
 export async function getCurrentUserFromCookie(): Promise<JwtPayload | null> {
   const token = cookies().get(COOKIE)?.value;
   if (!token) return null;
@@ -279,11 +283,25 @@ export async function getCurrentUserFromCookie(): Promise<JwtPayload | null> {
   }
 }
 
+export async function isDeactivatedFromCookie(): Promise<boolean> {
+  const token = cookies().get(COOKIE)?.value;
+  if (!token) return false;
+  try {
+    await validateSession(verifyToken(token));
+    return false;
+  } catch (e: any) {
+    return e?.message === 'ACCOUNT_DEACTIVATED';
+  }
+}
+
 export async function requireUser(req: NextRequest) {
-  const user = await getCurrentUserFromRequest(req);
+  const { user, deactivated } = await getCurrentUserFromRequest(req);
   if (!user) {
     return {
-      error: NextResponse.json({ error: 'Authentication required' }, { status: 401 }),
+      error: NextResponse.json(
+        { error: deactivated ? 'Your account has been deactivated. Please contact your administrator.' : 'Authentication required', deactivated: !!deactivated },
+        { status: 401 },
+      ),
       user: null as unknown as JwtPayload
     };
   }

@@ -124,6 +124,16 @@ export default function LoginPage() {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [showForgot, setShowForgot] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reason') === 'deactivated') {
+      setNotice('Your account has been deactivated. Please contact your administrator.');
+    }
+  }, []);
 
   // Quick-PIN unlock: shown when this device previously completed a full
   // sign-in and the user has a PIN set.
@@ -417,6 +427,14 @@ export default function LoginPage() {
             {/* White card on mobile to contrast the shimmer; transparent on desktop */}
             <div className="rounded-2xl bg-white p-6 shadow-2xl lg:p-0 lg:rounded-none lg:bg-transparent lg:shadow-none">
 
+            {/* Deactivated-account notice */}
+            {notice && (
+              <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 fade-in-soft">
+                <span className="text-red-500 font-bold shrink-0 mt-0.5 text-sm">!</span>
+                <div className="text-sm text-red-800 leading-snug">{notice}</div>
+              </div>
+            )}
+
             {/* First-run banner */}
             {isFirstRun && mode === 'login' && (
               <div className="mb-6 rounded-xl border border-forest-200 bg-forest-50 px-4 py-3 flex items-start gap-2.5 fade-in-soft">
@@ -590,10 +608,6 @@ export default function LoginPage() {
                 </label>
                 <input
                   className="input"
-                  // `text` (not `email`) on the login mode so a plain
-                  // username doesn't trigger the browser's email validity
-                  // check. On the register mode we still want email
-                  // semantics for autocomplete + format hints.
                   type={mode === 'login' ? 'text' : 'email'}
                   placeholder={mode === 'login' ? 'username or employee ID' : 'you@company.com'}
                   required
@@ -603,12 +617,6 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
-                {mode === 'login' && (
-                  <div className="text-[11px] text-slate-400 mt-1.5 leading-snug">
-                    You can sign in with your <span className="font-medium text-slate-500">username</span> or your{' '}
-                    <span className="font-medium text-slate-500">employee ID</span> — both work.
-                  </div>
-                )}
               </div>
 
               <div>
@@ -619,7 +627,8 @@ export default function LoginPage() {
                   <input className="input pr-10" type={showPw ? 'text' : 'password'} required minLength={mode === 'setup' ? 8 : 1}
                     placeholder={mode === 'setup' ? 'Min 8 characters' : '••••••••'}
                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                    value={password} onChange={e => setPassword(e.target.value)} />
+                    value={password} onChange={e => setPassword(e.target.value)}
+                    style={{ WebkitAppearance: 'none' } as React.CSSProperties} />
                   <button
                     type="button"
                     onClick={() => setShowPw((v) => !v)}
@@ -664,19 +673,39 @@ export default function LoginPage() {
             )}
 
             {mode !== 'unlock' && (
-            <p className="mt-5 text-center text-sm text-slate-400">
+            <div className="mt-5 text-center">
               {mode === 'setup' ? (
-                <>
+                <p className="text-sm text-slate-400">
                   Already have an account?{' '}
                   <button onClick={() => { setMode('login'); setErr(''); }}
                     className="text-blue-600 font-semibold hover:underline">Sign in</button>
-                </>
+                </p>
               ) : (
-                <span className="text-xs text-slate-300">
-                  Forgot your password? Ask the admin to reset it for you.
-                </span>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgot((v) => !v)}
+                    className="text-xs text-slate-400 hover:text-blue-600 underline underline-offset-2 transition-colors"
+                  >
+                    Forgot your password?
+                  </button>
+                  {showForgot && (
+                    <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-left fade-in-soft">
+                      <p className="text-[12px] font-semibold text-blue-800 mb-1">How to reset your password</p>
+                      <ol className="text-[11px] text-blue-700 space-y-1 list-decimal list-inside leading-snug">
+                        <li>Contact your workspace admin or lead.</li>
+                        <li>Ask them to open <strong>People → Reset password</strong> on your account.</li>
+                        <li>They'll share a temporary password with you verbally or over chat.</li>
+                        <li>Sign in with the temporary password — you'll be prompted to set a new one immediately.</li>
+                      </ol>
+                      <p className="text-[10px] text-blue-500 mt-2 leading-snug">
+                        If you <em>are</em> the admin, use your recovery key on the password field, or ask your master admin.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
-            </p>
+            </div>
             )}
 
             </div>{/* end white card */}

@@ -11,7 +11,7 @@ import { Select } from '@/components/Select';
 import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { chimeIfEnabled } from '@/lib/sound';
-import { ChevronRight, Shield, FileText, MessageSquare, Timer, Activity, Clock, Trash2, ScrollText } from 'lucide-react';
+import { ChevronRight, Shield, FileText, MessageSquare, Timer, Activity, Clock, Trash2, ScrollText, Check } from 'lucide-react';
 
 // TaskCompletePop is only shown on task completion — off the critical render
 // path so deferring it improves FCP/LCP.
@@ -58,11 +58,14 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const [newSub, setNewSub] = useState('');
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
   // Mini-celebration shown when the task moves to "done". A small bottom-right
   // toast — not a confetti overlay — that recognises the *type* of task that
   // was finished. Stays null until the user actually closes the task.
   const [celebrate, setCelebrate] = useState<any | null>(null);
   const { showToast, ToastEl } = useToast();
+
+  function markSaved() { setSavedAt(new Date()); }
 
   async function load() {
     try {
@@ -157,6 +160,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
     if (opts?.optimistic) setTask((t: any) => ({ ...t, ...opts.optimistic }));
     try {
       await api(`/tasks/${id}`, { method: 'PATCH', body: patch });
+      markSaved();
       load();
     } catch (e: any) {
       showToast(e.message || 'Save failed', 'err');
@@ -221,18 +225,19 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const canSignoff = task.requiresQaSignoff && !task.qaSignoffAt && (me?.role === 'lead' || me?.role === 'admin');
   const hasReferenceData = task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
 
-  // IC edit contract: a contributor may edit ONLY the description and due date,
-  // and ONLY on a task assigned to them. Everything else — status, assignee,
-  // priority, reference/compliance fields — is lead-owned. A task assigned to
-  // someone else (or unassigned) is fully read-only for an IC, and the inputs
-  // are disabled so no save is even attempted. Leads/admins keep full control.
+  // IC edit contract: a contributor assigned to a task may edit the task's
+  // description, due date, status, and add subtasks/comments. Compliance fields
+  // (assignee, priority, reference numbers, CC TCD) remain lead-only since they
+  // affect scheduling and regulatory traceability. Unassigned tasks or tasks
+  // belonging to someone else remain fully read-only for ICs.
   const isAssignee  = !!(me && task.assigneeId && String(task.assigneeId) === String(me.id));
   // Description + due date: editable by leads or the assignee.
   const canEditBasics = isLead || isAssignee;
-  // Reference/tracking fields, status, assignee, priority, etc.: leads only.
+  // Reference/tracking/compliance fields and assignee/priority: leads only.
   const canEditAll = isLead;
+  // Status: leads and the assignee (they're the ones doing the work).
+  const canEditStatus = isLead || isAssignee;
   const canComment = isLead || isAssignee;
-  const canEditStatus = isLead;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
@@ -260,7 +265,17 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
               </Link>
             )}
           </div>
-          <h1 className="text-xl font-bold text-slate-900 leading-snug">{task.title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-slate-900 leading-snug flex-1">{task.title}</h1>
+            {savedAt && (
+              <span key={savedAt.getTime()}
+                className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400/80 fade-in-soft"
+                title={`Saved at ${savedAt.toLocaleTimeString()}`}
+              >
+                <Check size={10} strokeWidth={3} /> Saved
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2 mt-2.5">
             <StatusTag status={task.status} />
             <PriorityTag priority={task.priority} />
@@ -297,7 +312,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
         {!isLead && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
             {canEditBasics
-              ? 'You can edit the description and due date of this task. Status, assignee and other fields are lead-owned.'
+              ? 'You can update the description, due date, status, and subtasks on this task. Assignee, priority, and compliance fields are lead-owned.'
               : 'Read-only: only the assignee and team leads can edit this task.'}
           </div>
         )}
@@ -417,12 +432,14 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
               <div className="text-xs text-slate-400 py-1">No subtasks yet.</div>
             )}
           </div>
-          <div className="flex gap-2 mt-3">
-            <input className="input text-sm" placeholder="Add a subtask…"
-              value={newSub} onChange={(e) => setNewSub(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addSubtask()} />
-            <button className="btn-primary text-sm" onClick={addSubtask}>Add</button>
-          </div>
+          {canComment && (
+            <div className="flex gap-2 mt-3">
+              <input className="input text-sm" placeholder="Add a subtask…"
+                value={newSub} onChange={(e) => setNewSub(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addSubtask()} />
+              <button className="btn-primary text-sm" onClick={addSubtask}>Add</button>
+            </div>
+          )}
         </Card>
 
         {/* Comments */}
@@ -521,6 +538,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 excludeAdmin
                 onChange={(v) => isLead && update({ assigneeId: v || null })}
               />
+              {task.assigneeId && task.assigneeActive === false && (
+                <div className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
+                  <span aria-hidden="true">⚠</span> Assignee account deactivated — consider reassigning
+                </div>
+              )}
             </div>
             {/* Waiting on — who the task is stuck/pending with (QA, a person,
                a department). Editable by the assignee or a lead. */}

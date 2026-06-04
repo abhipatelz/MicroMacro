@@ -118,8 +118,7 @@ export default function MyDayClient({ initialData }: {
   const [mindMapOpen, setMindMapOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const total   = open.length + done.length;
-  const allDone = total > 0 && done.length === total;
+  const total = open.length + done.length;
 
   function markSaved() { setSavedAt(new Date()); }
   function startEdit(n: Note) { setEditingId(n.id); setEditText(n.text); }
@@ -220,20 +219,6 @@ export default function MyDayClient({ initialData }: {
           </div>
         </div>
 
-        {/* All-done celebration banner */}
-        {allDone && (
-          <div className="mt-4 rounded-xl border border-emerald-200/80 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/[0.08] px-4 py-3 flex items-center gap-3 fade-in-soft">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
-              <Sparkles size={14} className="text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-emerald-800 dark:text-emerald-300">All done for today.</div>
-              <div className="text-[11px] text-emerald-700/70 dark:text-emerald-400/60 mt-0.5">
-                You cleared everything. Come back tomorrow or add more below.
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Capture — the heart of My Day: get it out of your head first ── */}
@@ -245,8 +230,8 @@ export default function MyDayClient({ initialData }: {
             </div>
             <input
               ref={inputRef}
-              className="flex-1 bg-transparent text-[15px] text-slate-800 dark:text-white/90 placeholder-slate-500 dark:placeholder-white/35 border-0 outline-none py-1 min-w-0"
-              placeholder="Empty your mind — what’s on it right now?"
+              className="flex-1 bg-transparent text-[15px] text-slate-800 dark:text-white/90 placeholder-slate-400 dark:placeholder-white/30 border-0 outline-none py-1 min-w-0"
+              placeholder="Empty your mind here — what do you want to complete today?"
               value={text}
               onChange={(e) => setText(e.target.value)}
               autoFocus

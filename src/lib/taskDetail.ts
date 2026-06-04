@@ -49,6 +49,7 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
     return {
       ...taskS(t as any, {
         assigneeName:   (assignee as any)?.name || null,
+        assigneeActive: assignee ? (assignee as any).active !== false : null,
         qaSignoffName:  (qa as any)?.name || null,
         projectCode:    (project as any)?.code,
         projectName:    (project as any)?.name,

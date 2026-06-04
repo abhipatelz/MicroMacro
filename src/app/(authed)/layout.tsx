@@ -1,13 +1,16 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getCurrentUserFromCookie, normalizeRole } from '@/lib/auth';
+import { getCurrentUserFromCookie, isDeactivatedFromCookie, normalizeRole } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import AppShell from '@/components/AppShell';
 
 export default async function AuthedLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUserFromCookie();
-  if (!user) redirect('/login');
+  if (!user) {
+    if (await isDeactivatedFromCookie()) redirect('/login?reason=deactivated');
+    redirect('/login');
+  }
 
   // Fetch only the current user's own avatar/settings — the workspace avatar
   // registry and notification count are fetched client-side by their respective

@@ -27,15 +27,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     await connectDB();
     const body = await readBody(req, Body);
 
-    // Creating a subtask is a structural change → lead/admin only.
-    // Contributors can toggle existing subtasks (see [subId]/route.ts) but
-    // not add or remove them.
+    // Creating a subtask is allowed for leads/admins AND for the task's
+    // assignee (they're the ones doing the work and breaking it down).
+    // Non-assignee contributors remain blocked — they can only toggle
+    // subtasks they can already see.
     const access = await getTaskAccess(params.id, user.sub, user.role);
     if (!access.task || !access.visible) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
-    if (!access.isLead) {
-      return NextResponse.json({ error: 'Only leads can add subtasks.' }, { status: 403 });
+    if (!access.isLead && !access.isAssignee) {
+      return NextResponse.json({ error: 'Only the assignee or a lead can add subtasks.' }, { status: 403 });
     }
 
     const t = await Task.findById(params.id);
