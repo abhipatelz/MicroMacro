@@ -22,12 +22,11 @@ function warmActivityGraph(userId?: string) {
 import {
   AlertTriangle, FolderKanban, CheckCircle2, Users as UsersIcon,
   ChevronDown, TrendingUp, Clock, Sparkles, ArrowRight, UserPlus, Plus,
-  Maximize2, X, BarChart3, Eye, Compass,
+  Maximize2, X, BarChart3,
 } from 'lucide-react';
-import dynamic2 from 'next/dynamic';
 // Lazy — the bird's-eye view is a heavy SVG layout component and most
 // visits won't open it. Keep it out of the dashboard's first paint.
-const BirdsEyeView = dynamic2(
+const BirdsEyeView = dynamic(
   () => import('@/components/BirdsEyeView').then((m) => m.BirdsEyeView),
   { ssr: false, loading: () => null },
 );
@@ -165,14 +164,6 @@ const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
 const STATUS_LABEL: Record<string, string> = {
   todo: 'To do', in_progress: 'In progress', review: 'Review',
   blocked: 'Blocked', done: 'Done',
-};
-
-const FLOW_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  todo: { label: 'To do', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
-  in_progress: { label: 'In progress', color: '#1565C0', bg: '#eff6ff', border: '#bfdbfe' },
-  review: { label: 'Review', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
-  blocked: { label: 'Blocked', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
-  done: { label: 'Done', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
 };
 
 const HEALTH_META: Record<string, { label: string; bg: string; text: string; dot: string }> = {
