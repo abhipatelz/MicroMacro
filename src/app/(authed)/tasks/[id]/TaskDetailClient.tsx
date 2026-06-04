@@ -12,6 +12,7 @@ import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { chimeIfEnabled } from '@/lib/sound';
 import { ChevronRight, Shield, FileText, MessageSquare, Timer, Activity, Clock, Trash2, ScrollText } from 'lucide-react';
+import { FlowSignalTaskStrip } from '@/components/FlowSignalTaskStrip';
 
 // TaskCompletePop is only shown on task completion — off the critical render
 // path so deferring it improves FCP/LCP.
@@ -281,6 +282,19 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
               </span>
             )}
           </div>
+
+          {/* Quiet "Waiting on …" strip — only renders when the assignee or
+              a lead has confirmed a waiting/decision/help state. Same source
+              of truth as the dashboard strip (Task.flowPending*). */}
+          <FlowSignalTaskStrip
+            taskId={task.id}
+            pendingType={task.flowPendingType}
+            detail={task.flowPendingDetail}
+            confirmedAt={task.flowPendingConfirmedAt}
+            confirmedByName={task.flowPendingConfirmedByName}
+            canResolve={isLead || isAdmin || (me && task.flowPendingConfirmedByUserId === me.id)}
+            onChanged={load}
+          />
         </div>
 
         {/* Description */}

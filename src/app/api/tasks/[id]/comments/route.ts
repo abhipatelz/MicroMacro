@@ -6,6 +6,7 @@ import { User } from '@/models/User';
 import { isContributor, requireUser } from '@/lib/auth';
 import { getTaskAccess, canActOnOwnTask } from '@/lib/taskAccess';
 import { handleError, readBody } from '@/lib/http';
+import { recordTaskFlowEvent } from '@/lib/flow/events';
 import mongoose from 'mongoose';
 
 export const runtime = 'nodejs';
@@ -48,6 +49,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     (t as any).comments.push(c);
     (t as any).lastActivityAt = new Date();
     await t.save();
+
+    // Flow Signal: comment is meaningful activity. Metadata stays bounded —
+    // we record the count and authorship, NEVER the comment body (the
+    // canonical text already lives on the Task document).
+    void recordTaskFlowEvent({
+      taskId: params.id,
+      projectId: String((t as any).projectId || ''),
+      eventType: 'comment_added',
+      actorId: user.sub,
+      taskType: (t as any)?.taskType || undefined,
+      metadata: { commentCount: ((t as any).comments || []).length },
+    });
+
     const author = await User.findById(user.sub).lean();
     return NextResponse.json({
       id: String(c._id),

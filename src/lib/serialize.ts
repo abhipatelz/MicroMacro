@@ -191,6 +191,14 @@ export function task(t: any, extras: Any = {}) {
     })),
     effortMins: (t.effortLog || []).reduce((s: number, e: any) => s + (e.minutes || 0), 0),
     lastActivityAt: date(t.lastActivityAt || t.updatedAt || t.createdAt),
+    // Flow Signal — confirmed waiting state. Only the *confirmed* fields are
+    // exposed to the client; raw prompt-history fields (cooldowns, last-shown
+    // reason codes) stay server-side per the spec's privacy contract.
+    flowPendingType:       t.flowPendingType || null,
+    flowPendingDetail:     t.flowPendingDetail || '',
+    flowPendingConfirmedAt: date(t.flowPendingConfirmedAt),
+    flowPendingConfirmedByUserId: id(t.flowPendingConfirmedByUserId),
+    flowResolvedAt:        date(t.flowResolvedAt),
     position: t.position ?? 0,
     createdAt: date(t.createdAt),
     updatedAt: date(t.updatedAt),

@@ -32,6 +32,7 @@ const BirdsEyeView = dynamic(
 );
 import type { BirdsEyeData } from '@/components/BirdsEyeView';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
+import { FlowSignalStrip, type FlowSignalPayload } from '@/components/FlowSignalStrip';
 
 /* ── Types matching /api/lead-dashboard ──────────────────────────────────── */
 interface TeamTask {
@@ -80,6 +81,7 @@ interface DashResp {
   teamTasks: TeamTask[];
   people: DashPerson[];
   teamCount: number;
+  flowSignal?: FlowSignalPayload | null;
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
@@ -315,6 +317,11 @@ export default function DashboardClient({
         <FirstRunGuide hasTeam={dash.people.length > 0} />
       ) : (
         <>
+          {/* ── Quick check / Needs attention strip ────────────────────────
+              Renders nothing when there's nothing to surface — silence is
+              the correct product state. */}
+          <FlowSignalStrip data={dash.flowSignal} />
+
           {/* ── Summary strip ──────────────────────────────────────────── */}
           <div className="flex flex-wrap gap-2 mb-5">
             <SummaryChip label="Ongoing projects" value={ongoingProjects.length} accent="blue"  href="/projects" />

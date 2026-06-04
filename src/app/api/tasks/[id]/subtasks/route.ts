@@ -7,6 +7,7 @@ import { getTaskAccess } from '@/lib/taskAccess';
 import { handleError, readBody } from '@/lib/http';
 import { subtask as subS } from '@/lib/serialize';
 import { logOperation } from '@/lib/audit';
+import { recordTaskFlowEvent } from '@/lib/flow/events';
 import mongoose from 'mongoose';
 
 export const runtime = 'nodejs';
@@ -50,6 +51,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     };
     (t as any).subtasks.push(sub);
     await t.save();
+
+    void recordTaskFlowEvent({
+      taskId: params.id,
+      projectId: String((t as any).projectId || ''),
+      eventType: 'subtask_created',
+      actorId: user.sub,
+      taskType: (t as any)?.taskType || undefined,
+      metadata: { subtaskCount: ((t as any).subtasks || []).length },
+    });
 
     // Structural change to a (possibly GxP) record → audit trail.
     await logOperation({

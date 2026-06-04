@@ -12,6 +12,7 @@ import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { getTaskDetail } from '@/lib/taskDetail';
 import { notify } from '@/lib/notify';
 import { logOperation } from '@/lib/audit';
+import { recordTaskFlowEvent } from '@/lib/flow/events';
 
 export const runtime = 'nodejs';
 
@@ -139,6 +140,36 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const statusChanged = !!body.status && body.status !== current.status;
+    // Flow Signal — record actual work movement on the meaningful event
+    // stream. Status, completion, reassignment count; cosmetic edits (title,
+    // description, dueDate, priority) deliberately do NOT bump the stream
+    // or lastMeaningfulActivityAt, so a project can't be made to look
+    // "active" by editing its title.
+    if (statusChanged) {
+      void recordTaskFlowEvent({
+        taskId: params.id,
+        projectId: String((fresh as any)?.projectId || ''),
+        eventType: body.status === 'done' ? 'task_completed' : 'status_changed',
+        actorId: user!.sub,
+        stateBefore: current.status,
+        stateAfter:  body.status,
+        taskType:    (fresh as any)?.taskType || undefined,
+      });
+    }
+    if (reassigned && body.assigneeId) {
+      void recordTaskFlowEvent({
+        taskId: params.id,
+        projectId: String((fresh as any)?.projectId || ''),
+        eventType: current.assigneeId ? 'task_reassigned' : 'task_assigned',
+        actorId: user!.sub,
+        taskType: (fresh as any)?.taskType || undefined,
+        metadata: {
+          fromAssigneeId: current.assigneeId ? String(current.assigneeId) : null,
+          toAssigneeId:   String(body.assigneeId),
+        },
+      });
+    }
+
     const proj = await Project.findById((fresh as any)?.projectId).select('isPersonal code').lean();
     if (!isPrivateTask && !((proj as any)?.isPersonal || String((proj as any)?.code || '').startsWith('PRSN-'))) {
       await logOperation({

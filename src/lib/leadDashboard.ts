@@ -5,6 +5,8 @@ import { User } from '@/models/User';
 import { Team } from '@/models/Team';
 import { project as projectS, task as taskS, date as toIso } from '@/lib/serialize';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
+import { computeFlowStrip, type FlowSignalPayload } from '@/lib/flow/computeStrip';
+import { getFlowConfig, isUiEnabled, isPilotTeamVisible } from '@/lib/flow/config';
 
 const STATUS_ORDER: Record<string, number> = { in_progress: 0, review: 1, blocked: 2, todo: 3, done: 4 };
 
@@ -15,6 +17,9 @@ export interface LeadDashboardData {
   teamTasks: any[];
   people:    any[];
   teamCount: number;
+  /** Bounded fact-based "Needs attention" strip payload — server-computed so
+   *  the browser never sees raw signals. Null when nothing surfaces. */
+  flowSignal?: FlowSignalPayload | null;
 }
 
 // Pure data fetcher — used by both the API route and the server-rendered
@@ -229,6 +234,38 @@ export async function getLeadDashboardData(
     return { id: uid, name: u.name, title: u.title || '', openTasks, overdueCount, completedThisWeek, loadScore, loadLevel };
   }).sort((a, b) => b.loadScore - a.loadScore);
 
+  // ── Flow Signal strip ──────────────────────────────────────────────
+  // Bounded, fact-only computation done on the SAME data we already loaded
+  // — no extra DB calls. Returns null when nothing surfaces, when the
+  // feature is off, or when the viewer's teams aren't in the pilot
+  // allowlist. The browser will simply render nothing in that case.
+  const cfg = getFlowConfig();
+  let flowSignal: FlowSignalPayload | null = null;
+  if (isUiEnabled(cfg)) {
+    const teamIdsForViewer = scope.teamOids.map((o) => String(o));
+    if (isPilotTeamVisible(teamIdsForViewer, cfg)) {
+      // Build a small id→name map from the data we already loaded; falling
+      // back to the assignee map for "Confirmed today by X" copy when the
+      // confirmer happens to be a teammate already in scope.
+      const userNameById = new Map<string, string>();
+      for (const u of assigneeUsers) userNameById.set(String(u._id), u.name);
+      for (const u of users)         userNameById.set(String(u._id), u.name);
+      // The viewer might confirm their own task — make sure their name is
+      // resolvable for the "by you" headline.
+      userNameById.set(jwtUser.sub, jwtUser.name);
+
+      flowSignal = computeFlowStrip({
+        viewer: { id: jwtUser.sub, role: jwtUser.role },
+        // teamTasksRaw is already privacy-filtered by visibleTaskPrivacyFilter
+        // and scoped to projects the viewer can see.
+        tasks: teamTasksRaw as any,
+        projects,
+        userNameById,
+        cfg,
+      });
+    }
+  }
+
   return {
     user:     { id: jwtUser.sub, name: jwtUser.name, email: jwtUser.email, role: jwtUser.role },
     projects: projectList,
@@ -237,5 +274,6 @@ export async function getLeadDashboardData(
     people,
     // Number of teams the viewer belongs to (or all teams, for admin).
     teamCount: scope.teamOids.length,
+    flowSignal,
   };
 }

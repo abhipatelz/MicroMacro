@@ -8,6 +8,7 @@ import { getTaskAccess, canActOnOwnTask } from '@/lib/taskAccess';
 import { handleError, readBody } from '@/lib/http';
 import { subtask as subS } from '@/lib/serialize';
 import { logOperation } from '@/lib/audit';
+import { recordTaskFlowEvent } from '@/lib/flow/events';
 
 export const runtime = 'nodejs';
 
@@ -60,6 +61,23 @@ export async function PATCH(
     if (body.assigneeId !== undefined) sub.assigneeId = body.assigneeId || null;
     if (body.dueDate !== undefined) sub.dueDate = body.dueDate ? new Date(body.dueDate) : null;
     await t.save();
+
+    // Flow Signal: a subtask status transition advances the PARENT task's
+    // meaningful activity — historically this was overlooked, leaving a
+    // parent looking idle while its subtasks were actively being closed.
+    // Title/assignee/dueDate edits to a subtask are structural, not progress.
+    if (body.status !== undefined && body.status !== prev) {
+      void recordTaskFlowEvent({
+        taskId: params.id,
+        projectId: String((t as any).projectId || ''),
+        eventType: 'subtask_progressed',
+        actorId: user.sub,
+        stateBefore: prev,
+        stateAfter:  body.status,
+        taskType:    (t as any)?.taskType || undefined,
+        metadata: { subtaskId: params.subId },
+      });
+    }
     return NextResponse.json(subS(sub));
   } catch (e) {
     return handleError(e);

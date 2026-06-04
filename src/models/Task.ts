@@ -105,6 +105,47 @@ const TaskSchema = new Schema(
     // it in project/task/day surfaces.
     privateToUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     lastActivityAt: { type: Date, default: Date.now },
+
+    // ── Flow Signal: meaningful-activity + waiting state ──────────────────
+    // Internal codename only — see CLAUDE.md and src/lib/flow/*.ts. Never
+    // surface these field names in the UI. They power the quiet "Quick
+    // check / Needs attention" strip on the dashboard + task detail.
+    //
+    // lastActivityAt above stays the legacy "any update" timestamp (cosmetic
+    // edits bump it). lastMeaningfulActivityAt only advances on actual work
+    // movement — status change, comment, subtask progress, effort, sign-off,
+    // reassign. Editing the title or pushing out a due date must NOT touch
+    // it: those are not progress.
+    lastMeaningfulActivityAt: { type: Date, default: Date.now },
+    // The user's reassurance ("Still moving") is tracked separately from
+    // actual recorded movement so the baseline never gets contaminated by
+    // self-attestation. Resets the prompt cooldown but is not progress.
+    flowHumanConfirmedMovingAt: { type: Date, default: null },
+
+    // Prompt bookkeeping — for cooldowns + de-duping. Bounded enum codes
+    // only, never user-authored text.
+    flowPromptLastShownAt:     { type: Date, default: null },
+    flowPromptSnoozedUntil:    { type: Date, default: null },
+    flowPromptLastReasonCodes: { type: [String], default: [] },
+
+    // Confirmed waiting state — populated only after a *user* (assignee or
+    // lead) confirmed the situation through the flow-check endpoint. The
+    // dashboard treats this as fact, not inference. Cleared by an explicit
+    // resolve.
+    flowPendingType: {
+      type: String,
+      enum: ['approval', 'another_team', 'person', 'other', 'decision', 'help', null],
+      default: null,
+    },
+    // Optional short context provided by the assignee on "Waiting → Other".
+    // Bounded length, sanitised on write, never used as ML training text.
+    flowPendingDetail:          { type: String, default: '' },
+    flowPendingSince:           { type: Date, default: null },
+    flowPendingConfirmedAt:     { type: Date, default: null },
+    flowPendingConfirmedByUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    flowResolvedAt:             { type: Date, default: null },
+    // Monotonic counter so a stale resolve can't clobber a fresher confirm.
+    flowStateVersion:           { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -127,6 +168,12 @@ TaskSchema.index({ status: 1, completedAt: -1 });
 // Covers the dashboard aggregate: match on projectId, group on status/dueDate
 TaskSchema.index({ projectId: 1, status: 1, dueDate: 1 });
 TaskSchema.index({ projectId: 1, assigneeId: 1, status: 1 });
+// Flow Signal — find candidate stalled tasks fast (open, by project / by
+// assignee, sorted by how long they've been idle).
+TaskSchema.index({ projectId: 1, status: 1, lastMeaningfulActivityAt: 1 });
+TaskSchema.index({ assigneeId: 1, status: 1, lastMeaningfulActivityAt: 1 });
+// Find unresolved confirmed-waiting tasks for the lead's "Needs attention" list.
+TaskSchema.index({ flowPendingType: 1, flowResolvedAt: 1 });
 
 export type TaskDoc = InferSchemaType<typeof TaskSchema> & { _id: mongoose.Types.ObjectId };
 
