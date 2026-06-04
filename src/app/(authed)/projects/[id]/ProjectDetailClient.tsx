@@ -20,7 +20,7 @@ import { TaskCompletePop } from '@/components/TaskCompletePop';
 import { useCurrentUser } from '@/components/CurrentUserContext';
 import { ExportMenu } from '@/components/ExportMenu';
 import { printProjectReport, downloadProjectReport, downloadProjectCsv } from './report';
-import BirdEyeView, { getInitialLayout } from '@/components/BirdEyeView';
+import BirdEyeView, { getInitialLayout, downloadBirdEyeSvg } from '@/components/BirdEyeView';
 
 const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
 
@@ -1133,6 +1133,10 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
               onExcel={project.isPersonal ? undefined : () => { window.location.href = `/api/projects/${project.id}/export`; }}
               onPdf={() => printProjectReport(project, phases, me?.name || me?.email || '')}
               onCsv={() => downloadProjectCsv(project, phases, me?.name || me?.email || '')}
+              onBirdEye={() => {
+                const { nodes, edges } = getInitialLayout(project, tasks);
+                downloadBirdEyeSvg(project.name, nodes, edges, me?.name || me?.email || 'User');
+              }}
             />
             {isAdmin && !project.isPersonal && (
               <Link

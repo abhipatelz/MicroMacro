@@ -1,13 +1,14 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Download, FileText, Sheet, ChevronDown, FileSpreadsheet } from 'lucide-react';
+import { Download, FileText, Sheet, ChevronDown, FileSpreadsheet, Eye } from 'lucide-react';
 
 export function ExportMenu({
-  onExcel, onPdf, onCsv, label = 'Export', disabled = false,
+  onExcel, onPdf, onCsv, onBirdEye, label = 'Export', disabled = false,
 }: {
   onExcel?: () => void;
   onPdf?: () => void;
   onCsv: () => void;
+  onBirdEye?: () => void;
   label?: string;
   disabled?: boolean;
 }) {
@@ -27,6 +28,7 @@ export function ExportMenu({
     ...(onExcel ? [{ key: 'xlsx', label: 'Excel', hint: 'Editable — dropdowns, filters, live totals', icon: FileSpreadsheet, onClick: onExcel, tint: '#15803d' }] : []),
     ...(onPdf   ? [{ key: 'pdf',  label: 'PDF',   hint: 'Formatted report, ready to share',           icon: FileText,        onClick: onPdf,   tint: '#dc2626' }] : []),
     { key: 'csv', label: 'CSV', hint: 'Raw data — import to any spreadsheet', icon: Sheet, onClick: onCsv, tint: '#16a34a' },
+    ...(onBirdEye ? [{ key: 'birdeye', label: "Bird's-eye view", hint: 'Top-down map, full titles — print-ready SVG', icon: Eye, onClick: onBirdEye, tint: '#1565C0' }] : []),
   ];
 
   return (

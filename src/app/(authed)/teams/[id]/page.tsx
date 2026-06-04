@@ -6,8 +6,7 @@ import { api } from '@/lib/client/api';
 import { useCurrentUser } from '@/components/CurrentUserContext';
 import { Trash2, BarChart3, X, Eye } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { getTeamLayout } from '@/components/BirdEyeView';
-import BirdEyeView from '@/components/BirdEyeView';
+import BirdEyeView, { getTeamLayout, downloadBirdEyeSvg } from '@/components/BirdEyeView';
 const ActivityGraph = dynamic(
   () => import('@/components/ActivityGraph').then(m => m.ActivityGraph),
   { ssr: false, loading: () => <div className="h-40 skeleton rounded-xl" /> },
@@ -192,6 +191,10 @@ export default function TeamDetailPage() {
             <ExportMenu
               onPdf={() => printTeamReport(team, progress, board, me?.name || me?.email || '')}
               onCsv={() => downloadTeamCsv(team, board, me?.name || me?.email || '')}
+              onBirdEye={() => {
+                const { nodes, edges } = getTeamLayout(team, team.projects || [], team.members || []);
+                downloadBirdEyeSvg(team.name, nodes, edges, me?.name || me?.email || 'User');
+              }}
             />
           )}
         </div>

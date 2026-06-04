@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X, Download, RotateCcw, Map, StickyNote, Trash2 } from 'lucide-react';
 import { api } from '@/lib/client/api';
 
@@ -39,35 +39,54 @@ export interface BirdEyeViewProps {
 
 const NOTE_COLORS = ['#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca', '#e9d5ff', '#fed7aa'];
 
-/* ── Layout helper ───────────────────────────────────────────────────────── */
+/* ── Layout helpers ──────────────────────────────────────────────────────── */
+
+const LAYOUT_CX = 600;
+const LAYOUT_CY = 400;
+
+/**
+ * Radius for a ring of `count` evenly-spaced cards such that neighbours never
+ * overlap. The chord between adjacent card centres is 2·r·sin(π/count); we
+ * require it to clear the wider card dimension plus a gap, then solve for r and
+ * clamp to a sensible minimum. This is what makes the view legible whether a
+ * project has 3 tasks or 30 — the ring simply grows instead of cards colliding.
+ */
+function ringRadius(count: number, cardW: number, cardH: number, gap: number, minR: number): number {
+  if (count <= 1) return minR;
+  const span = Math.max(cardW, cardH) + gap;
+  const needed = span / (2 * Math.sin(Math.PI / count));
+  return Math.max(minR, needed);
+}
 
 export function getInitialLayout(
   project: any,
   tasks: any[],
 ): { nodes: BirdEyeNode[]; edges: BirdEyeEdge[] } {
-  const cx = 600;
-  const cy = 400;
+  const cx = LAYOUT_CX;
+  const cy = LAYOUT_CY;
   const nodes: BirdEyeNode[] = [];
   const edges: BirdEyeEdge[] = [];
+  const T = NODE_SIZE.task;
+  const P = NODE_SIZE.person;
 
-  // Project at center
+  // Project at centre
   nodes.push({ id: `proj-${project.id}`, type: 'project', x: cx, y: cy, data: project });
 
-  // Tasks in a ring
+  // Tasks on a ring whose radius grows with the task count so cards never collide
+  const taskR = ringRadius(tasks.length, T.w, T.h, 64, 230);
   tasks.forEach((t, i) => {
     const angle = (i / Math.max(tasks.length, 1)) * 2 * Math.PI - Math.PI / 2;
-    const r = 220;
     nodes.push({
       id: `task-${t.id}`,
       type: 'task',
-      x: cx + r * Math.cos(angle),
-      y: cy + r * Math.sin(angle),
+      x: cx + taskR * Math.cos(angle),
+      y: cy + taskR * Math.sin(angle),
       data: t,
     });
     edges.push({ from: `proj-${project.id}`, to: `task-${t.id}` });
   });
 
-  // People in outer ring — deduplicate by assigneeId
+  // People on an outer ring — deduplicate by assigneeId
   const seen = new Set<string>();
   const uniquePeople: { id: string; name: string }[] = [];
   tasks.forEach((t) => {
@@ -77,14 +96,18 @@ export function getInitialLayout(
     }
   });
 
+  // Outer ring must clear the task ring radially AND keep people apart laterally.
+  const peopleR = Math.max(
+    taskR + T.h / 2 + P.h / 2 + 90,
+    ringRadius(uniquePeople.length, P.w, P.h, 48, 0),
+  );
   uniquePeople.forEach((p, i) => {
     const angle = (i / Math.max(uniquePeople.length, 1)) * 2 * Math.PI;
-    const r = 390;
     nodes.push({
       id: `person-${p.id}`,
       type: 'person',
-      x: cx + r * Math.cos(angle),
-      y: cy + r * Math.sin(angle),
+      x: cx + peopleR * Math.cos(angle),
+      y: cy + peopleR * Math.sin(angle),
       data: p,
     });
     tasks
@@ -97,30 +120,35 @@ export function getInitialLayout(
   return { nodes, edges };
 }
 
-/** Layout for a team canvas: team at center, projects in middle ring, members in outer ring. */
+/** Layout for a team canvas: team at centre, projects in middle ring, members in outer ring. */
 export function getTeamLayout(
   team: any,
   projects: any[],
   members: any[],
 ): { nodes: BirdEyeNode[]; edges: BirdEyeEdge[] } {
-  const cx = 600;
-  const cy = 400;
+  const cx = LAYOUT_CX;
+  const cy = LAYOUT_CY;
   const nodes: BirdEyeNode[] = [];
   const edges: BirdEyeEdge[] = [];
+  const T = NODE_SIZE.task;
+  const P = NODE_SIZE.person;
 
   nodes.push({ id: `team-${team.id}`, type: 'project', x: cx, y: cy, data: { ...team, name: team.name, code: team.function || 'TEAM' } });
 
+  const projR = ringRadius(projects.length, T.w, T.h, 70, 250);
   projects.forEach((p, i) => {
     const angle = (i / Math.max(projects.length, 1)) * 2 * Math.PI - Math.PI / 2;
-    const r = 240;
-    nodes.push({ id: `proj-${p.id}`, type: 'task', x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), data: p });
+    nodes.push({ id: `proj-${p.id}`, type: 'task', x: cx + projR * Math.cos(angle), y: cy + projR * Math.sin(angle), data: p });
     edges.push({ from: `team-${team.id}`, to: `proj-${p.id}` });
   });
 
+  const memR = Math.max(
+    projR + T.h / 2 + P.h / 2 + 90,
+    ringRadius(members.length, P.w, P.h, 48, 0),
+  );
   members.forEach((m, i) => {
     const angle = (i / Math.max(members.length, 1)) * 2 * Math.PI;
-    const r = 420;
-    nodes.push({ id: `person-${m.id}`, type: 'person', x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), data: m });
+    nodes.push({ id: `person-${m.id}`, type: 'person', x: cx + memR * Math.cos(angle), y: cy + memR * Math.sin(angle), data: m });
     edges.push({ from: `team-${team.id}`, to: `person-${m.id}` });
   });
 
@@ -190,6 +218,149 @@ const NODE_SIZE: Record<BirdEyeNode['type'], { w: number; h: number }> = {
   person: { w: 100, h: 80 },
 };
 
+/* The fixed SVG user-space the canvas is drawn in (viewBox). Node coordinates,
+   the fit-to-view maths, and the mini-map all reference these. */
+const CANVAS_W = 1200;
+const CANVAS_H = 800;
+
+/** Fit every node into the canvas, centred, with padding — returns pan + scale. */
+function computeFit(ns: BirdEyeNode[]): { pan: { x: number; y: number }; scale: number } {
+  if (!ns.length) return { pan: { x: 0, y: 0 }, scale: 1 };
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of ns) {
+    const s = NODE_SIZE[n.type];
+    minX = Math.min(minX, n.x - s.w / 2);
+    minY = Math.min(minY, n.y - s.h / 2);
+    maxX = Math.max(maxX, n.x + s.w / 2);
+    maxY = Math.max(maxY, n.y + s.h / 2);
+  }
+  const pad = 80;
+  const cw = Math.max(1, maxX - minX);
+  const ch = Math.max(1, maxY - minY);
+  const scale = Math.max(0.3, Math.min(1.4, Math.min((CANVAS_W - pad * 2) / cw, (CANVAS_H - pad * 2) / ch)));
+  return {
+    scale,
+    pan: { x: (CANVAS_W - cw * scale) / 2 - minX * scale, y: (CANVAS_H - ch * scale) / 2 - minY * scale },
+  };
+}
+
+/* ── Presentable SVG export ──────────────────────────────────────────────────
+   Renders the same graph as a standalone, light-themed SVG with real titled
+   cards (full titles wrapped, not truncated) — a "view from above" artifact
+   that prints and shares cleanly, independent of the interactive canvas. */
+
+function xmlEsc(s: any): string {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** Greedy word-wrap into at most maxLines lines of ~maxChars chars (ellipsised if longer). */
+function wrapLines(text: string, maxChars: number, maxLines: number): string[] {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return [''];
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (next.length <= maxChars) { cur = next; continue; }
+    if (cur) lines.push(cur);
+    cur = w;
+    if (lines.length >= maxLines) break;
+  }
+  if (cur && lines.length < maxLines) lines.push(cur);
+  if (lines.length > maxLines) lines.length = maxLines;
+  // Mark truncation if words were dropped
+  const joined = lines.join(' ').replace(/\s+/g, ' ');
+  if (joined.replace(/…$/, '').length < String(text || '').replace(/\s+/g, ' ').trim().length) {
+    lines[lines.length - 1] = lines[lines.length - 1].replace(/\s+\S*$/, '') + '…';
+  }
+  return lines;
+}
+
+export function buildBirdEyeSvg(
+  title: string,
+  nodes: BirdEyeNode[],
+  edges: BirdEyeEdge[],
+  exportedBy: string,
+): string {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const EXPORT_W = { project: 248, task: 214, person: 120 };
+  for (const n of nodes) {
+    const w = (EXPORT_W as any)[n.type] ?? 200;
+    minX = Math.min(minX, n.x - w / 2);
+    minY = Math.min(minY, n.y - 60);
+    maxX = Math.max(maxX, n.x + w / 2);
+    maxY = Math.max(maxY, n.y + 60);
+  }
+  if (!isFinite(minX)) { minX = 0; minY = 0; maxX = CANVAS_W; maxY = CANVAS_H; }
+  const padX = 64, padTop = 116, padBottom = 64;
+  const vbX = minX - padX, vbY = minY - padTop;
+  const vbW = (maxX - minX) + padX * 2, vbH = (maxY - minY) + padTop + padBottom;
+
+  const edgeSvg = edges.map((e) => {
+    const a = nodes.find((n) => n.id === e.from);
+    const b = nodes.find((n) => n.id === e.to);
+    if (!a || !b) return '';
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const qx = mx + (b.y - a.y) * 0.07, qy = my - (b.x - a.x) * 0.07;
+    return `<path d="M ${a.x.toFixed(1)} ${a.y.toFixed(1)} Q ${qx.toFixed(1)} ${qy.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}" fill="none" stroke="#cbd5e1" stroke-width="1.4" stroke-dasharray="5 4"/>`;
+  }).join('');
+
+  const cardSvg = nodes.map((n) => {
+    if (n.type === 'person') {
+      const name = n.data?.name || 'Unknown';
+      return `<g>
+        <circle cx="${n.x}" cy="${n.y - 12}" r="23" fill="#1565C0"/>
+        <text x="${n.x}" y="${n.y - 12}" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="700" fill="#ffffff">${xmlEsc(initials(name))}</text>
+        <text x="${n.x}" y="${n.y + 26}" text-anchor="middle" font-size="12.5" font-weight="600" fill="#334155">${xmlEsc(name)}</text>
+      </g>`;
+    }
+    const isProject = n.type === 'project';
+    const heading = isProject ? (n.data?.name || 'Project') : (n.data?.title || 'Task');
+    const status = n.data?.status || '';
+    const color = STATUS_COLOR[status] || '#94a3b8';
+    const kicker = isProject ? (n.data?.code || 'PROJECT') : (STATUS_LABEL[status] || 'Task');
+    const lines = wrapLines(heading, isProject ? 28 : 26, 4);
+    const lineH = 17, headerH = 24, metaH = 20;
+    const cardW = (EXPORT_W as any)[n.type];
+    const cardH = headerH + lines.length * lineH + metaH + 14;
+    const x = n.x - cardW / 2, y = n.y - cardH / 2;
+    const assignee = n.data?.assigneeName || n.data?.ownerName || '';
+    const due = formatDate(n.data?.dueDate || n.data?.ccTcd);
+    const meta = `${assignee || (isProject ? '' : 'Unassigned')}${(due && due !== '—') ? `${assignee || !isProject ? '  ·  ' : ''}${due}` : ''}`;
+    const titleSpans = lines.map((ln, i) => `<tspan x="${x + 15}" dy="${i === 0 ? 0 : lineH}">${xmlEsc(ln)}</tspan>`).join('');
+    return `<g>
+      <rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="13" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+      <rect x="${x}" y="${y}" width="5" height="${cardH}" rx="2.5" fill="${color}"/>
+      <circle cx="${x + 18}" cy="${y + 16}" r="3.5" fill="${color}"/>
+      <text x="${x + 28}" y="${y + 16}" dominant-baseline="central" font-size="9.5" font-weight="700" letter-spacing="0.6" fill="${color}">${xmlEsc(String(kicker).toUpperCase())}</text>
+      <text x="${x + 15}" y="${y + headerH + 13}" font-size="13.5" font-weight="700" fill="#1e293b">${titleSpans}</text>
+      ${meta ? `<text x="${x + 15}" y="${y + cardH - 13}" font-size="11" fill="#64748b">${xmlEsc(meta)}</text>` : ''}
+    </g>`;
+  }).join('');
+
+  const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vbX.toFixed(0)} ${vbY.toFixed(0)} ${vbW.toFixed(0)} ${vbH.toFixed(0)}" width="${vbW.toFixed(0)}" height="${vbH.toFixed(0)}" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+  <rect x="${vbX.toFixed(0)}" y="${vbY.toFixed(0)}" width="${vbW.toFixed(0)}" height="${vbH.toFixed(0)}" fill="#f8fafc"/>
+  <text x="${(vbX + 30).toFixed(0)}" y="${(vbY + 46).toFixed(0)}" font-size="23" font-weight="800" fill="#0f172a">${xmlEsc(title)}</text>
+  <text x="${(vbX + 30).toFixed(0)}" y="${(vbY + 70).toFixed(0)}" font-size="12.5" font-weight="600" fill="#64748b">Bird's-eye view · Pragati</text>
+  ${edgeSvg}
+  ${cardSvg}
+  <text x="${(vbX + 30).toFixed(0)}" y="${(vbY + vbH - 22).toFixed(0)}" font-size="11" fill="#94a3b8">${exportedBy ? `Exported by ${xmlEsc(exportedBy)} · ` : ''}${xmlEsc(dateStr)}</text>
+</svg>`;
+}
+
+/** Build the presentable SVG and trigger a browser download. */
+export function downloadBirdEyeSvg(title: string, nodes: BirdEyeNode[], edges: BirdEyeEdge[], exportedBy: string) {
+  const svg = buildBirdEyeSvg(title, nodes, edges, exportedBy);
+  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${(title || 'birds_eye').replace(/\s+/g, '_')}_birds_eye.svg`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /* ── Main component ──────────────────────────────────────────────────────── */
 
 export default function BirdEyeView({
@@ -202,8 +373,10 @@ export default function BirdEyeView({
 }: BirdEyeViewProps) {
   /* ── State ── */
   const [nodes, setNodes] = useState<BirdEyeNode[]>(initialNodes);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [scale, setScale] = useState(1);
+  // Auto-fit on open so every node is visible and centred regardless of count.
+  const initialFit = useMemo(() => computeFit(initialNodes), [initialNodes]);
+  const [pan, setPan] = useState(initialFit.pan);
+  const [scale, setScale] = useState(initialFit.scale);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [mode, setMode] = useState<'select' | 'note'>('select');
@@ -334,8 +507,7 @@ export default function BirdEyeView({
   }
 
   function onCanvasDoubleClick() {
-    setPan({ x: 0, y: 0 });
-    setScale(1);
+    fitView();
   }
 
   function onCanvasClick() {
@@ -345,110 +517,19 @@ export default function BirdEyeView({
     clickOnNodeRef.current = false;
   }
 
-  /* ── Reset view ── */
+  /* ── Reset view — re-fit all nodes, centred ── */
+  function fitView() {
+    const f = computeFit(nodes);
+    setScale(f.scale);
+    setPan(f.pan);
+  }
   function resetView() {
-    setPan({ x: 0, y: 0 });
-    setScale(1);
+    fitView();
   }
 
-  /* ── SVG Export ── */
+  /* ── SVG Export — presentable, light-themed, full titles (shared builder) ── */
   function downloadSvg() {
-    if (!svgRef.current) return;
-    // Clone so we can embed inline styles without mutating the live DOM
-    const clone = svgRef.current.cloneNode(true) as SVGSVGElement;
-
-    // Remove foreignObject (HTML inside SVG doesn't serialize well for standalone)
-    clone.querySelectorAll('foreignObject').forEach((fo) => fo.remove());
-
-    // Add node labels as plain SVG text in the clone
-    nodes.forEach((n) => {
-      const size = NODE_SIZE[n.type];
-      const cx = n.x + pan.x;
-      const cy = n.y + pan.y;
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.setAttribute('transform', `scale(${scale})`);
-
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', String(cx - size.w / 2));
-      rect.setAttribute('y', String(cy - size.h / 2));
-      rect.setAttribute('width', String(size.w));
-      rect.setAttribute('height', String(size.h));
-      rect.setAttribute('rx', '10');
-      rect.setAttribute('fill', dark ? '#1a2035' : '#ffffff');
-      rect.setAttribute('stroke', dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0');
-      rect.setAttribute('stroke-width', '1.5');
-      g.appendChild(rect);
-
-      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', String(cx));
-      label.setAttribute('y', String(cy));
-      label.setAttribute('text-anchor', 'middle');
-      label.setAttribute('dominant-baseline', 'middle');
-      label.setAttribute('font-size', '11');
-      label.setAttribute('font-family', 'system-ui, sans-serif');
-      label.setAttribute('fill', dark ? 'rgba(255,255,255,0.8)' : '#1e293b');
-      const labelText = n.type === 'project'
-        ? n.data.name
-        : n.type === 'task'
-        ? n.data.title
-        : n.data.name;
-      label.textContent = labelText;
-      g.appendChild(label);
-
-      clone.appendChild(g);
-    });
-
-    // Annotations (sticky notes) as plain SVG rects + text
-    annotations.forEach((note) => {
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.setAttribute('transform', `scale(${scale})`);
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', String((note.x + pan.x)));
-      rect.setAttribute('y', String((note.y + pan.y)));
-      rect.setAttribute('width', '160');
-      rect.setAttribute('height', '100');
-      rect.setAttribute('rx', '8');
-      rect.setAttribute('fill', note.color);
-      rect.setAttribute('opacity', '0.9');
-      g.appendChild(rect);
-      if (note.text) {
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', String((note.x + pan.x) + 6));
-        text.setAttribute('y', String((note.y + pan.y) + 16));
-        text.setAttribute('font-size', '10');
-        text.setAttribute('font-family', 'system-ui, sans-serif');
-        text.setAttribute('fill', '#1e293b');
-        note.text.split('\n').slice(0, 6).forEach((line, li) => {
-          const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-          tspan.setAttribute('x', String((note.x + pan.x) + 6));
-          tspan.setAttribute('dy', li === 0 ? '0' : '13');
-          tspan.textContent = line;
-          text.appendChild(tspan);
-        });
-        g.appendChild(text);
-      }
-      clone.appendChild(g);
-    });
-
-    // Footer
-    const footer = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    footer.setAttribute('x', '10');
-    footer.setAttribute('y', '790');
-    footer.setAttribute('font-size', '9');
-    footer.setAttribute('font-family', 'system-ui, sans-serif');
-    footer.setAttribute('fill', '#94a3b8');
-    footer.textContent = `Exported by ${exportedBy} • ${new Date().toLocaleDateString()}`;
-    clone.appendChild(footer);
-
-    const serializer = new XMLSerializer();
-    const svgStr = serializer.serializeToString(clone);
-    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.replace(/\s+/g, '_')}_birds_eye.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBirdEyeSvg(title, nodes, edges, exportedBy);
   }
 
   /* ── Edge path calculation ── */
@@ -524,7 +605,6 @@ export default function BirdEyeView({
 
   /* ── Mini-map ── */
   const MINI_W = 140, MINI_H = 90;
-  const CANVAS_W = 1200, CANVAS_H = 800;
   const miniScaleX = MINI_W / CANVAS_W;
   const miniScaleY = MINI_H / CANVAS_H;
 
