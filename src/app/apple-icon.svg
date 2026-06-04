@@ -1,24 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 64 64">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%"   stop-color="#0f4c99"/>
-      <stop offset="40%"  stop-color="#1565C0"/>
-      <stop offset="100%" stop-color="#1b7f3a"/>
+      <stop offset="0%"   stop-color="#1565C0"/>
+      <stop offset="45%"  stop-color="#1769C8"/>
+      <stop offset="100%" stop-color="#2B8C29"/>
     </linearGradient>
     <linearGradient id="gloss" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.22"/>
-      <stop offset="52%"  stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.26"/>
+      <stop offset="55%"  stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
   </defs>
 
-  <rect width="64" height="64" rx="18" fill="url(#bg)"/>
-  <rect x="3" y="3" width="58" height="58" rx="15" fill="url(#gloss)"/>
+  <!-- Symmetric squircle, matching icon.svg / PragatiMark. -->
+  <rect width="64" height="64" rx="17" fill="url(#bg)"/>
+  <rect x="2.5" y="2.5" width="59" height="59" rx="14.5" fill="url(#gloss)"/>
 
-  <!-- Top-down bird silhouette -->
-  <path d="M30 30 C26 25 15 21 8 27 C4 31 8 38 18 35 C24 33 28 31 30 30"
-        fill="white" opacity="0.92"/>
-  <path d="M34 30 C38 25 49 21 56 27 C60 31 56 38 46 35 C40 33 36 31 34 30"
-        fill="white" opacity="0.92"/>
-  <ellipse cx="32" cy="29" rx="3.5" ry="7" fill="white" opacity="0.97"/>
-  <path d="M28.5 36 L32 44 L35.5 36" fill="white" opacity="0.72"/>
+  <!-- Two rising chevrons — identical geometry to PragatiMark. -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 40 L32 22 L50 40" stroke="#ffffff" stroke-width="7"/>
+    <path d="M18 52 L32 38 L46 52" stroke="#B7E4C2" stroke-width="5" opacity="0.92"/>
+  </g>
 </svg>

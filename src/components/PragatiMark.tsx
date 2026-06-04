@@ -1,15 +1,21 @@
-/**
- * Brand mark — a top-down bird silhouette inside a gradient tile.
+/** Pragati's brand mark — CSS / SVG only, no image asset.
  *
- * The bird-from-above motif directly embodies the product name and its core
- * premise: the bird's-eye view. Wings spread wide, body centred, tail fanned
- * — unmistakably a bird in soaring flight as seen from directly overhead.
+ *  Two rising chevrons stacked inside a rounded-square gradient tile. Reads
+ *  as forward / upward motion — the literal meaning of "pragati" (progress).
+ *  Pairs cleanly with the wordmark "Pragati" rendered alongside it; the mark
+ *  is symbolic, not a literal P.
  *
- * Consistent squircle (equal radii on all corners) so the shape matches the
- * rounded-xl treatment used for project/team avatars throughout the app.
+ *  The tile uses a single, *symmetric* squircle radius (equal on all four
+ *  corners) so the mark reads identically everywhere it appears — sidebar,
+ *  login, loaders, favicon, apple-icon — and lines up with the rounded-xl
+ *  avatar shape system used across the app.
+ *
+ *  Use this everywhere the app needs a logo (login, signup, forgot-password,
+ *  sidebar, loading state, favicon). No external assets, no corporate logo.
  */
 export function PragatiMark({
   size      = 96,
+  /** when true, drops the glow + heavy shadow (good for inline use in the sidebar) */
   flat      = false,
   className = '',
 }: {
@@ -17,76 +23,54 @@ export function PragatiMark({
   flat?: boolean;
   className?: string;
 }) {
-  const r = Math.round(size * 0.28);
+  // Symmetric squircle — one radius on every corner (matches icon.svg's rx and
+  // the rounded-xl avatar treatment). ~27% keeps it soft without going pill.
+  const r = Math.round(size * 0.27);
   const shadow = flat
     ? 'inset 0 1px 0 rgba(255,255,255,0.22)'
-    : [
-        'inset 0 1px 0 rgba(255,255,255,0.28)',
-        'inset 0 -1px 0 rgba(0,0,0,0.18)',
-        '0 18px 48px rgba(21,101,192,0.38)',
-        '0 6px 14px rgba(0,0,0,0.16)',
-      ].join(', ');
+    : 'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.18), ' +
+      '0 18px 48px rgba(21,101,192,0.40), 0 6px 14px rgba(0,0,0,0.18)';
 
   return (
     <div
-      aria-label="MicroMacro"
+      aria-label="Pragati"
       role="img"
       className={`relative inline-flex items-center justify-center ${className}`}
       style={{
         width:  size,
         height: size,
         borderRadius: r,
-        background: 'linear-gradient(145deg, #0f4c99 0%, #1565C0 40%, #1b7f3a 100%)',
+        background: 'linear-gradient(135deg, #1565C0 0%, #1769C8 45%, #2B8C29 100%)',
         boxShadow: shadow,
       }}
     >
-      {/* Gloss overlay — subtle top-left shimmer */}
+      {/* Inner glossy ring */}
       <div
         className="absolute pointer-events-none"
         style={{
-          inset: Math.max(2, Math.round(size * 0.04)),
-          borderRadius: Math.round(r * 0.75),
-          background: 'linear-gradient(148deg, rgba(255,255,255,0.16) 0%, transparent 52%)',
+          inset: Math.max(2, size * 0.04),
+          borderRadius: Math.round(r * 0.80),
+          background:
+            'linear-gradient(155deg, rgba(255,255,255,0.14) 0%, transparent 55%)',
         }}
       />
 
-      {/* Top-down bird silhouette.
-          Wings sweep back and outward; small oval body; fan tail.
-          Seen from directly above — the bird's-eye perspective made literal. */}
+      {/* Two stacked rising chevrons — reads as "progress / forward motion".
+         The lower chevron is the same white as the wordmark; the upper one
+         carries a soft forest tint to echo the brand gradient. */}
       <svg
-        width={size * 0.66}
-        height={size * 0.66}
+        width={size * 0.58}
+        height={size * 0.58}
         viewBox="0 0 64 64"
         className="relative"
         fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       >
-        {/* Left wing — sweeps left, arcs back */}
-        <path
-          d="M30 30 C26 25 15 21 8 27 C4 31 8 38 18 35 C24 33 28 31 30 30"
-          fill="white"
-          opacity="0.92"
-        />
-        {/* Right wing — mirror */}
-        <path
-          d="M34 30 C38 25 49 21 56 27 C60 31 56 38 46 35 C40 33 36 31 34 30"
-          fill="white"
-          opacity="0.92"
-        />
-        {/* Body — teardrop (head narrow, tail wider) */}
-        <ellipse cx="32" cy="29" rx="3.5" ry="7" fill="white" opacity="0.97" />
-        {/* Tail fan — three spread feathers */}
-        <path
-          d="M28.5 36 L32 44 L35.5 36"
-          fill="white"
-          opacity="0.72"
-        />
-        {/* Wing-tip feather splits — gives detail at larger sizes */}
-        {size >= 40 && (
-          <>
-            <path d="M8 27 C6 24 5 27 6 30" stroke="white" strokeWidth="1" opacity="0.4" fill="none" />
-            <path d="M56 27 C58 24 59 27 58 30" stroke="white" strokeWidth="1" opacity="0.4" fill="none" />
-          </>
-        )}
+        <path d="M14 40 L32 22 L50 40"
+          stroke="#ffffff" strokeWidth="7" />
+        <path d="M18 52 L32 38 L46 52"
+          stroke="#B7E4C2" strokeWidth="5" opacity="0.92" />
       </svg>
     </div>
   );
