@@ -1,7 +1,8 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, Save, RotateCcw, Pencil, Check, Link2 } from 'lucide-react';
+import { Plus, Trash2, Save, RotateCcw, Pencil, Check, Link2, ListChecks } from 'lucide-react';
 import { api } from '@/lib/client/api';
+import { MindMapToTasksModal } from '@/components/MindMapToTasksModal';
 
 /**
  * Mind Map — a lightweight personal scratch surface for the My Day page.
@@ -69,6 +70,7 @@ export function MindMap() {
   const [linkCursor, setLinkCursor] = useState<{ x: number; y: number } | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [busy, setBusy] = useState(false);
+  const [toTasksOpen, setToTasksOpen] = useState(false);
   const dirty = useRef(false);
 
   // Track container size so the canvas grows with the column.
@@ -216,6 +218,12 @@ export function MindMap() {
             <span className="text-[10px] text-slate-400 dark:text-white/30 hidden sm:inline">
               {busy ? 'Saving…' : `Saved ${savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
             </span>
+          )}
+          {nodes.length > 0 && (
+            <button onClick={() => setToTasksOpen(true)} title="Turn these notes into tasks"
+              className="inline-flex items-center gap-1 pl-1.5 pr-2 py-1 rounded-lg text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors">
+              <ListChecks size={13} /> <span className="hidden sm:inline">To tasks</span>
+            </button>
           )}
           <button onClick={() => addNode()} title="Add node"
             className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-white/[0.05] transition-colors">
@@ -366,6 +374,14 @@ export function MindMap() {
           </div>
         )}
       </div>
+
+      {toTasksOpen && (
+        <MindMapToTasksModal
+          nodes={nodes.map((n) => ({ id: n.id, text: n.text }))}
+          edges={edges.map((e) => ({ from: e.from, to: e.to }))}
+          onClose={() => setToTasksOpen(false)}
+        />
+      )}
     </div>
   );
 }

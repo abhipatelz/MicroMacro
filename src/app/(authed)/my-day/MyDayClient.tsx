@@ -278,12 +278,7 @@ export default function MyDayClient({ initialData }: {
           </span>
         </button>
         {mindMapOpen && (
-          <div className="mt-2 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] overflow-hidden shadow-sm fade-in-soft"
-            style={{
-              backgroundColor: 'var(--bg-page)',
-              backgroundImage: 'radial-gradient(circle, rgba(100,116,139,0.16) 1px, transparent 1px)',
-              backgroundSize: '22px 22px',
-            }}>
+          <div className="mt-2 fade-in-soft">
             <MindMap />
           </div>
         )}
