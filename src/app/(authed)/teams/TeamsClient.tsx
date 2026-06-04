@@ -88,12 +88,12 @@ export default function TeamsClient({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-[1120px]">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div className="flex items-start justify-between gap-3 flex-wrap pt-1">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">Teams</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-[1.75rem] font-black text-slate-900 tracking-tight leading-tight">Teams</h1>
+          <p className="text-sm text-slate-500 mt-1">
             Cross-functional groups — people, projects, and shared accountability.
           </p>
         </div>
@@ -104,15 +104,17 @@ export default function TeamsClient({
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute top-1/2 -translate-y-1/2 left-3 text-slate-400" />
-        <input
-          className="input pl-9"
-          placeholder="Search teams…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+      {/* Search — same card shell as the Projects toolbar so both pages align */}
+      <div className="card p-4">
+        <div className="relative">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/40 pointer-events-none" />
+          <input
+            className="input pl-8 text-sm"
+            placeholder="Search teams…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Cards grid */}
@@ -129,7 +131,7 @@ export default function TeamsClient({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filtered.map((t) => (
             <TeamCard
               key={t.id}
@@ -190,11 +192,12 @@ function TeamCard({
   const extra = Math.max(0, members.length - visibleMembers.length);
 
   return (
-    <div className="card p-4 group hover:shadow-md transition-shadow flex flex-col">
+    <div className="card p-5 group hover:shadow-md transition-shadow flex flex-col">
+      {/* Top row: avatar + name + function tag + manage actions */}
       <div className="flex items-start gap-3">
-        <Avatar name={team.name} size={40} />
+        <Avatar name={team.name} size={38} />
         <div className="flex-1 min-w-0">
-          <Link href={`/teams/${team.id}`} className="font-semibold text-slate-900 hover:text-brand-700 hover:underline truncate block">
+          <Link href={`/teams/${team.id}`} className="font-bold text-[15px] text-slate-900 hover:text-brand-700 truncate block leading-snug">
             {team.name}
           </Link>
           <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${tone.bg} ${tone.text} ${tone.border}`}>
@@ -202,7 +205,7 @@ function TeamCard({
           </span>
         </div>
         {canManage && (
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <button
               onClick={onEdit}
               className="p-1.5 rounded-md text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
@@ -224,18 +227,15 @@ function TeamCard({
       </div>
 
       {team.description && (
-        <p className="mt-3 text-sm text-slate-600 line-clamp-2">{team.description}</p>
+        <p className="mt-2 text-xs text-slate-500 line-clamp-1">{team.description}</p>
       )}
 
-      <div className="mt-3 text-[11px] text-slate-400">
-        <span className="font-semibold uppercase tracking-wider text-slate-400">Team leader · </span>
+      <div className="mt-2 text-[11px] text-slate-400">
+        <span className="font-semibold uppercase tracking-wider">Team leader · </span>
         <span className="text-slate-600 font-medium">{lead?.name || 'Unassigned'}</span>
       </div>
 
-      {/* Member rail — squircle avatars don't stack cleanly with a negative
-          gap (the rounded corners of one cut into the flat edge of the next),
-          so we wrap each in a circular, white-ringed clip just for this stack.
-          The full-page member view still shows the brand squircles. */}
+      {/* Member rail */}
       <div className="mt-3 flex items-center -space-x-2">
         {visibleMembers.length === 0 ? (
           <span className="text-[11px] text-slate-400 italic">No members yet</span>
@@ -257,18 +257,19 @@ function TeamCard({
         )}
       </div>
 
-      <div className="mt-auto pt-4 flex items-center justify-between gap-3 text-xs text-slate-500">
-        <div className="flex gap-3">
-          <span><strong className="text-slate-700">{team.memberCount}</strong> members</span>
-          <span><strong className="text-slate-700">{team.projectCount}</strong> projects</span>
-        </div>
+      {/* Footer — same structure as project card's bottom-meta row */}
+      <div className="mt-auto pt-3 border-t border-slate-100 dark:border-white/[0.05] flex items-center justify-between gap-3">
+        <span className="text-xs text-slate-500">
+          <strong className="text-slate-700 font-semibold">{team.memberCount}</strong> member{team.memberCount !== 1 ? 's' : ''}
+          <span className="text-slate-300 mx-1.5">·</span>
+          <strong className="text-slate-700 font-semibold">{team.projectCount}</strong> project{team.projectCount !== 1 ? 's' : ''}
+        </span>
         <Link
           href={`/teams/${team.id}`}
-          className="group/cta inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all"
-          style={{ background: 'linear-gradient(135deg, #1565C0 0%, #2b8c47 100%)', boxShadow: '0 2px 8px rgba(21,101,192,0.28)' }}
+          className="group/cta inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
         >
           Open team
-          <ArrowRight size={13} className="transition-transform group-hover/cta:translate-x-0.5" />
+          <ArrowRight size={11} className="transition-transform group-hover/cta:translate-x-0.5" />
         </Link>
       </div>
     </div>
