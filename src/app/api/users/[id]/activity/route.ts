@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
-import { requireRole } from '@/lib/auth';
+import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { buildContributions } from '@/lib/contributions';
 
 export const runtime = 'nodejs';
 
-// A team lead / admin peeking at a teammate's contribution graph (read-only).
+// Any signed-in member can view a colleague's contribution graph (read-only).
+// Profiles + the People directory are open across the workspace by design
+// (see CLAUDE.md); this exposes delivered-work points only — completed tasks
+// weighted for on-time/priority — never credentials or private records.
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireRole(req, 'lead', 'admin');
+    const { error } = await requireUser(req);
     if (error) return error;
     await connectDB();
 
