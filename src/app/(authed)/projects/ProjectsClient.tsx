@@ -175,7 +175,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
 
       {/* Grid */}
       {loaded && (
-      <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))' }}>
+      <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))' }}>
         {projects.map((p) => {
           const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
           const overdueRatio = p.taskCount ? (p.tasksOverdue || 0) / p.taskCount : 0;
@@ -184,18 +184,22 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
           const healthLabel = health === 'critical' ? 'Critical' : health === 'at_risk' ? 'At risk' : 'Healthy';
           const statusInfo = STATUS_COLORS[p.status] || { dot: '#94a3b8', label: p.status };
           const progressColor = pct >= 90 ? '#22c55e' : pct >= 60 ? '#1769C8' : pct >= 30 ? '#f59e0b' : '#94a3b8';
+          const dueIn = p.dueDate ? Math.round((new Date(p.dueDate).getTime() - Date.now()) / 86400000) : null;
+          const dueTone = dueIn === null ? 'slate' : dueIn < 0 ? 'red' : dueIn <= 7 ? 'amber' : 'slate';
+          const progressGradient = `linear-gradient(90deg, ${progressColor} 0%, ${progressColor}cc 100%)`;
           return (
             <Link
               href={`/projects/${p.id}`}
               key={p.id}
-              className="card-hover block group overflow-hidden"
+              className="card-hover block group overflow-hidden hover:-translate-y-0.5 transition-transform"
+              style={{ minHeight: 240 }}
             >
-              {/* Accent strip at top */}
-              <div className="h-1" style={{ background: progressColor }} />
+              {/* Top accent — soft gradient strip in the health colour */}
+              <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${progressColor}, ${healthColor})` }} />
 
-              <div className="p-5">
+              <div className="p-5 flex flex-col h-full">
                 {/* Header row: code + health + status */}
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
                   {p.isPersonal ? (
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-600 bg-violet-50 dark:bg-violet-500/15 dark:text-violet-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
                       <Lock size={9} /> Private
@@ -205,69 +209,84 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                       {p.code}
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full"
                     style={{
-                      background: health === 'good' ? 'rgba(34,197,94,0.1)' : health === 'at_risk' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                      background: health === 'good' ? 'rgba(34,197,94,0.10)' : health === 'at_risk' ? 'rgba(245,158,11,0.10)' : 'rgba(239,68,68,0.10)',
                       color: healthColor,
                     }}
                     title={healthLabel}>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: healthColor }} />
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: healthColor, boxShadow: `0 0 0 2px ${healthColor}22` }} />
                     {healthLabel}
                   </span>
-                  <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-white/35">
+                  <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-white/40">
                     <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: statusInfo.dot }} />
                     {statusInfo.label}
                   </span>
                 </div>
 
                 {/* Project name */}
-                <h3 className="font-black text-[15px] text-slate-900 dark:text-white/90 line-clamp-2 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors leading-snug mb-1.5">
+                <h3 className="font-black text-[16px] text-slate-900 dark:text-white/90 line-clamp-2 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors leading-snug mb-1.5">
                   {p.name}
                 </h3>
 
                 {/* Description */}
-                {p.description && (
-                  <p className="text-[12px] text-slate-400 dark:text-white/35 line-clamp-2 leading-relaxed mb-3">{p.description}</p>
+                {p.description ? (
+                  <p className="text-[12.5px] text-slate-500 dark:text-white/40 line-clamp-2 leading-relaxed mb-3">{p.description}</p>
+                ) : (
+                  <p className="text-[12.5px] italic text-slate-300 dark:text-white/20 mb-3">No description.</p>
                 )}
-                {!p.description && <div className="mb-3" />}
 
-                {/* Lifecycle + tags row */}
-                <div className="flex items-center gap-2 mb-4">
+                {/* Lifecycle + team tags */}
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
                   <LifecycleTag lifecycle={p.lifecycle} />
                   {p.teamName && (
-                    <span className="text-[10px] text-slate-400 dark:text-white/30 bg-slate-50 dark:bg-white/[0.04] px-2 py-0.5 rounded-full truncate max-w-[120px]">
+                    <span className="inline-flex items-center gap-1 text-[10.5px] text-slate-500 dark:text-white/40 bg-slate-50 dark:bg-white/[0.04] px-2 py-0.5 rounded-full truncate max-w-[150px]"
+                      title={p.teamName}>
                       {p.teamName}
                     </span>
                   )}
                 </div>
 
-                {/* Progress section */}
+                {/* Progress — gradient fill with a soft inner highlight */}
                 <div className="space-y-1.5 mb-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-slate-500 dark:text-white/40">Progress</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/40">Progress</span>
                     <span className="text-[13px] font-black tabular-nums" style={{ color: progressColor }}>{pct}%</span>
                   </div>
-                  <div className="h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-white/[0.08]">
+                  <div className="h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-white/[0.06]">
                     <div
                       className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${pct}%`, background: progressColor }}
+                      style={{
+                        width: `${Math.max(pct, p.taskCount ? 2 : 0)}%`,
+                        background: progressGradient,
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35)',
+                      }}
                     />
                   </div>
                 </div>
 
-                {/* Stats row */}
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/[0.06]">
-                  <div className="flex items-center gap-3 text-[11px] text-slate-400 dark:text-white/30">
+                {/* Footer */}
+                <div className="mt-auto pt-3 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-[11.5px] text-slate-500 dark:text-white/40">
                     <span className="font-semibold">
-                      <span className="text-slate-700 dark:text-white/70 font-black">{p.tasksDone}</span>
-                      /{p.taskCount} done
+                      <span className="text-slate-800 dark:text-white/80 font-black">{p.tasksDone}</span>
+                      <span className="text-slate-300 dark:text-white/20">/</span>{p.taskCount} done
                     </span>
                     {p.tasksOverdue > 0 && (
                       <span className="text-red-500 font-bold">{p.tasksOverdue} overdue</span>
                     )}
                   </div>
                   {p.dueDate && (
-                    <span className="text-[11px] text-slate-400 dark:text-white/30 font-medium">
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        dueTone === 'red'
+                          ? 'text-red-600 bg-red-50 dark:bg-red-500/10'
+                          : dueTone === 'amber'
+                            ? 'text-amber-700 bg-amber-50 dark:bg-amber-500/10'
+                            : 'text-slate-500 bg-slate-50 dark:bg-white/[0.04] dark:text-white/40'
+                      }`}
+                      title={dueIn !== null ? (dueIn < 0 ? `${Math.abs(dueIn)} day${Math.abs(dueIn) === 1 ? '' : 's'} overdue` : `${dueIn} day${dueIn === 1 ? '' : 's'} left`) : ''}
+                    >
                       Due {formatDate(p.dueDate)}
                     </span>
                   )}

@@ -52,10 +52,9 @@ export default function ForgotPasswordPage() {
               <div className="min-w-0">
                 <div className="text-sm font-bold text-slate-800">Workspace admin</div>
                 <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                  The admin is the single owner, so recovery is self-service through the secure setup page at{' '}
-                  <Link href="/bootstrap" className="font-mono font-semibold text-amber-700 hover:underline">/bootstrap</Link>.
-                  Enter your <span className="font-semibold text-slate-700">bootstrap token</span> to set a new admin
-                  password. Keep that token somewhere safe — it’s the master key to recovery.
+                  The admin is the single owner. If you've lost access, the platform operator
+                  needs to reset your password directly — contact your IT/QA platform team and
+                  share your workspace and email so they can restore your account.
                 </p>
               </div>
             </div>

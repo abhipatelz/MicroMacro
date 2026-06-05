@@ -683,6 +683,12 @@ export function BirdsEyeView({ data, onClose, onChange }: {
       return;
     }
     const target = e.target as HTMLElement;
+    // Action affordances (collapse/expand toggle, add-task, edit) handle their
+    // own onClick. If we started a drag + pointer-capture here, the capture
+    // would re-target the follow-up `click` to the scroll container and the
+    // button's handler would never fire — which is exactly why hide/expand
+    // appeared dead. Bail so the native click reaches the <g> handler.
+    if (target.closest('[data-be-action]')) return;
     const nodeEl = target.closest('[data-be-node]') as HTMLElement | null;
     if (nodeEl) {
       const id = nodeEl.getAttribute('data-be-node') || '';
@@ -731,13 +737,15 @@ export function BirdsEyeView({ data, onClose, onChange }: {
 
   const endPointer = (e: React.PointerEvent) => {
     if (liveStroke.current) {
-      e.preventDefault();
-      e.stopPropagation();
-      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
-      if (liveStroke.current.points.length >= 2) {
-        setBrushStrokes((s) => [...s, liveStroke.current!]);
-      }
+      // Capture the stroke into a local BEFORE clearing the ref. React may run
+      // the setBrushStrokes updater during the next render (automatic
+      // batching) — by then liveStroke.current is null, which would push a
+      // null into the list and crash the polyline map on the following paint.
+      const stroke = liveStroke.current;
       liveStroke.current = null;
+      if (stroke.points.length >= 2) {
+        setBrushStrokes((s) => [...s, stroke]);
+      }
       forceLive((n) => n + 1);
       return;
     }
@@ -884,6 +892,7 @@ export function BirdsEyeView({ data, onClose, onChange }: {
                     if (!a || !b) return null;
                     return <path key={i} d={edgePath(a, b)} fill="none" stroke="#b6c2d4" strokeWidth={1.5} />;
                   })}
+                  <g pointerEvents={brushOn ? 'none' : undefined}>
                   {nodes.map((n) => {
                     const navHref = n.kind === 'task' ? `/tasks/${(n.data as BirdsEyeTask).id}`
                       : n.kind === 'project' ? `/projects/${(n.data as BirdsEyeProject).id}`
@@ -904,6 +913,7 @@ export function BirdsEyeView({ data, onClose, onChange }: {
                     // pops the inline editor with assignee + TCD fields.
                     const editBtn = isTask ? (
                       <g
+                        data-be-action="edit"
                         onClick={(e) => {
                           e.preventDefault(); e.stopPropagation();
                           setEditing({ node: n, clientX: (e as any).clientX, clientY: (e as any).clientY });
@@ -920,6 +930,7 @@ export function BirdsEyeView({ data, onClose, onChange }: {
                     // nodes. Click hides the subtree without losing what's there.
                     const collapseBtn = canCollapse ? (
                       <g
+                        data-be-action="collapse"
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleCollapsed(n.id); }}
                         style={{ cursor: 'pointer' }}
                       >
@@ -942,6 +953,7 @@ export function BirdsEyeView({ data, onClose, onChange }: {
                     // nodes. Opens an inline new-task popover that posts to /tasks.
                     const addBtn = canAddTask ? (
                       <g
+                        data-be-action="add"
                         onClick={(e) => {
                           e.preventDefault(); e.stopPropagation();
                           setAddingTaskFor({ node: n, clientX: (e as any).clientX, clientY: (e as any).clientY });
@@ -976,6 +988,7 @@ export function BirdsEyeView({ data, onClose, onChange }: {
                       </g>
                     );
                   })}
+                  </g>
 
                   {/* Brush / annotation layer — painted over the tree so notes
                       sit on top. Persisted strokes + the in-progress stroke. */}

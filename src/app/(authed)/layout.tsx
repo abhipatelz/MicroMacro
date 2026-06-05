@@ -17,7 +17,7 @@ export default async function AuthedLayout({ children }: { children: React.React
   // components (AvatarRegistry, NotificationBell) and don't need to block SSR.
   await connectDB();
   const dbUser = await User.findById(user.sub)
-    .select('avatarLetter avatarBg avatarFont soundDropEnabled hasSeenTour')
+    .select('avatarLetter avatarBg avatarFont soundDropEnabled hasSeenTour username')
     .lean();
 
   // Seed only the current user's own avatar so the sidebar self-portrait is
@@ -43,6 +43,7 @@ export default async function AuthedLayout({ children }: { children: React.React
         id: user.sub,
         name: user.name,
         email: user.email,
+        username: (dbUser as any)?.username || null,
         role: normalizeRole(user.role),
         title: user.title || '',
         mustChangePassword: user.mustChangePassword,

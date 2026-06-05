@@ -22,22 +22,18 @@ const SetPinModal = dynamic(
   () => import('./SetPinModal').then(m => m.SetPinModal),
   { ssr: false, loading: () => null },
 );
-// Spotlight onboarding tour — mounted at the shell level so contributors,
-// leads, and admins all get it on whichever page they land on.
-const FirstTimeTour = dynamic(
-  () => import('./FirstTimeTour').then(m => m.FirstTimeTour),
-  { ssr: false, loading: () => null },
-);
 import {
   LayoutDashboard, FolderKanban, Users, UsersRound, NotebookPen,
   LogOut, Menu, X, Moon, Sun, AlertTriangle, ChevronLeft, ChevronRight, ScrollText,
-  UserCircle, Globe,
+  UserCircle, Layers, Globe, ExternalLink,
 } from 'lucide-react';
 
 export interface CurrentUser {
   id: string;
   name: string;
   email: string;
+  /** Login handle — also the path to the user's public profile (/<username>). */
+  username?: string | null;
   role: 'contributor' | 'lead' | 'admin' | 'master_admin';
   title?: string;
   mustChangePassword?: boolean;
@@ -211,6 +207,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
   // behind a disclosure, Security / Quick PIN / admin tools). Notifications and
   // their preferences live in the bell. Dark mode + Sign out follow below.
   const accountItems = [
+    ...(user.username ? [{ href: `/${user.username}`, label: 'View public profile', icon: ExternalLink }] : []),
     { href: '/settings', label: 'Profile & activity', icon: UserCircle },
   ];
 
@@ -229,7 +226,9 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
         <Avatar name={user.name} size={38} letter={user.avatarLetter} bg={user.avatarBg} font={user.avatarFont} ring />
         <div className="min-w-0">
           <div className={`text-sm font-black truncate ${dark ? 'text-white' : 'text-slate-900'}`}>{user.name}</div>
-          <div className={`text-[11px] truncate ${dark ? 'text-white/45' : 'text-slate-400'}`}>{roleText}</div>
+          <div className={`text-[11px] truncate ${dark ? 'text-white/45' : 'text-slate-400'}`}>
+            {user.username ? `@${user.username}` : roleText}
+          </div>
         </div>
       </div>
 
@@ -556,15 +555,6 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
 
       {mustChangePw && (
         <ForcePasswordModal onDone={() => { setMustChangePw(false); router.refresh(); }} />
-      )}
-
-      {/* Spotlight onboarding tour — runs once per user (server-tracked via
-          hasSeenTour). Mounted here so every role sees it regardless of
-          which page they land on after login, and so it doesn't clash with
-          the password / PIN gates above (it's lazy and exits cleanly when
-          alreadySeen). */}
-      {!mustChangePw && !needsPin && (
-        <FirstTimeTour alreadySeen={user.hasSeenTour !== false} />
       )}
 
       {/* Quick-PIN prompt — only after the password step (if any) is cleared,

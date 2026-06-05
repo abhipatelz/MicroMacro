@@ -66,6 +66,9 @@ export function Whiteboard() {
   const [busy, setBusy] = useState(false);
   const [editingText, setEditingText] = useState<{ x: number; y: number; value: string } | null>(null);
   const dirty = useRef(false);
+  // Ref so commitText always reads the latest typed value even when called
+  // from onBlur (which fires before the React re-render that would update state).
+  const pendingTextValue = useRef('');
 
   /** Visible (un-redone) prefix of the stroke list. */
   const visibleStrokes = doc.strokes.slice(0, pointer);
@@ -288,7 +291,8 @@ export function Whiteboard() {
 
   function commitText() {
     if (!editingText) return;
-    const value = editingText.value.trim();
+    const value = (pendingTextValue.current || editingText.value).trim();
+    pendingTextValue.current = '';
     if (!value) { setEditingText(null); return; }
     const s: Stroke = {
       tool: 'text', color, size: penSize,
@@ -408,21 +412,24 @@ export function Whiteboard() {
           <textarea
             autoFocus
             value={editingText.value}
-            onChange={(e) => setEditingText({ ...editingText, value: e.target.value })}
+            onChange={(e) => {
+              const v = e.target.value;
+              pendingTextValue.current = v;
+              setEditingText((prev) => prev ? { ...prev, value: v } : prev);
+            }}
             onBlur={commitText}
             onKeyDown={(e) => {
-              if (e.key === 'Escape') { setEditingText(null); }
-              // Enter commits; Shift+Enter inserts a newline for multi-line text.
+              if (e.key === 'Escape') { pendingTextValue.current = ''; setEditingText(null); }
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitText(); }
             }}
-            className="absolute outline-none border-2 border-dashed border-blue-400 bg-white/95 rounded-md p-1 text-sm shadow-sm"
+            className="absolute outline-none border-2 border-dashed border-blue-400 bg-white/95 rounded-md p-2 shadow-md"
             style={{
               left: editingText.x, top: editingText.y - 2,
-              minWidth: 100, minHeight: 28,
+              minWidth: 140, minHeight: 32,
               color, font: `${Math.round(penSize * 6)}px ui-sans-serif, system-ui, sans-serif`,
               zIndex: 10,
             }}
-            placeholder="Type here · Enter to place"
+            placeholder="Type · Enter to place"
           />
         )}
 

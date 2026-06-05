@@ -129,23 +129,6 @@ function greeting(now = new Date()): string {
   if (h < 21) return 'Good evening';
   return 'Good evening';
 }
-// The tiny emoji that trails the greeting line (festival icon, or a subtle
-// time-of-day cue) so the header feels crafted, not generic.
-function greetingEmoji(now = new Date()): string {
-  const fest = festivalFor(now);
-  if (fest) return fest.emoji;
-  const h = now.getHours();
-  const day = now.getDay();
-  if (h < 5)  return '🌃';
-  if (h < 7)  return '🌅';
-  if (h < 12) return day === 1 ? '🚀' : day === 5 ? '⚡' : '🌤️';
-  if (h < 14) return '☀️';
-  if (h < 17) return day === 5 ? '🎯' : '🛫';
-  if (h < 19) return '🌇';
-  if (h < 22) return '🌆';
-  return '🌃';
-}
-
 // A meaningful one-liner driven by the user's actual state — not filler. On a
 // festival day we lead with the festive note before nudging toward the work.
 function greetingSubline({ open, overdue, dueToday, now = new Date() }: { open: number; overdue: number; dueToday: number; now?: Date }) {
@@ -287,22 +270,16 @@ export default function DashboardClient({
       {/* ── Greeting ────────────────────────────────────────────────────── */}
       <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-[1.75rem] sm:text-[1.9rem] font-black tracking-tight leading-tight inline-flex items-baseline gap-2 flex-wrap text-slate-800 dark:text-white/90">
+          <h1 className="text-[1.75rem] sm:text-[1.9rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
             <span suppressHydrationWarning>
               {greeting()},{' '}
               <span className="text-blue-700 dark:text-blue-400">{firstName}.</span>
             </span>
-            <span className="text-[0.7em] translate-y-[0.05em] opacity-80" suppressHydrationWarning>{greetingEmoji()}</span>
           </h1>
         </div>
-        {/* Bird's-eye view trigger — custom icon, blinks once per session.
-            Wrapped in a tour tooltip that appears once-ever (localStorage),
-            and only when the workspace has at least one active project so
-            empty-state users aren't introduced to a feature they can't use. */}
+        {/* Bird's-eye view trigger. */}
         {!isFirstRun && (
-          <BirdEyeTourWrapper hasActiveProjects={dash.projects.some(p => p.status !== 'completed' && p.status !== 'cancelled')}>
-            <BirdEyeButton scopeKey="dashboard" onClick={() => setBirdsEyeOpen(true)} className="shrink-0" />
-          </BirdEyeTourWrapper>
+          <BirdEyeButton scopeKey="dashboard" onClick={() => setBirdsEyeOpen(true)} className="shrink-0" />
         )}
       </div>
       {/* Subline removed. The summary chips below (Ongoing / Open / Overdue
@@ -413,53 +390,49 @@ function ExpandButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/* ── Bird's-Eye first-login tour ───────────────────────────────────────────
-   Small spotlight tooltip next to the Bird's-Eye trigger, shown ONCE per
-   workspace (keyed in localStorage) and only when at least one active
-   project exists — so the cue introduces the feature on a workspace where
-   it'll actually surface something useful. */
-function BirdEyeTourWrapper({ children, hasActiveProjects }: { children: React.ReactNode; hasActiveProjects: boolean }) {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (!hasActiveProjects) return;
-    if (typeof window === 'undefined') return;
-    const K = 'pragati-bve-tour-v1';
-    if (localStorage.getItem(K)) return;
-    // Defer slightly so it fades in after the page paints rather than during it.
-    const t = window.setTimeout(() => setShow(true), 800);
-    return () => window.clearTimeout(t);
-  }, [hasActiveProjects]);
-
-  function dismiss() {
-    setShow(false);
-    try { localStorage.setItem('pragati-bve-tour-v1', '1'); } catch {}
-  }
-
+/* ── Shared right-column panel header ─────────────────────────────────────
+   One header geometry for Up Next / My Tasks / Individual Contributors so the
+   right rail reads as one aligned set rather than three slightly-different
+   cards. A tinted icon tile + uppercase label + count, with an optional
+   trailing slot (overdue badge, maximize, chevron). */
+function PanelHeader({
+  icon, tint, title, count, countSuffix, trailing, onClick,
+}: {
+  icon: React.ReactNode;
+  tint: { bg: string; fg: string };
+  title: string;
+  count?: number | string;
+  countSuffix?: string;
+  trailing?: React.ReactNode;
+  onClick?: () => void;
+}) {
   return (
-    <div className="relative shrink-0">
-      {children}
-      {show && (
-        <div
-          className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-blue-200 bg-white shadow-xl p-3 z-30 fade-in-soft"
-          role="tooltip"
-        >
-          <div className="absolute -top-1.5 right-3 w-3 h-3 rotate-45 bg-white border-l border-t border-blue-200" />
-          <div className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1">New · Bird&apos;s-eye</div>
-          <div className="text-[12px] text-slate-700 leading-snug">
-            See your whole workspace as one map — teams, projects, tasks. Click here any time.
-          </div>
-          <button
-            onClick={dismiss}
-            className="mt-2 text-[11px] font-bold text-blue-600 hover:text-blue-800"
-          >
-            Got it
-          </button>
-        </div>
+    <div
+      onClick={onClick}
+      className={`px-4 h-12 flex items-center gap-2.5 border-b border-slate-100 dark:border-white/[0.05] ${
+        onClick ? 'cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors' : ''
+      }`}
+    >
+      <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg shrink-0"
+        style={{ background: tint.bg, color: tint.fg }}>
+        {icon}
+      </span>
+      <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600 dark:text-white/45">{title}</h3>
+      {count != null && (
+        <span className="text-[10px] font-bold text-slate-400 dark:text-white/25 tabular-nums">
+          {count}{countSuffix}
+        </span>
       )}
+      <div className="ml-auto flex items-center gap-1.5">{trailing}</div>
     </div>
   );
 }
+
+const PANEL_TINTS = {
+  blue:    { bg: 'rgba(21,101,192,0.10)',  fg: '#1565C0' },
+  emerald: { bg: 'rgba(16,185,129,0.12)',  fg: '#059669' },
+  violet:  { bg: 'rgba(124,58,237,0.12)',  fg: '#7c3aed' },
+} as const;
 
 /* ── Summary chip ────────────────────────────────────────────────────────── */
 function SummaryChip({
@@ -725,7 +698,7 @@ function ProjectsColumn({
    and the view is identical for every viewer on every reload. (We deliberately
    removed dashboard drag-reordering: a quick bird's-eye list shouldn't carry
    hidden per-user state, and TCD order is the one an auditor expects.) */
-function DashboardTaskFlow({ tasks }: { tasks: TeamTask[] }) {
+function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId: string }) {
   const sorted = useMemo(() => {
     const keyOf = (t: TeamTask) => {
       const d = t.ccTcd || t.dueDate;
@@ -740,16 +713,26 @@ function DashboardTaskFlow({ tasks }: { tasks: TeamTask[] }) {
   return (
     <ul>
       {/* ── Section divider ─────────────────────────────────────────── */}
-      <li aria-hidden className="px-4 pt-3 pb-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-white/35">
+      <li aria-hidden className="px-4 pt-3 pb-2 bg-slate-50/50 dark:bg-white/[0.02]">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40">
             Tasks by target date
           </span>
-          <span className="text-[9px] font-bold text-slate-400 dark:text-white/25 tabular-nums">
-            {doneCount} / {sorted.length} done
-          </span>
+          <div className="flex items-center gap-2 min-w-[120px]">
+            <div className="flex-1 h-1 rounded-full bg-slate-200/70 dark:bg-white/[0.08] overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: sorted.length ? `${Math.round((doneCount / sorted.length) * 100)}%` : '0%',
+                  background: 'linear-gradient(90deg, #22c55e, #16a34a)',
+                }}
+              />
+            </div>
+            <span className="text-[9.5px] font-bold text-slate-500 dark:text-white/40 tabular-nums shrink-0">
+              {doneCount} / {sorted.length}
+            </span>
+          </div>
         </div>
-        <div className="mt-1.5 h-px bg-slate-100 dark:bg-white/[0.06]" />
       </li>
 
       {visible.map((t) => {
@@ -771,87 +754,113 @@ function DashboardTaskFlow({ tasks }: { tasks: TeamTask[] }) {
           return ['#94a3b8', 'To do'];
         })();
 
+        // Human-friendly date copy: stays as a short month/day for far-out
+        // dates, switches to "in Nd" within a week, "today", or "Nd over" so
+        // urgency reads at a glance without a separate badge.
+        const dateLabel = !due ? null
+          : isDone ? formatDate(due)
+          : dueIn === null ? formatDate(due)
+          : dueIn < 0 ? `${Math.abs(dueIn)}d over`
+          : dueIn === 0 ? 'Today'
+          : dueIn <= 7 ? `in ${dueIn}d`
+          : formatDate(due);
+        const dateTone = isDone
+          ? 'text-slate-300 dark:text-white/20'
+          : isOverdue
+            ? 'text-red-600 dark:text-red-400 font-bold'
+            : dueIn !== null && dueIn <= 3
+              ? 'text-amber-700 dark:text-amber-400 font-bold'
+              : 'text-slate-400 dark:text-white/28';
+
         return (
-          <li
-            key={t.id}
-            className="group flex items-start gap-2.5 px-4 py-2 hover:bg-slate-50/60 dark:hover:bg-white/[0.025] transition-colors border-t border-slate-50 dark:border-white/[0.03]"
-          >
-            {/* Status indicator — vertically aligned with title baseline */}
-            <div className="shrink-0 mt-[4px]">
-              {isDone ? (
-                <CheckCircle2 size={13} className="text-emerald-500" />
-              ) : (
-                <span
-                  title={dotTitle}
-                  aria-label={dotTitle}
-                  className="block w-2 h-2 rounded-full"
-                  style={{ background: dotColor }}
-                />
-              )}
-            </div>
-
-            {/* Row content */}
-            <div className="flex-1 min-w-0">
-              {/* Title + right-side exceptions/date */}
-              <div className="flex items-center gap-2">
-                <Link
-                  href={`/tasks/${t.id}`}
-                  className={`flex-1 min-w-0 text-[12.5px] font-semibold line-clamp-1 leading-snug ${
-                    isDone
-                      ? 'line-through decoration-slate-300 dark:decoration-white/20 text-slate-500 dark:text-white/40'
-                      : 'text-slate-800 dark:text-white/82 hover:text-blue-700 dark:hover:text-blue-400'
-                  }`}
-                >
-                  {t.title}
-                </Link>
-
-                {/* Exception badges — only when action is needed */}
-                {isOverdue && (
-                  <span className="shrink-0 text-[9px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded">
-                    Overdue
-                  </span>
+          <li key={t.id} className="border-t border-slate-50 dark:border-white/[0.03]">
+            {/* Whole row is the link — no redundant "Open" affordance. Larger
+                tap target, less visual noise, and a clear hover affordance
+                via background + title colour change. */}
+            <Link
+              href={`/tasks/${t.id}`}
+              className="group flex items-start gap-2.5 px-4 py-2.5 hover:bg-slate-50/70 dark:hover:bg-white/[0.03] transition-colors"
+            >
+              {/* Status indicator */}
+              <div className="shrink-0 mt-[3px]">
+                {isDone ? (
+                  <CheckCircle2 size={14} className="text-emerald-500" />
+                ) : (
+                  <span
+                    title={dotTitle}
+                    aria-label={dotTitle}
+                    className="block w-2 h-2 rounded-full"
+                    style={{ background: dotColor, boxShadow: `0 0 0 2px ${dotColor}1f` }}
+                  />
                 )}
-                {isBlocked && !isOverdue && (
-                  <span className="shrink-0 text-[9px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded">
-                    Blocked
-                  </span>
-                )}
-                {!t.assigneeName && !isDone && (
-                  <span className="shrink-0 text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">
-                    Unassigned
-                  </span>
-                )}
-
-                {/* Due date — always on the right */}
-                {due && (
-                  <span className="shrink-0 text-[10px] text-slate-400 dark:text-white/28 tabular-nums">
-                    {formatDate(due)}
-                  </span>
-                )}
-
-                {/* Hover action */}
-                <Link
-                  href={`/tasks/${t.id}`}
-                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 ml-0.5"
-                >
-                  Open
-                </Link>
               </div>
 
-              {/* Metadata: assignee (skip if shown as "Unassigned" badge above) */}
-              {(t.assigneeName || isDone) && (
-                <div className="text-[11px] text-slate-400 dark:text-white/28 mt-0.5">
-                  {t.assigneeName}
+              {/* Row content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`flex-1 min-w-0 text-[13px] font-semibold line-clamp-1 leading-snug ${
+                      isDone
+                        ? 'line-through decoration-slate-300 dark:decoration-white/20 text-slate-500 dark:text-white/40'
+                        : 'text-slate-800 dark:text-white/82 group-hover:text-blue-700 dark:group-hover:text-blue-400'
+                    }`}
+                  >
+                    {t.title}
+                  </span>
+
+                  {/* Exception badges — only when action is needed */}
+                  {isOverdue && (
+                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded">
+                      Overdue
+                    </span>
+                  )}
+                  {isBlocked && !isOverdue && (
+                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded">
+                      Blocked
+                    </span>
+                  )}
+                  {!t.assigneeName && !isDone && (
+                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">
+                      Unassigned
+                    </span>
+                  )}
+
+                  {/* Due date */}
+                  {dateLabel && (
+                    <span className={`shrink-0 text-[10.5px] tabular-nums ${dateTone}`}>
+                      {dateLabel}
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
+
+                {/* Assignee — small avatar + name. Skipped when the row is
+                    flagged "Unassigned" above, and kept compact so the
+                    metadata line doesn't compete with the title. */}
+                {t.assigneeName && (
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-white/35">
+                    <UserAvatar userId={t.assigneeId} name={t.assigneeName} size={16} />
+                    <span className="truncate">{t.assigneeName}</span>
+                  </div>
+                )}
+              </div>
+            </Link>
           </li>
         );
       })}
 
       {sorted.length > 20 && (
-        <li className="px-4 py-2.5 text-[10px] text-slate-400 dark:text-white/28 border-t border-slate-50 dark:border-white/[0.03]">
-          Showing 20 of {sorted.length} tasks — open the project for the full board.
+        <li className="border-t border-slate-50 dark:border-white/[0.03]">
+          <Link
+            href={`/projects/${projectId}`}
+            className="group flex items-center justify-between gap-3 px-4 py-2.5 text-[10.5px] hover:bg-slate-50/70 dark:hover:bg-white/[0.03] transition-colors"
+          >
+            <span className="text-slate-400 dark:text-white/28">
+              Showing 20 of {sorted.length} tasks
+            </span>
+            <span className="text-blue-600 dark:text-blue-400 font-semibold group-hover:translate-x-0.5 transition-transform">
+              Open project board →
+            </span>
+          </Link>
         </li>
       )}
     </ul>
@@ -912,7 +921,9 @@ function ProjectRow({
           <div className="text-[10px] font-bold text-slate-400/80 dark:text-white/25 tracking-wider mt-0.5">
             {project.code}
           </div>
-          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+          {/* Identity + metadata pills — replaces the dot-separated strip so
+              each fact reads as its own chip and the row scans cleanly. */}
+          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
             {cat && (
               <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
                 {cat}
@@ -922,28 +933,30 @@ function ProjectRow({
               <span className={`w-1.5 h-1.5 rounded-full ${health.dot}`} aria-hidden />
               {health.label}
             </span>
-            <span className="text-slate-300 dark:text-white/15">·</span>
-            <span className="text-[11px] text-slate-500 dark:text-white/40">
-              {done}/{total} tasks
-              {dueLabel && (
-                <>
-                  <span className="text-slate-300 dark:text-white/15 mx-1.5">·</span>
-                  <span className={dueUrgent ? 'text-red-600 dark:text-red-400 font-semibold' : ''}>{dueLabel}</span>
-                </>
-              )}
-              {project.overdueCount > 0 && (
-                <>
-                  <span className="text-slate-300 dark:text-white/15 mx-1.5">·</span>
-                  <span className="text-red-600 dark:text-red-400 font-semibold">{project.overdueCount} overdue</span>
-                </>
-              )}
-              {project.ownerName && (
-                <>
-                  <span className="text-slate-300 dark:text-white/15 mx-1.5">·</span>
-                  Owner: <span className="text-slate-600 dark:text-white/55">{project.ownerName}</span>
-                </>
-              )}
+            <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-slate-600 dark:text-white/50 bg-slate-50 dark:bg-white/[0.04] px-1.5 py-0.5 rounded">
+              <span className="text-slate-800 dark:text-white/80 tabular-nums">{done}/{total}</span>
+              <span className="text-slate-400 dark:text-white/30">tasks</span>
             </span>
+            {dueLabel && (
+              <span className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded ${
+                dueUrgent
+                  ? 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10'
+                  : 'text-slate-600 dark:text-white/50 bg-slate-50 dark:bg-white/[0.04]'
+              }`}>
+                {dueLabel}
+              </span>
+            )}
+            {project.overdueCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded">
+                {project.overdueCount} overdue
+              </span>
+            )}
+            {project.ownerName && (
+              <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-slate-600 dark:text-white/50 bg-slate-50 dark:bg-white/[0.04] pl-0.5 pr-1.5 py-0.5 rounded">
+                <UserAvatar userId={project.ownerId} name={project.ownerName} size={14} />
+                <span className="truncate max-w-[140px]">{project.ownerName}</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -958,12 +971,20 @@ function ProjectRow({
       {open && (
         <div className="border-t border-slate-100 dark:border-white/[0.05] fade-in-soft">
           {tasks.length === 0 ? (
-            <div className="py-8 text-center">
-              <CheckCircle2 size={18} className="mx-auto text-slate-200 dark:text-white/15 mb-2" />
-              <div className="text-xs text-slate-400 dark:text-white/30">No tasks yet for this project.</div>
+            <div className="py-10 text-center">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-white/[0.04] mb-2">
+                <CheckCircle2 size={18} className="text-slate-300 dark:text-white/25" />
+              </div>
+              <div className="text-[12px] font-semibold text-slate-500 dark:text-white/45">No tasks yet for this project.</div>
+              <Link
+                href={`/projects/${project.id}`}
+                className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700"
+              >
+                Open the project board →
+              </Link>
             </div>
           ) : (
-            <DashboardTaskFlow tasks={tasks} />
+            <DashboardTaskFlow tasks={tasks} projectId={project.id} />
           )}
         </div>
       )}
@@ -1040,14 +1061,16 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
   return (
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      <div className="px-4 py-3 border-b border-slate-100 dark:border-white/[0.05] flex items-center gap-2">
-        <CheckCircle2 size={13} className="text-slate-400 dark:text-white/30" />
-        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">My tasks</h3>
-        <span className="ml-auto text-[10px] font-bold text-slate-300 dark:text-white/20">{myTasks.length} open</span>
-        {myOverdue > 0 && (
-          <span className="text-[10px] font-bold text-red-400">{myOverdue} overdue</span>
-        )}
-      </div>
+      <PanelHeader
+        icon={<CheckCircle2 size={13} />}
+        tint={PANEL_TINTS.emerald}
+        title="My tasks"
+        count={myTasks.length}
+        countSuffix=" open"
+        trailing={myOverdue > 0
+          ? <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-full">{myOverdue} overdue</span>
+          : null}
+      />
       {myTasks.length === 0 ? (
         <div className="py-7 text-center">
           <CheckCircle2 size={18} className="mx-auto text-emerald-300 mb-1.5" />
@@ -1169,23 +1192,27 @@ function UpNextPanel({ tasks }: { tasks: TeamTask[] }) {
   const inner = (
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      {/* Header — matches the My Tasks header geometry (px-4 py-3, gap-2,
-          border-b) so the two right-column panels read on the same baseline. */}
-      <div className="px-4 py-3 border-b border-slate-100 dark:border-white/[0.05] flex items-center gap-2">
-        <TrendingUp size={13} className="text-slate-400 dark:text-white/30" />
-        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">Up Next</h3>
-        <span className="ml-auto text-[10px] font-bold text-slate-300 dark:text-white/20">{totalCount}</span>
-        {!expanded && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            aria-label="Expand Up Next"
-            className="p-1 -mr-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
-          >
-            <Maximize2 size={11} />
-          </button>
-        )}
-      </div>
+      {/* Header — shared geometry with My Tasks / Contributors. Hidden when
+          shown inside the full-screen overlay (which supplies its own title),
+          so "Up Next" isn't printed twice. */}
+      {!expanded && (
+        <PanelHeader
+          icon={<TrendingUp size={13} />}
+          tint={PANEL_TINTS.blue}
+          title="Up Next"
+          count={totalCount}
+          trailing={
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              aria-label="Expand Up Next"
+              className="p-1 -mr-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
+            >
+              <Maximize2 size={12} />
+            </button>
+          }
+        />
+      )}
       <div className="overflow-y-auto" style={{ maxHeight: expanded ? 'calc(100vh - 220px)' : '60vh' }}>
         {/* Overdue group — sits at the top: nothing to filter, just the
             tasks that have slipped past their date. */}
@@ -1381,10 +1408,7 @@ function ContributorsPanel({
     return (
       <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
         style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-        <div className="px-4 py-3 flex items-center gap-2">
-          <UsersIcon size={13} className="text-slate-400 dark:text-white/30" />
-          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">Individual Contributors</h3>
-        </div>
+        <PanelHeader icon={<UsersIcon size={13} />} tint={PANEL_TINTS.violet} title="Individual Contributors" />
       </section>
     );
   }
@@ -1395,21 +1419,20 @@ function ContributorsPanel({
   return (
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      <div
-        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors"
+      <PanelHeader
+        icon={<UsersIcon size={13} />}
+        tint={PANEL_TINTS.violet}
+        title="Individual Contributors"
+        count={people.length}
         onClick={() => setPanelOpen(o => !o)}
-      >
-        <UsersIcon size={13} className="text-slate-400 dark:text-white/30" />
-        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
-          Individual Contributors
-        </h3>
-        <span className="ml-auto text-[10px] text-slate-300 dark:text-white/20 font-semibold">{people.length}</span>
-        <ChevronDown
-          size={12}
-          className={`text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
-          style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-        />
-      </div>
+        trailing={
+          <ChevronDown
+            size={14}
+            className={`text-violet-500 dark:text-violet-400 transition-transform duration-200 ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
+            style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+          />
+        }
+      />
 
       {panelOpen && (
         <ul className="divide-y divide-slate-50 dark:divide-white/[0.04] border-t border-slate-100 dark:border-white/[0.05]">

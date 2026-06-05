@@ -12,11 +12,12 @@ const ActivityGraph = dynamic(
 );
 import {
   User, Lock, ShieldCheck, Copy, Check, RefreshCw, X, Activity, KeyRound,
-  AlertTriangle, ServerCog, MoreHorizontal, ChevronDown, Pencil,
+  AlertTriangle, ServerCog, MoreHorizontal, ChevronDown, Pencil, ExternalLink,
 } from 'lucide-react';
 
 
 import { MonogramEditor } from '@/components/MonogramEditor';
+import { ProfileHero } from '@/components/ProfileHero';
 
 /* ── Profile avatar wrapper ───────────────────────────────────────────────
    Renders the user's monogram avatar with a hover-overlay "edit" hint.
@@ -538,63 +539,51 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
   return (
     <div className="max-w-5xl mx-auto pb-12 space-y-6">
 
-      {/* ── Hero profile card ──────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white"
-        style={{ boxShadow: '0 16px 48px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.05)' }}>
-        <div className="absolute inset-0 profile-hero-shimmer" />
-        {/* Soft radial sheen instead of the old grid — keeps the shimmer clean. */}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(120% 140% at 12% 0%, rgba(255,255,255,0.20) 0%, transparent 45%)' }}
-        />
-        <div className="relative px-5 py-6 sm:px-8 sm:py-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-              <div className="shrink-0 rounded-3xl bg-white p-1.5"
-                style={{ boxShadow: '0 14px 34px rgba(15,23,42,0.22)' }}>
-                <ProfileAvatar
-                  name={user.name}
-                  letter={avatarLetter}
-                  bg={avatarBg}
-                  font={avatarFont}
-                  size={88}
-                  onClick={() => setShowAvatarEditor(true)}
-                  title="Change avatar"
-                />
-              </div>
-              <div className="min-w-0 pb-1">
-                <div className="mb-3 inline-flex rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white backdrop-blur">
-                  <span className="font-display">Pragati</span>&nbsp;profile
-                </div>
-                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                  <h1 className="text-2xl font-black leading-tight tracking-tight text-white sm:text-3xl">{user.name}</h1>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/75">
-                  {user.username && <span className="font-mono break-all">@{user.username}</span>}
-                </div>
-              </div>
-            </div>
-            <div className="grid w-full grid-cols-2 gap-2 lg:min-w-[260px] lg:w-auto">
-              <div className="rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white backdrop-blur">
-                <div className="text-[10px] font-black uppercase tracking-wider text-white/60">Access</div>
-                <div className="mt-1 text-sm font-black">{roleText}</div>
-              </div>
-              <div className="rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white backdrop-blur">
-                <div className="text-[10px] font-black uppercase tracking-wider text-white/60">Member ID</div>
-                <div className="mt-1 text-sm font-black">{employeeId || '-'}</div>
-              </div>
-            </div>
+      {/* ── Hero profile card (shared with the public /username view) ──── */}
+      <ProfileHero
+        name={user.name}
+        username={user.username}
+        roleText={roleText}
+        employeeId={employeeId}
+        title={user.title}
+        department={user.department}
+        location={user.location}
+        organisation={user.organisation}
+        linkUsername
+        avatar={
+          <ProfileAvatar
+            name={user.name}
+            letter={avatarLetter}
+            bg={avatarBg}
+            font={avatarFont}
+            size={88}
+            onClick={() => setShowAvatarEditor(true)}
+            title="Change avatar"
+          />
+        }
+        actions={
+          <div className="flex items-center gap-1.5">
+            {user.username && (
+              <a
+                href={`/${user.username}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur transition hover:bg-white/25"
+                title="Open your public profile"
+              >
+                <ExternalLink size={12} /> View
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => setEditingProfile((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur transition hover:bg-white/25"
+            >
+              <Pencil size={12} /> {editingProfile ? 'Close' : 'Edit'}
+            </button>
           </div>
-        </div>
-
-        {/* Edit affordance — inline, so there's no separate Personal Details card. */}
-        <button
-          type="button"
-          onClick={() => setEditingProfile((v) => !v)}
-          className="absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur transition hover:bg-white/25"
-        >
-          <Pencil size={12} /> {editingProfile ? 'Close' : 'Edit'}
-        </button>
-      </div>
+        }
+      />
 
       {/* Monogram avatar editor — letter + colour + font, with Inspire-me. */}
       {showAvatarEditor && (

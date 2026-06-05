@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { RoleBadge } from '@/components/ui';
@@ -773,6 +774,24 @@ export default function PeopleClient({ initialUsers, contribTotal = 0, contribPa
   const [activityUser, setActivityUser] = useState<any | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<any | null>(null);
   const [deactivating, setDeactivating] = useState(false);
+  const router = useRouter();
+
+  // Clicking a person opens their public profile (corporate-social style) —
+  // the full /<username> page already carries their contribution graph, so it
+  // supersedes the old inline activity peek. Legacy accounts that predate
+  // usernames have no public URL, so for those we fall back to the lead/admin
+  // inline modal. `canOpenPerson` drives the row's clickable/disabled state.
+  function canOpenPerson(u: any): boolean {
+    return !!u.username || isLeadOrAdmin;
+  }
+  function openPerson(u: any) {
+    if (u.username) { router.push(`/${u.username}`); return; }
+    if (isLeadOrAdmin) setActivityUser(u);
+  }
+  function personTitle(u: any): string | undefined {
+    if (u.username) return `View ${u.name}'s profile`;
+    return isLeadOrAdmin ? `View ${u.name}'s activity` : undefined;
+  }
 
   // Background refresh after a mutation. The initial render uses the
   // server-provided list (which includes deactivated accounts), so no fetch
@@ -1144,15 +1163,15 @@ export default function PeopleClient({ initialUsers, contribTotal = 0, contribPa
               <div key={u.id} className="flex items-center flex-wrap gap-x-3 gap-y-2 px-5 py-4">
                 <button
                   type="button"
-                  onClick={() => isLeadOrAdmin && setActivityUser(u)}
-                  disabled={!isLeadOrAdmin}
-                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isLeadOrAdmin ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
-                  title={isLeadOrAdmin ? `View ${u.name}'s activity` : undefined}>
+                  onClick={() => openPerson(u)}
+                  disabled={!canOpenPerson(u)}
+                  className={`group flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${canOpenPerson(u) ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
+                  title={personTitle(u)}>
                   <UserAvatar userId={u.id} name={u.name} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
-                      {u.name}
-                      {isLeadOrAdmin && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
+                      <span className="truncate group-hover:text-blue-700 transition-colors">{u.name}</span>
+                      {u.username && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
                     </div>
                     <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
                   </div>
@@ -1294,15 +1313,15 @@ export default function PeopleClient({ initialUsers, contribTotal = 0, contribPa
                 </button>
                 <button
                   type="button"
-                  onClick={() => isLeadOrAdmin && setActivityUser(u)}
-                  disabled={!isLeadOrAdmin}
-                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isLeadOrAdmin ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
-                  title={isLeadOrAdmin ? `View ${u.name}'s activity` : undefined}>
+                  onClick={() => openPerson(u)}
+                  disabled={!canOpenPerson(u)}
+                  className={`group flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${canOpenPerson(u) ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'}`}
+                  title={personTitle(u)}>
                   <UserAvatar userId={u.id} name={u.name} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
-                      {u.name}
-                      {isLeadOrAdmin && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
+                      <span className="truncate group-hover:text-blue-700 transition-colors">{u.name}</span>
+                      {u.username && <BarChart3 size={12} className="text-slate-300 shrink-0" />}
                     </div>
                     <div className="text-xs text-slate-400 mt-0.5 font-mono">@{handleOf(u)}</div>
                   </div>
@@ -1388,10 +1407,10 @@ export default function PeopleClient({ initialUsers, contribTotal = 0, contribPa
               <div key={u.id} className="flex items-center flex-wrap gap-x-3 gap-y-2 px-5 py-4">
                 <button
                   type="button"
-                  onClick={() => isLeadOrAdmin && setActivityUser(u)}
-                  disabled={!isLeadOrAdmin}
-                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${isLeadOrAdmin ? 'hover:bg-amber-50/60 cursor-pointer' : 'cursor-default'}`}
-                  title={isLeadOrAdmin ? `View ${u.name}'s activity` : undefined}>
+                  onClick={() => openPerson(u)}
+                  disabled={!canOpenPerson(u)}
+                  className={`flex items-center gap-3 flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors ${canOpenPerson(u) ? 'hover:bg-amber-50/60 cursor-pointer' : 'cursor-default'}`}
+                  title={personTitle(u)}>
                   <span className="opacity-60"><UserAvatar userId={u.id} name={u.name} size={36} /></span>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-700 text-sm leading-tight truncate">{u.name}</div>

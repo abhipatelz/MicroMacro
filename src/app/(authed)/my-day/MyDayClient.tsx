@@ -5,9 +5,10 @@ import { api } from '@/lib/client/api';
 import { useIsLead, useCurrentUser } from '@/components/CurrentUserContext';
 import {
   Plus, Check, Trash2, ArrowRight, X, Sparkles, Calendar, Zap,
-  ChevronDown, ChevronUp, Target, BookmarkCheck, Shield, BrainCircuit,
+  ChevronDown, ChevronUp, Target, BookmarkCheck, Shield, PenLine,
   Pencil, Pin, PinOff, FileText, Layers,
 } from 'lucide-react';
+import { WhiteboardIcon } from '@/components/WhiteboardIcon';
 import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
 import dynamicImport from 'next/dynamic';
@@ -100,7 +101,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
   );
 }
 
-/* ── Notes panel (right column) ──────────────────────────────────────────── */
+/* ── Notes panel (collapsible section) ───────────────────────────────────── */
 function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () => void }) {
   const [notes, setNotes]       = useState<UserNote[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -110,6 +111,20 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText]   = useState('');
   const [editTitle, setEditTitle] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Notes are secondary to the day's todos — collapsed by default so the page
+  // reads as a clean todo surface first. The choice is remembered per browser.
+  const [open, setOpen] = useState<boolean>(false);
+  useEffect(() => {
+    try { setOpen(localStorage.getItem('pragati-notes-open') === '1'); } catch {}
+  }, []);
+  function toggleOpen() {
+    setOpen((v) => {
+      const next = !v;
+      try { localStorage.setItem('pragati-notes-open', next ? '1' : '0'); } catch {}
+      return next;
+    });
+  }
 
   const load = useCallback(async () => {
     try {
@@ -162,16 +177,42 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
+    <div className="flex flex-col">
+      {/* Collapsible header — click to reveal the notes surface. Keeps the day
+          minimal and todo-first until the user actually wants their notes. */}
+      <button
+        type="button"
+        onClick={toggleOpen}
+        aria-expanded={open}
+        className="group flex items-center gap-2 mb-3 w-full text-left"
+      >
         <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-500/15 flex items-center justify-center">
           <FileText size={13} className="text-amber-600 dark:text-amber-400" />
         </div>
         <h2 className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 dark:text-white/50">Notes</h2>
-        <span className="text-[9px] font-bold text-slate-300 dark:text-white/20 ml-1">permanent</span>
-      </div>
+        {!loading && notes.length > 0 && (
+          <span className="text-[10px] font-bold text-slate-400 dark:text-white/30 tabular-nums">{notes.length}</span>
+        )}
+        <span className="text-[9px] font-bold text-slate-300 dark:text-white/20">permanent</span>
+        <span className="ml-auto text-slate-400 dark:text-white/30 group-hover:text-slate-600 dark:group-hover:text-white/50 transition-colors">
+          {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </span>
+      </button>
 
+      {!open && (
+        <button
+          type="button"
+          onClick={toggleOpen}
+          className="rounded-xl border border-dashed border-slate-200 dark:border-white/[0.08] px-3 py-2.5 text-left text-[12px] text-slate-400 dark:text-white/30 hover:border-amber-300 hover:text-slate-600 dark:hover:text-white/50 transition-colors"
+        >
+          {loading ? 'Loading notes…'
+            : notes.length > 0
+              ? `${notes.length} note${notes.length === 1 ? '' : 's'} — tap to open`
+              : 'Tap to jot a permanent note'}
+        </button>
+      )}
+
+      {open && (<>
       {/* Add note form */}
       <form onSubmit={addNote} className="mb-4">
         <div className="rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden focus-within:border-amber-400/60 dark:focus-within:border-amber-500/40 focus-within:shadow-[0_0_0_3px_rgba(245,158,11,0.08)] transition-all">
@@ -187,9 +228,15 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
           <textarea
             className="w-full bg-transparent text-[13px] text-slate-700 dark:text-white/80 placeholder-slate-300 dark:placeholder-white/25 border-0 outline-none resize-none px-3 py-2.5 leading-relaxed"
             placeholder="Jot a permanent note — ideas, links, decisions…"
-            rows={3}
+            rows={2}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              // auto-grow
+              const t = e.target;
+              t.style.height = 'auto';
+              t.style.height = t.scrollHeight + 'px';
+            }}
             maxLength={50000}
           />
           <div className="flex items-center gap-1 px-2 pb-2">
@@ -228,16 +275,18 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
         </div>
       )}
 
-      <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-0.5">
+      <div className="space-y-2 pr-0.5">
         {notes.map((note) => (
           <div key={note.id}
-            className={`group rounded-xl border transition-all ${
+            className={`group rounded-xl border transition-all cursor-pointer ${
               note.pinned
                 ? 'border-amber-200/80 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/[0.06]'
                 : 'border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] hover:border-slate-300 dark:hover:border-white/12'
-            }`}>
+            }`}
+            onClick={() => setExpandedId(expandedId === note.id ? null : note.id)}
+          >
             {editingId === note.id ? (
-              <div className="p-3 space-y-1.5">
+              <div className="p-3 space-y-1.5" onClick={(e) => e.stopPropagation()}>
                 <input
                   className="w-full bg-transparent text-[12px] font-semibold text-slate-600 dark:text-white/70 placeholder-slate-300 border-b border-slate-100 dark:border-white/[0.07] outline-none pb-1.5"
                   value={editTitle}
@@ -277,10 +326,14 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
                 {note.title && (
                   <div className="text-[12px] font-bold text-slate-700 dark:text-white/75 mb-0.5 line-clamp-1">{note.title}</div>
                 )}
-                <p className="text-[12px] text-slate-600 dark:text-white/60 leading-relaxed line-clamp-4 whitespace-pre-wrap break-words">
+                <p className={`text-[12px] text-slate-600 dark:text-white/60 leading-relaxed whitespace-pre-wrap break-words ${expandedId === note.id ? '' : 'line-clamp-4'}`}>
                   {note.content}
                 </p>
-                <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {expandedId !== note.id && note.content.length > 200 && (
+                  <span className="text-[10px] text-amber-500 font-semibold">show more</span>
+                )}
+                <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => e.stopPropagation()}>
                   <span className="flex-1 text-[9px] text-slate-300 dark:text-white/20">
                     {new Date(note.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                   </span>
@@ -302,6 +355,7 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
           </div>
         ))}
       </div>
+      </>)}
     </div>
   );
 }
@@ -309,28 +363,23 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
 /* ── Whiteboard FAB & drawer ────────────────────────────────────────────── */
 function WhiteboardFAB() {
   const [open, setOpen] = useState(false);
-  const [blink, setBlink] = useState(true);
-  useEffect(() => {
-    const t = setTimeout(() => setBlink(false), 3000);
-    return () => clearTimeout(t);
-  }, []);
 
   return (
     <>
-      {/* FAB button */}
+      {/* Extended FAB — icon + label so it reads unmistakably as the whiteboard */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         title="Open whiteboard"
         aria-label="Open whiteboard"
-        className={`fixed bottom-6 right-6 z-40 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 ${blink ? 'my-day-fab-blink' : ''}`}
+        className="fixed bottom-6 right-6 z-40 rounded-full shadow-xl flex items-center gap-2 pl-3.5 pr-4 h-12 text-white text-[13px] font-bold transition-transform hover:scale-105 active:scale-95"
         style={{
-          width: 52, height: 52,
           background: 'linear-gradient(135deg, #1565C0 0%, #22C55E 100%)',
           boxShadow: '0 4px 16px rgba(21,101,192,0.35)',
         }}
       >
-        <BrainCircuit size={22} className="text-white" />
+        <WhiteboardIcon size={20} className="text-white" filled />
+        Whiteboard
       </button>
 
       {/* Whiteboard drawer */}
@@ -341,7 +390,7 @@ function WhiteboardFAB() {
             <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-white/[0.07] shrink-0"
               style={{ background: 'linear-gradient(to right, rgba(21,101,192,0.06), transparent)' }}>
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center">
-                <BrainCircuit size={16} className="text-white" />
+                <WhiteboardIcon size={16} className="text-white" filled />
               </div>
               <div>
                 <div className="text-sm font-black text-slate-800 dark:text-white/90">Whiteboard</div>
@@ -490,10 +539,10 @@ export default function MyDayClient({ initialData }: {
           <form onSubmit={add} className="mb-6">
             <div className="relative rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] px-3.5 py-3 shadow-sm hover:border-slate-300/80 focus-within:border-blue-500/60 dark:focus-within:border-blue-500/50 focus-within:shadow-[0_0_0_3px_rgba(21,101,192,0.10)] transition-all">
               <div className="flex items-center gap-3">
-                {/* Enhanced BrainCircuit icon */}
+                {/* Capture icon — a pen, matching the "empty your mind" prompt */}
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                   style={{ background: 'linear-gradient(135deg, rgba(21,101,192,0.15) 0%, rgba(34,197,94,0.12) 100%)', boxShadow: '0 0 0 1px rgba(21,101,192,0.12)' }}>
-                  <BrainCircuit size={18} className="text-blue-600 dark:text-blue-400" />
+                  <PenLine size={18} className="text-blue-600 dark:text-blue-400" />
                 </div>
                 <input
                   ref={inputRef}
@@ -666,8 +715,8 @@ export default function MyDayClient({ initialData }: {
           )}
         </div>
 
-        {/* ── Right: permanent notes panel ─────────────────────── */}
-        <div className="hidden lg:flex flex-col min-h-[500px] pt-0">
+        {/* ── Right: permanent notes panel (collapsed by default) ─ */}
+        <div className="hidden lg:flex flex-col pt-0">
           <NotesPanel />
         </div>
       </div>
