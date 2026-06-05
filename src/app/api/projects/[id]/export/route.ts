@@ -4,6 +4,7 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { User } from '@/models/User';
 import { isLead, requireUser } from '@/lib/auth';
+import { rateLimit } from '@/lib/rateLimit';
 import { handleError } from '@/lib/http';
 import ExcelJS from 'exceljs';
 
@@ -608,6 +609,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (error) return error;
     if (!isLead(user.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+    // 4-sheet xlsx generation hits Task.find + User.find({}) every call.
+    // Cap at 6/min/user so a single lead can't keep the worker pegged.
+    if (!rateLimit(`export:${user.sub}`, 6, 60_000)) {
+      return NextResponse.json(
+        { error: 'Too many exports in a short time. Wait a minute and try again.' },
+        { status: 429 },
+      );
     }
     await connectDB();
 

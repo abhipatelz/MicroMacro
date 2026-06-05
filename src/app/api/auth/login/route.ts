@@ -36,10 +36,11 @@ const GENERIC_INVALID = { status: 401, body: { error: 'Invalid email or password
 
 export async function POST(req: NextRequest) {
   try {
-    // Per-IP brute-force throttle. The per-account lockout is the second
-    // line of defence; this one fires before we ever hit the database, so
-    // an attacker spraying a wordlist across many emails is contained
-    // without locking out legitimate users in the process.
+    // Two-tier brute-force throttle. The per-IP limit (20/min) caps single-
+    // source attacks; the per-identifier limit (10/min) caps distributed
+    // credential-stuffing — an attacker spraying one username from many IPs
+    // would otherwise sail past the per-IP gate. The per-account lockout
+    // (5 wrong passwords) is the third line of defence.
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anon';
     if (!rateLimit(`login:${ip}`, 20, 60_000)) {
       return NextResponse.json(
@@ -51,6 +52,13 @@ export async function POST(req: NextRequest) {
     // Validate the body BEFORE touching the database, so malformed input
     // fails fast with a 400 regardless of DB health.
     const body  = await readBody(req, Body);
+    const idKey = body.identifier.toLowerCase().trim();
+    if (!rateLimit(`login-id:${idKey}`, 10, 60_000)) {
+      return NextResponse.json(
+        { error: 'Too many sign-in attempts on this account. Wait a minute and try again.' },
+        { status: 429 },
+      );
+    }
     await connectDB();
     const ident = body.identifier.toLowerCase().trim();
     // Sign in with whatever the person remembers — username, employee ID,

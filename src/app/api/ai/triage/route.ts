@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
 import { isContributor, requireUser } from '@/lib/auth';
+import { rateLimit } from '@/lib/rateLimit';
 import { handleError, readBody } from '@/lib/http';
 import { runTriage } from '@/lib/ai/triage';
 
@@ -20,6 +21,11 @@ export async function POST(req: NextRequest) {
   try {
     const { user, error } = await requireUser(req);
     if (error) return error;
+    // Triage scans the whole corpus; cap to 20/min/user so a runaway client
+    // or a bored user can't pin the worker.
+    if (!rateLimit(`ai-triage:${user.sub}`, 20, 60_000)) {
+      return NextResponse.json({ error: 'Too many triage requests. Wait a minute.' }, { status: 429 });
+    }
     await connectDB();
     const body = await readBody(req, Body);
 

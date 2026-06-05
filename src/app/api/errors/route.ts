@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { ErrorLog } from '@/models/ErrorLog';
 import { requireUser, isAdmin } from '@/lib/auth';
+import { rateLimit } from '@/lib/rateLimit';
 import { handleError, readBody } from '@/lib/http';
 import { captureError } from '@/lib/errorMonitor';
 
@@ -24,6 +25,14 @@ export async function POST(req: NextRequest) {
   try {
     const { error, user } = await requireUser(req);
     if (error) return error;
+    // A buggy client in a render loop could try to post hundreds of
+    // identical errors per minute. Cap at 30/min/user so the collection
+    // can't be flooded; legitimate one-off crashes always make it through.
+    if (!rateLimit(`errors:${user!.sub}`, 30, 60_000)) {
+      // Quietly drop excess reports — the client already crashed, there is
+      // no value in returning an error message that might re-trigger.
+      return NextResponse.json({ ok: true, throttled: true });
+    }
     const body = await readBody(req, ReportBody);
     await captureError({
       source: 'client',

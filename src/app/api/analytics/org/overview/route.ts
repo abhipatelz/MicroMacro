@@ -32,7 +32,10 @@ export async function GET(req: NextRequest) {
     // ── Fetch base data (3 light queries) ────────────────────────────────
     const [allProjects, allUsers, teamDocs] = await Promise.all([
       Project.find({ status: { $ne: 'cancelled' }, ...NOT_PERSONAL }).sort({ status: 1, updatedAt: -1 }).lean(),
-      User.find({}).sort({ name: 1 }).lean(),
+      // Explicit projection — never load passwordHash / pinHash / securityKeyHash
+      // into an aggregate response, even when the final serialiser would strip
+      // them. Defence-in-depth and ~30% smaller memory footprint per user.
+      User.find({}).select('_id name email role title teamId active').sort({ name: 1 }).lean(),
       Team.find({}).lean(),
     ]);
 

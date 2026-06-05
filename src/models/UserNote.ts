@@ -13,4 +13,9 @@ const UserNoteSchema = new Schema(
   { timestamps: true },
 );
 
+// Compound index for the list endpoint: it always queries by userId, then
+// sorts by pinned ↓ + updatedAt ↓. With this index Mongo can satisfy the
+// whole query (filter + sort) without a separate in-memory sort pass.
+UserNoteSchema.index({ userId: 1, pinned: -1, updatedAt: -1 });
+
 export default mongoose.models.UserNote || mongoose.model('UserNote', UserNoteSchema);

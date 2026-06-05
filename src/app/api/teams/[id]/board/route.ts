@@ -4,6 +4,7 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { User } from '@/models/User';
 import { requireUser } from '@/lib/auth';
+import { guardTeamMember } from '@/lib/teamAuth';
 import { handleError } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
 
@@ -22,7 +23,22 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const { user, error } = await requireUser(req);
     if (error) return error;
     await connectDB();
-    const projects = await Project.find({ teamId: params.id }).lean();
+    // Membership gate — only admins, the team lead, or explicit members may
+    // view this team's board. Without this any authenticated user could
+    // enumerate every team's tasks by guessing the team id.
+    const denied = await guardTeamMember(params.id, user!.sub, user!.role);
+    if (denied) return denied;
+    // Personal projects (isPersonal=true) are owner-private — they MUST
+    // never surface on a team board even if a stray teamId ended up on the
+    // doc. Belt-and-braces: also exclude the PRSN- code prefix, which is
+    // the canonical marker.
+    const projects = await Project.find({
+      teamId: params.id,
+      $and: [
+        { $or: [{ isPersonal: { $ne: true } }, { isPersonal: { $exists: false } }] },
+        { $or: [{ code: { $not: /^PRSN-/ } }, { code: { $exists: false } }] },
+      ],
+    }).lean();
     const tasks = await Task.find({ projectId: { $in: projects.map((p) => p._id) }, $or: [{ privateToUserId: null }, { privateToUserId: { $exists: false } }, { privateToUserId: user!.sub }] }).lean();
     const users = await User.find({ _id: { $in: tasks.map((t) => t.assigneeId).filter(Boolean) } }).lean();
     const uMap = new Map(users.map((u) => [String(u._id), u.name]));
