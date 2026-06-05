@@ -102,7 +102,6 @@ export default function InsightsPage() {
         <h1 className="text-2xl font-black text-slate-900">Trends</h1>
         <p className="text-sm text-slate-500 mt-0.5">
           How your teams are moving over time — velocity, momentum and people load.
-          <Link href="/org" className="ml-1 text-brand-600 hover:underline">See today's project health →</Link>
         </p>
       </div>
 

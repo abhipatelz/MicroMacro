@@ -293,6 +293,36 @@ export const AVATAR_MONOGRAM_BG: string[] = [
   '#1565C0', '#1976D2', '#2E7D32', '#0D47A1',
 ];
 
+/**
+ * Hand-picked monogram combinations. Every (bg, font, foreground) tuple here
+ * has been visually QA'd at the 28–32px sizes avatars typically render at,
+ * so the "Surprise me" picker can roll a coherent look every time without
+ * showing the user a sea of swatches. Ordered for variety — consecutive
+ * spins land on different families.
+ */
+export const AVATAR_PRESETS: Array<{ bg: string; font: number }> = [
+  // Sans on rich solids — the safe, professional defaults
+  { bg: '#1565C0', font: 0 },   // brand blue + system sans
+  { bg: '#2E7D32', font: 0 },   // brand green + system sans
+  { bg: '#7B1FA2', font: 1 },   // royal purple + Helvetica heavy
+  { bg: '#C62828', font: 1 },   // crimson + Helvetica heavy
+  { bg: '#00897B', font: 3 },   // teal + Avenir
+  { bg: '#EF6C00', font: 3 },   // amber + Avenir
+  // Display weights for confident strokes
+  { bg: '#0F172A', font: 5 },   // ink + Futura
+  { bg: '#1976D2', font: 5 },   // brand blue + Futura
+  { bg: '#0D47A1', font: 4 },   // navy + Impact
+  { bg: '#365314', font: 4 },   // olive + Impact
+  // Serifs on lighter pastels — soft and editorial
+  { bg: '#FED7AA', font: 6 },   // peach + Georgia
+  { bg: '#BAE6FD', font: 6 },   // sky + Georgia
+  { bg: '#FBCFE8', font: 7 },   // blush + Playfair
+  { bg: '#A7F3D0', font: 7 },   // mint + Playfair
+  // Mono — quietly technical
+  { bg: '#334155', font: 9 },   // slate + Courier
+  { bg: '#0F766E', font: 9 },   // pine + Courier
+];
+
 // Font choices for the monogram letter. Curated typefaces that always read
 // well at the small sizes avatars live in — a wider variety than the original
 // 5 system fallbacks. Sample strings show the actual character shape.
@@ -354,8 +384,7 @@ export function Avatar({ name, size = 28, letter, bg, font, ring }: AvatarProps)
   const initials = (letter || defaultInitials).slice(0, 2).toUpperCase() || '?';
 
   // Monogram override: solid colour + chosen font. Falls back to the
-  // legacy hash-coloured gradient + system font when no override is set,
-  // so every existing call site keeps working unchanged.
+  // legacy hash-coloured gradient + system font when no override is set.
   const useMonogram = !!bg;
   const hash    = trimmed.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const [lo, hi] = AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length];
@@ -364,34 +393,45 @@ export function Avatar({ name, size = 28, letter, bg, font, ring }: AvatarProps)
     : `linear-gradient(135deg, ${lo} 0%, ${hi} 100%)`;
   const color = useMonogram ? avatarFg(bg!) : '#ffffff';
   const fontDef = AVATAR_FONTS[font ?? 0] || AVATAR_FONTS[0];
+  // SVG text uses the glyph metrics (dominant-baseline:central + text-anchor:middle)
+  // so the letter is pixel-centred regardless of the font's ascender/descender
+  // ratio. CSS line-box centring drifted noticeably with display & script faces.
+  const fontSize = size * (initials.length === 1 ? 0.52 : 0.44);
 
   return (
     <div
-      className="flex items-center justify-center shrink-0 select-none"
+      className="flex items-center justify-center shrink-0 select-none overflow-hidden"
       style={{
         width: size,
         height: size,
-        fontSize: size * (initials.length === 1 ? 0.52 : 0.46),
-        fontWeight: fontDef.weight,
-        fontFamily: fontDef.family,
-        letterSpacing: '0.02em',
         background,
-        color,
-        // Squircle — a rounded-square that echoes the Pragati logo tile,
-        // instead of a plain circle. Proportional radius so it reads the same
-        // at every size (matches PragatiMark's ~0.26–0.28 factor).
+        // Squircle — echoes the Pragati logo tile. Proportional radius so it
+        // reads the same at every size (matches PragatiMark's ~0.26–0.28 factor).
         borderRadius: Math.max(4, Math.round(size * 0.28)),
         boxShadow: ring
           ? '0 0 0 2px rgba(255,255,255,0.9), 0 1px 3px rgba(15,23,42,0.15)'
           : useMonogram
           ? '0 1px 2px rgba(15,23,42,0.12)'
           : 'inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 2px rgba(15,23,42,0.12)',
-        lineHeight: 1,
       }}
       title={trimmed || ''}
       aria-label={trimmed || 'User'}
     >
-      {initials}
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+        <text
+          x={size / 2}
+          y={size / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontFamily={fontDef.family}
+          fontWeight={fontDef.weight}
+          fontSize={fontSize}
+          fill={color}
+          letterSpacing="0.02em"
+        >
+          {initials}
+        </text>
+      </svg>
     </div>
   );
 }

@@ -6,8 +6,9 @@ import { useIsLead, useCurrentUser } from '@/components/CurrentUserContext';
 import {
   Plus, Check, Trash2, ArrowRight, X, Sparkles, Calendar, Zap,
   ChevronDown, ChevronUp, Target, BookmarkCheck, Shield, PenLine,
-  Pencil, Pin, PinOff, FileText, Layers, Presentation,
+  Pencil, Pin, PinOff, FileText, Layers,
 } from 'lucide-react';
+import { WhiteboardIcon } from '@/components/WhiteboardIcon';
 import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
 import dynamicImport from 'next/dynamic';
@@ -377,7 +378,7 @@ function WhiteboardFAB() {
           boxShadow: '0 4px 16px rgba(21,101,192,0.35)',
         }}
       >
-        <Presentation size={20} className="text-white" strokeWidth={2.25} />
+        <WhiteboardIcon size={20} className="text-white" filled />
         Whiteboard
       </button>
 
@@ -389,7 +390,7 @@ function WhiteboardFAB() {
             <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-white/[0.07] shrink-0"
               style={{ background: 'linear-gradient(to right, rgba(21,101,192,0.06), transparent)' }}>
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center">
-                <Presentation size={16} className="text-white" />
+                <WhiteboardIcon size={16} className="text-white" filled />
               </div>
               <div>
                 <div className="text-sm font-black text-slate-800 dark:text-white/90">Whiteboard</div>
