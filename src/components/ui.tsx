@@ -28,22 +28,22 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export const STATUS_COLORS: Record<string, string> = {
-  todo:        'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300',
-  in_progress: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
-  review:      'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  blocked:     'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300',
-  done:        'bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300',
-  planning:    'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300',
-  on_hold:     'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  completed:   'bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300',
-  cancelled:   'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300',
+  todo:        'bg-slate-100 text-slate-600',
+  in_progress: 'bg-blue-50 text-blue-700',
+  review:      'bg-amber-50 text-amber-700',
+  blocked:     'bg-red-50 text-red-600',
+  done:        'bg-green-50 text-green-700',
+  planning:    'bg-slate-100 text-slate-600',
+  on_hold:     'bg-amber-50 text-amber-700',
+  completed:   'bg-green-50 text-green-700',
+  cancelled:   'bg-red-50 text-red-600',
 };
 
 export const PRIORITY_COLORS: Record<string, string> = {
-  low:      'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400',
-  medium:   'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-  high:     'bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
-  critical: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  low:      'bg-slate-100 text-slate-500',
+  medium:   'bg-sky-50 text-sky-700',
+  high:     'bg-orange-50 text-orange-700',
+  critical: 'bg-red-50 text-red-700',
 };
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -76,35 +76,35 @@ export const LIFECYCLE_LABELS: Record<string, string> = {
 
 export const LIFECYCLE_COLORS: Record<string, string> = {
   // Generic templates
-  agile_sprint:      'text-violet-700 bg-violet-50 dark:text-violet-300 dark:bg-violet-500/15',
-  software_release:  'text-sky-700 bg-sky-50 dark:text-sky-300 dark:bg-sky-500/15',
-  product_launch:    'text-orange-700 bg-orange-50 dark:text-orange-300 dark:bg-orange-500/15',
-  research:          'text-teal-700 bg-teal-50 dark:text-teal-300 dark:bg-teal-500/15',
+  agile_sprint:      'text-violet-700 bg-violet-50',
+  software_release:  'text-sky-700 bg-sky-50',
+  product_launch:    'text-orange-700 bg-orange-50',
+  research:          'text-teal-700 bg-teal-50',
   // Life Sciences templates
-  csv:               'text-indigo-700 bg-indigo-50 dark:text-indigo-300 dark:bg-indigo-500/15',
-  sop:               'text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-500/15',
-  deviation:         'text-rose-700 bg-rose-50 dark:text-rose-300 dark:bg-rose-500/15',
-  capa:              'text-orange-700 bg-orange-50 dark:text-orange-300 dark:bg-orange-500/15',
-  deviation_capa:    'text-red-600 bg-red-50 dark:text-red-300 dark:bg-red-500/15',
-  change_control:    'text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-500/15',
-  software_change:   'text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-blue-500/15',
-  audit:             'text-purple-700 bg-purple-50 dark:text-purple-300 dark:bg-purple-500/15',
-  validation:        'text-sky-700 bg-sky-50 dark:text-sky-300 dark:bg-sky-500/15',
-  data_integrity:    'text-teal-700 bg-teal-50 dark:text-teal-300 dark:bg-teal-500/15',
-  pharmacovigilance: 'text-pink-700 bg-pink-50 dark:text-pink-300 dark:bg-pink-500/15',
-  generic:           'text-slate-600 bg-slate-100 dark:text-slate-300 dark:bg-white/10',
+  csv:               'text-indigo-700 bg-indigo-50',
+  sop:               'text-emerald-700 bg-emerald-50',
+  deviation:         'text-rose-700 bg-rose-50',
+  capa:              'text-orange-700 bg-orange-50',
+  deviation_capa:    'text-red-600 bg-red-50',
+  change_control:    'text-amber-700 bg-amber-50',
+  software_change:   'text-blue-700 bg-blue-50',
+  audit:             'text-purple-700 bg-purple-50',
+  validation:        'text-sky-700 bg-sky-50',
+  data_integrity:    'text-teal-700 bg-teal-50',
+  pharmacovigilance: 'text-pink-700 bg-pink-50',
+  generic:           'text-slate-600 bg-slate-100',
 };
 
 export const SEVERITY_COLORS: Record<string, string> = {
-  minor:    'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300',
-  major:    'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-  critical: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  minor:    'bg-slate-100 text-slate-700',
+  major:    'bg-amber-50 text-amber-800',
+  critical: 'bg-red-50 text-red-700',
 };
 
 export const RISK_COLORS: Record<string, string> = {
-  low:    'bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300',
-  medium: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-  high:   'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  low:    'bg-green-50 text-green-700',
+  medium: 'bg-amber-50 text-amber-800',
+  high:   'bg-red-50 text-red-700',
 };
 
 // ── Tag primitives ────────────────────────────────────────────────────────────
@@ -127,11 +127,11 @@ export const ROLE_LABEL: Record<string, string> = {
   employee: 'Individual Contributor',
 };
 const ROLE_BADGE_CLASS: Record<string, string> = {
-  admin:       'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/25',
-  pm:          'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/25',
-  lead:        'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/25',
-  contributor: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/25',
-  employee:    'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/25',
+  admin:    'bg-amber-50 text-amber-800 border-amber-200',
+  pm:       'bg-emerald-50 text-emerald-700 border-emerald-200',
+  lead:     'bg-emerald-50 text-emerald-700 border-emerald-200',
+  contributor: 'bg-blue-50 text-blue-700 border-blue-200',
+  employee: 'bg-blue-50 text-blue-700 border-blue-200',
 };
 export function roleLabel(role?: string | null): string {
   return ROLE_LABEL[role || 'contributor'] ?? 'Individual Contributor';
@@ -149,7 +149,7 @@ export function StatusTag({ status }: { status?: string | null }) {
   if (!status) return null;
   const dot = STATUS_DOT[status] ?? '#94a3b8';
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-white/60">
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600">
       <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dot }} />
       {STATUS_LABEL[status] ?? status.replace('_', ' ')}
     </span>
@@ -339,7 +339,7 @@ interface AvatarProps {
   bg?: string | null;
   /** Index into AVATAR_FONTS. */
   font?: number | null;
-  /** When true, wraps the avatar in a brand-gradient ring (Insta-story style). */
+  /** Render a subtle white ring border around the avatar. */
   ring?: boolean;
 }
 
@@ -353,6 +353,9 @@ export function Avatar({ name, size = 28, letter, bg, font, ring }: AvatarProps)
   const defaultInitials = (first + last) || '?';
   const initials = (letter || defaultInitials).slice(0, 2).toUpperCase() || '?';
 
+  // Monogram override: solid colour + chosen font. Falls back to the
+  // legacy hash-coloured gradient + system font when no override is set,
+  // so every existing call site keeps working unchanged.
   const useMonogram = !!bg;
   const hash    = trimmed.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const [lo, hi] = AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length];
@@ -362,57 +365,33 @@ export function Avatar({ name, size = 28, letter, bg, font, ring }: AvatarProps)
   const color = useMonogram ? avatarFg(bg!) : '#ffffff';
   const fontDef = AVATAR_FONTS[font ?? 0] || AVATAR_FONTS[0];
 
-  // When a ring is shown the inner disc is inset by 3px (1.5px ring + 1.5px gap).
-  const innerSize = ring ? size - 6 : size;
-
-  const disc = (
+  return (
     <div
       className="flex items-center justify-center shrink-0 select-none"
       style={{
-        width: innerSize,
-        height: innerSize,
-        // Slightly larger font relative to size so the letter fills the circle,
-        // and a text-shadow for the "stamped coin" premium feel.
-        fontSize: innerSize * (initials.length === 1 ? 0.54 : 0.46),
+        width: size,
+        height: size,
+        fontSize: size * (initials.length === 1 ? 0.52 : 0.46),
         fontWeight: fontDef.weight,
         fontFamily: fontDef.family,
-        letterSpacing: '0.01em',
+        letterSpacing: '0.02em',
         background,
         color,
-        borderRadius: '50%',
-        boxShadow: useMonogram
-          ? '0 2px 6px rgba(15,23,42,0.15)'
-          : 'inset 0 1.5px 0 rgba(255,255,255,0.28), 0 2px 6px rgba(15,23,42,0.15)',
+        // Squircle — a rounded-square that echoes the Pragati logo tile,
+        // instead of a plain circle. Proportional radius so it reads the same
+        // at every size (matches PragatiMark's ~0.26–0.28 factor).
+        borderRadius: Math.max(4, Math.round(size * 0.28)),
+        boxShadow: ring
+          ? '0 0 0 2px rgba(255,255,255,0.9), 0 1px 3px rgba(15,23,42,0.15)'
+          : useMonogram
+          ? '0 1px 2px rgba(15,23,42,0.12)'
+          : 'inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 2px rgba(15,23,42,0.12)',
         lineHeight: 1,
-        textShadow: '0 1px 2px rgba(0,0,0,0.18)',
       }}
       title={trimmed || ''}
       aria-label={trimmed || 'User'}
     >
       {initials}
-    </div>
-  );
-
-  if (!ring) return disc;
-
-  // Gradient ring wrapper — same technique as Instagram stories: a gradient
-  // background with a small transparent gap between it and the inner disc.
-  return (
-    <div
-      className="shrink-0 flex items-center justify-center select-none"
-      style={{
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, #1565C0 0%, #1976D2 40%, #2B8C29 100%)',
-        padding: 2,
-      }}
-      title={trimmed || ''}
-      aria-label={trimmed || 'User'}
-    >
-      <div style={{ borderRadius: '50%', padding: 1.5, background: 'var(--bg-card, #fff)' }}>
-        {disc}
-      </div>
     </div>
   );
 }
@@ -456,10 +435,10 @@ export function StatusSelect({
         type="button"
         onClick={() => !pending && setOpen(o => !o)}
         disabled={pending}
-        className={`inline-flex items-center gap-1.5 rounded-lg border bg-white dark:bg-white/5 transition-all font-semibold text-slate-700 dark:text-white/80 disabled:opacity-70 ${
+        className={`inline-flex items-center gap-1.5 rounded-lg border bg-white transition-all font-semibold text-slate-700 disabled:opacity-70 ${
           open
-            ? 'border-blue-300 ring-2 ring-blue-100 dark:border-blue-600 dark:ring-blue-900'
-            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/8'
+            ? 'border-blue-300 ring-2 ring-blue-100'
+            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
         } ${size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1.5 text-xs'}`}
       >
         {pending ? (
@@ -478,7 +457,7 @@ export function StatusSelect({
 
       {open && (
         <div
-          className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-[#2a2a28] rounded-xl border border-slate-100 dark:border-white/10 overflow-hidden"
+          className="absolute top-full left-0 mt-1 z-50 bg-white rounded-xl border border-slate-100 overflow-hidden"
           style={{ minWidth: 148, boxShadow: '0 4px 20px rgba(15,23,42,0.12), 0 1px 4px rgba(15,23,42,0.06)' }}
         >
           {(options as string[]).map(opt => {
@@ -491,7 +470,7 @@ export function StatusSelect({
                 type="button"
                 onClick={() => { onChange(opt); setOpen(false); }}
                 className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors ${
-                  active ? 'bg-slate-50 text-slate-900 dark:bg-white/8 dark:text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800 dark:text-white/60 dark:hover:bg-white/6 dark:hover:text-white/85'
+                  active ? 'bg-slate-50 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
                 }`}
               >
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: optDot }} />
@@ -526,7 +505,7 @@ export function StatusPillRow({
   className?: string;
 }) {
   return (
-    <div className={`inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/70 p-1 dark:border-white/10 dark:bg-white/5 ${className}`}>
+    <div className={`inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/70 p-1 ${className}`}>
       {(options as string[]).map((opt) => {
         const active   = opt === value;
         const optDot   = STATUS_DOT[opt]   ?? '#94a3b8';
@@ -540,8 +519,8 @@ export function StatusPillRow({
             aria-pressed={active}
             className={`relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
               active
-                ? 'bg-white text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.06),0_0_0_1px_rgba(21,101,192,0.18)] dark:bg-white/12 dark:text-white dark:shadow-[0_0_0_1px_rgba(255,255,255,0.12)]'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-white/60 dark:text-white/45 dark:hover:text-white/75 dark:hover:bg-white/8'
+                ? 'bg-white text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.06),0_0_0_1px_rgba(21,101,192,0.18)]'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'
             } disabled:opacity-50`}
           >
             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: optDot }} />

@@ -17,27 +17,11 @@ export default async function PeoplePage() {
   if (!isAdmin(jwt.role)) redirect('/');
 
   await connectDB();
-
-  // Scale-aware initial load. Leads/admins and deactivated accounts are few, so
-  // we send them in full (their sections must always be complete). Active
-  // contributors are the unbounded set — we send only the first page and let
-  // the client paginate ("Load more") or search the server for the rest, so
-  // first paint stays bounded no matter how large the workspace grows.
-  const CONTRIB_PAGE = 150;
-  const LEAD_ROLES = ['lead', 'admin', 'pm'];
-  const CONTRIB_ROLES = ['contributor', 'employee'];
-  const [leads, contributors, deactivated, contribTotal] = await Promise.all([
-    User.find({ role: { $in: LEAD_ROLES }, active: { $ne: false } }).sort({ name: 1 }).lean(),
-    User.find({ role: { $in: CONTRIB_ROLES }, active: { $ne: false } }).sort({ name: 1 }).limit(CONTRIB_PAGE).lean(),
-    User.find({ active: false }).sort({ name: 1 }).lean(),
-    User.countDocuments({ role: { $in: CONTRIB_ROLES }, active: { $ne: false } }),
-  ]);
+  const users = await User.find({}).sort({ name: 1 }).lean();
 
   return (
     <PeopleClient
-      initialUsers={[...leads, ...contributors, ...deactivated].map(u)}
-      contribTotal={contribTotal}
-      contribPage={CONTRIB_PAGE}
+      initialUsers={users.map(u)}
       me={{
         id:    jwt.sub,
         name:  jwt.name,

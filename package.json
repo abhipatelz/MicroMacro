@@ -18,7 +18,6 @@
     "migrate-roles": "tsx scripts/migrate-roles.ts",
     "smoke-prod": "tsx scripts/smoke-prod.ts",
     "typecheck": "tsc --noEmit",
-    "test:unit": "tsx --test tests/unit/*.test.ts",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
     "e2e:ui": "playwright test --ui",

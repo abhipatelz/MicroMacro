@@ -36,10 +36,6 @@ export default async function AuthedLayout({ children }: { children: React.React
   // that previously appeared on every navigation when the localStorage
   // useEffect kicked in after hydration.
   const initialDark = cookies().get('theme')?.value === 'dark';
-  // Sidebar collapse state: cookie-backed so the server knows the initial
-  // value and AppShell renders the correct width without a post-hydration
-  // layout shift (previously read from localStorage in a useEffect).
-  const initialSidebarCollapsed = cookies().get('sidebar_collapsed')?.value === '1';
 
   return (
     <AppShell
@@ -60,7 +56,6 @@ export default async function AuthedLayout({ children }: { children: React.React
         hasSeenTour:      (dbUser as any)?.hasSeenTour !== false,
       }}
       initialDark={initialDark}
-      initialSidebarCollapsed={initialSidebarCollapsed}
       initialAvatars={initialAvatars}
     >
       {children}

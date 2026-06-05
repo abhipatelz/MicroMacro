@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ZoomIn, ZoomOut, Scan, Download, FileDown, Layers, RotateCcw, Pencil, Check } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, Scan, Download, FileDown, Layers, RotateCcw, Pencil, Check, Brush, Eraser, Plus } from 'lucide-react';
 import { api } from '@/lib/client/api';
 import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
@@ -162,7 +162,7 @@ function wrapText(text: string, maxChars: number, maxLines: number): string[] {
  * between them. Deterministic (alphabetical) so the export and the on-screen
  * view share pixel coordinates. Direction is strictly top-down.
  */
-function layout(data: BirdsEyeData, opts: { collapseTasks: boolean }): {
+function layout(data: BirdsEyeData, opts: { collapseTasks: boolean; collapsedIds?: ReadonlySet<string> }): {
   nodes: PositionedNode[];
   edges: Edge[];
   width: number;
@@ -241,12 +241,16 @@ function layout(data: BirdsEyeData, opts: { collapseTasks: boolean }): {
     n.height = 16 + lines * 15 + subRows * 14;
   }
 
+  const collapsedIds = opts.collapsedIds || new Set<string>();
+
   function buildProjectSubtree(p: BirdsEyeProject): Subtree {
-    const tasks = tasksByProject.get(p.id) || [];
+    const id = nodeKey('project', p.id);
+    const collapsed = collapsedIds.has(id);
+    const tasks = collapsed ? [] : (tasksByProject.get(p.id) || []);
     const taskNodes = taskStack(tasks, p.id);
     taskNodes.forEach((t) => { if (t.kind === 'task') fitTaskHeight(t); });
     const projectNode: PositionedNode = {
-      kind: 'project', id: nodeKey('project', p.id),
+      kind: 'project', id,
       x: 0, y: 0, width: NODE_WIDTH.project, height: NODE_HEIGHT.project,
       label: p.name, titleLines: wrapText(p.name, 28, 2),
       sub: `${p.code} · ${p.tasksDone}/${p.taskCount} done`, data: p,
@@ -255,13 +259,15 @@ function layout(data: BirdsEyeData, opts: { collapseTasks: boolean }): {
   }
 
   function buildTeamSubtree(team: BirdsEyeTeam, teamProjects: BirdsEyeProject[]): Subtree {
+    const id = nodeKey('team', team.id);
+    const collapsed = collapsedIds.has(id);
     const teamNode: PositionedNode = {
-      kind: 'team', id: nodeKey('team', team.id),
+      kind: 'team', id,
       x: 0, y: 0, width: NODE_WIDTH.team, height: NODE_HEIGHT.team,
       label: team.name, titleLines: wrapText(team.name, 26, 2),
       sub: team.ownerName ? `Lead · ${team.ownerName}` : undefined, data: team,
     };
-    const children = teamProjects.map(buildProjectSubtree);
+    const children = collapsed ? [] : teamProjects.map(buildProjectSubtree);
     const childrenW = children.length === 0
       ? NODE_WIDTH.team
       : children.reduce((sum, c) => sum + c.width + SIBLING_GAP_X, -SIBLING_GAP_X);
@@ -281,11 +287,14 @@ function layout(data: BirdsEyeData, opts: { collapseTasks: boolean }): {
     // Stable, readable order: named phases alphabetically, "Unphased" last.
     order.sort((a, b) => (a === 'Unphased' ? 1 : b === 'Unphased' ? -1 : a.localeCompare(b)));
     return order.map((name, i) => {
+      const phaseId = `phase:${i}`;
+      const collapsed = collapsedIds.has(phaseId);
       const tasks = byPhase.get(name)!;
-      const taskNodes = taskStack(tasks, `phase-${i}`);
+      const visibleTasks = collapsed ? [] : tasks;
+      const taskNodes = taskStack(visibleTasks, `phase-${i}`);
       taskNodes.forEach((t) => { if (t.kind === 'task') fitTaskHeight(t); });
       const phaseNode: PositionedNode = {
-        kind: 'phase', id: `phase:${i}`,
+        kind: 'phase', id: phaseId,
         x: 0, y: 0, width: NODE_WIDTH.phase, height: NODE_HEIGHT.phase,
         label: name, titleLines: wrapText(name, 26, 2),
         sub: `${tasks.length} task${tasks.length === 1 ? '' : 's'}`,
@@ -516,14 +525,34 @@ export function BirdsEyeView({ data, onClose, onChange }: {
   const [zoom, setZoom] = useState(1);
   const [collapseTasks, setCollapseTasks] = useState(data.tasks.length > 120);
   const [editing, setEditing] = useState<{ node: PositionedNode; clientX: number; clientY: number } | null>(null);
+  const [addingTaskFor, setAddingTaskFor] = useState<{ node: PositionedNode; clientX: number; clientY: number } | null>(null);
   // Per-node drag overrides {id → {dx,dy}} — applied on top of the computed
   // layout. localStorage-backed per scope+root so the user's arrangement is
   // preserved across opens but doesn't bleed between views.
   const overrideKey = `pragati-bve-pos:${data.scope}:${data.rootLabel}`;
+  const collapseKey = `pragati-bve-collapsed:${data.scope}:${data.rootLabel}`;
+  const brushKey    = `pragati-bve-brush:${data.scope}:${data.rootLabel}`;
   const [overrides, setOverrides] = useState<Record<string, { dx: number; dy: number }>>(() => {
     if (typeof window === 'undefined') return {};
     try { return JSON.parse(localStorage.getItem(overrideKey) || '{}'); } catch { return {}; }
   });
+  // Set of collapsed node ids — when a node is collapsed its subtree (children
+  // and/or tasks) is hidden. Persists per scope.
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem(collapseKey) || '[]')); } catch { return new Set(); }
+  });
+  // Brush / annotation layer — freeform polylines over the canvas so a lead
+  // can sketch on top of the structure during a brainstorm. Persists per scope.
+  type BrushStroke = { color: string; width: number; points: { x: number; y: number }[] };
+  const [brushOn, setBrushOn] = useState(false);
+  const [brushStrokes, setBrushStrokes] = useState<BrushStroke[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try { return JSON.parse(localStorage.getItem(brushKey) || '[]'); } catch { return []; }
+  });
+  const [brushColor, setBrushColor] = useState('#1565C0');
+  const liveStroke = useRef<BrushStroke | null>(null);
+  const [, forceLive] = useState(0); // re-render trigger for live stroke painting
   const svgRef = useRef<SVGSVGElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Tracks whether the user has taken manual control of the zoom; until they
@@ -542,10 +571,18 @@ export function BirdsEyeView({ data, onClose, onChange }: {
     if (typeof window === 'undefined') return;
     try { localStorage.setItem(overrideKey, JSON.stringify(overrides)); } catch {}
   }, [overrides, overrideKey]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try { localStorage.setItem(collapseKey, JSON.stringify(Array.from(collapsedIds))); } catch {}
+  }, [collapsedIds, collapseKey]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try { localStorage.setItem(brushKey, JSON.stringify(brushStrokes)); } catch {}
+  }, [brushStrokes, brushKey]);
 
   const { nodes: baseNodes, edges, width: baseWidth, height: baseHeight } = useMemo(
-    () => layout(data, { collapseTasks }),
-    [data, collapseTasks],
+    () => layout(data, { collapseTasks, collapsedIds }),
+    [data, collapseTasks, collapsedIds],
   );
 
   // Apply drag overrides to the computed layout (and expand canvas if dragged
@@ -617,7 +654,33 @@ export function BirdsEyeView({ data, onClose, onChange }: {
   const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const drag = useRef<{ id: string; startX: number; startY: number; baseDx: number; baseDy: number; moved: boolean } | null>(null);
 
+  // Translate viewport pointer coords into SVG coords (accounts for zoom + scroll).
+  function toSvgPoint(clientX: number, clientY: number): { x: number; y: number } | null {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    return { x: (clientX - rect.left) / zoom, y: (clientY - rect.top) / zoom };
+  }
+
+  function toggleCollapsed(id: string) {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
   const onPointerDown = (e: React.PointerEvent) => {
+    // Brush mode — any press on the canvas starts a stroke.
+    if (brushOn) {
+      const p = toSvgPoint(e.clientX, e.clientY);
+      if (!p) return;
+      liveStroke.current = { color: brushColor, width: 2.5, points: [p] };
+      forceLive((n) => n + 1);
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+      return;
+    }
     const target = e.target as HTMLElement;
     const nodeEl = target.closest('[data-be-node]') as HTMLElement | null;
     if (nodeEl) {
@@ -638,6 +701,15 @@ export function BirdsEyeView({ data, onClose, onChange }: {
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    if (liveStroke.current) {
+      const p = toSvgPoint(e.clientX, e.clientY);
+      if (!p) return;
+      const last = liveStroke.current.points[liveStroke.current.points.length - 1];
+      if (Math.hypot(p.x - last.x, p.y - last.y) < 2) return;
+      liveStroke.current.points.push(p);
+      forceLive((n) => n + 1);
+      return;
+    }
     if (drag.current) {
       const dx = (e.clientX - drag.current.startX) / zoom;
       const dy = (e.clientY - drag.current.startY) / zoom;
@@ -655,6 +727,14 @@ export function BirdsEyeView({ data, onClose, onChange }: {
   };
 
   const endPointer = (e: React.PointerEvent) => {
+    if (liveStroke.current) {
+      if (liveStroke.current.points.length >= 2) {
+        setBrushStrokes((s) => [...s, liveStroke.current!]);
+      }
+      liveStroke.current = null;
+      forceLive((n) => n + 1);
+      return;
+    }
     // Suppress the click on the underlying <a> if the user actually dragged
     // — otherwise releasing the drag opens the task page.
     if (drag.current?.moved) {
@@ -667,6 +747,11 @@ export function BirdsEyeView({ data, onClose, onChange }: {
 
   function resetLayout() {
     setOverrides({});
+  }
+  function clearBrush() {
+    if (brushStrokes.length === 0) return;
+    if (!confirm('Erase all annotations on this view?')) return;
+    setBrushStrokes([]);
   }
 
   function exportSvg() {
@@ -734,6 +819,31 @@ export function BirdsEyeView({ data, onClose, onChange }: {
               </button>
             )}
             <span className="w-px h-5 bg-slate-200 mx-0.5 hidden sm:block" />
+            <button onClick={() => setBrushOn((v) => !v)}
+              title={brushOn ? 'Exit brush — back to pan/drag' : 'Brush — draw notes & arrows on the canvas'}
+              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-colors ${
+                brushOn ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}>
+              <Brush size={13} /> Brush
+            </button>
+            {brushOn && (
+              <>
+                <div className="flex items-center gap-0.5 mx-0.5">
+                  {['#1565C0', '#22c55e', '#f59e0b', '#ef4444', '#0f172a'].map((c) => (
+                    <button key={c} type="button" onClick={() => setBrushColor(c)} title={`Use ${c}`}
+                      className={`w-5 h-5 rounded-full transition-transform ${brushColor === c ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'hover:scale-110'}`}
+                      style={{ background: c }} aria-label={`Use ${c}`} />
+                  ))}
+                </div>
+                {brushStrokes.length > 0 && (
+                  <button onClick={clearBrush} title="Erase all brush strokes"
+                    className="p-1.5 rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600">
+                    <Eraser size={14} />
+                  </button>
+                )}
+              </>
+            )}
+            <span className="w-px h-5 bg-slate-200 mx-0.5 hidden sm:block" />
             <button onClick={exportSvg} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100" title="Download SVG"><Download size={15} /></button>
             <button onClick={printAsPdf} className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors" title="Export as PDF">
               <FileDown size={13} /><span className="hidden sm:inline">Export PDF</span>
@@ -747,7 +857,9 @@ export function BirdsEyeView({ data, onClose, onChange }: {
             narrower than the viewport is centred; a wider one scrolls to both
             edges without clipping. */}
         <div ref={scrollRef}
-          className="flex-1 overflow-auto bg-[radial-gradient(circle_at_1px_1px,#e2e8f0_1px,transparent_0)] [background-size:22px_22px] bg-slate-50 cursor-grab active:cursor-grabbing"
+          className={`flex-1 overflow-auto bg-[radial-gradient(circle_at_1px_1px,#e2e8f0_1px,transparent_0)] [background-size:22px_22px] bg-slate-50 ${
+            brushOn ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'
+          }`}
           onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={endPointer} onPointerLeave={endPointer}>
           <div className="inline-block min-w-full">
             <div className="flex justify-center">
@@ -771,6 +883,9 @@ export function BirdsEyeView({ data, onClose, onChange }: {
                       : n.kind === 'project' ? `/projects/${(n.data as BirdsEyeProject).id}`
                       : n.kind === 'team' ? `/teams/${(n.data as BirdsEyeTeam).id}` : null;
                     const isTask = n.kind === 'task';
+                    const canCollapse = n.kind === 'team' || n.kind === 'project' || n.kind === 'phase';
+                    const canAddTask  = n.kind === 'project' || n.kind === 'phase';
+                    const isCollapsed = collapsedIds.has(n.id);
                     const dragProps = {
                       'data-be-node': n.id,
                       'data-be-kind': n.kind,
@@ -795,10 +910,51 @@ export function BirdsEyeView({ data, onClose, onChange }: {
                       </g>
                     ) : null;
 
+                    // Collapse/expand toggle — top-right inside team/project/phase
+                    // nodes. Click hides the subtree without losing what's there.
+                    const collapseBtn = canCollapse ? (
+                      <g
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleCollapsed(n.id); }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <title>{isCollapsed ? 'Expand' : 'Hide children'}</title>
+                        <circle cx={n.x + n.width - 11} cy={n.y + 11} r={8.5} fill="#ffffff" stroke="#cbd5e1" strokeWidth={0.8} />
+                        {isCollapsed ? (
+                          // "+" shows when collapsed (click to expand)
+                          <>
+                            <line x1={n.x + n.width - 15} y1={n.y + 11} x2={n.x + n.width - 7} y2={n.y + 11} stroke="#1565C0" strokeWidth={1.6} strokeLinecap="round" />
+                            <line x1={n.x + n.width - 11} y1={n.y + 7}  x2={n.x + n.width - 11} y2={n.y + 15} stroke="#1565C0" strokeWidth={1.6} strokeLinecap="round" />
+                          </>
+                        ) : (
+                          // "−" shows when expanded (click to hide)
+                          <line x1={n.x + n.width - 15} y1={n.y + 11} x2={n.x + n.width - 7} y2={n.y + 11} stroke="#475569" strokeWidth={1.6} strokeLinecap="round" />
+                        )}
+                      </g>
+                    ) : null;
+
+                    // "+" add-task affordance — bottom-right corner of project/phase
+                    // nodes. Opens an inline new-task popover that posts to /tasks.
+                    const addBtn = canAddTask ? (
+                      <g
+                        onClick={(e) => {
+                          e.preventDefault(); e.stopPropagation();
+                          setAddingTaskFor({ node: n, clientX: (e as any).clientX, clientY: (e as any).clientY });
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <title>Add a task under this {n.kind}</title>
+                        <circle cx={n.x + n.width - 11} cy={n.y + n.height - 11} r={8.5} fill="#1565C0" />
+                        <line x1={n.x + n.width - 15} y1={n.y + n.height - 11} x2={n.x + n.width - 7} y2={n.y + n.height - 11} stroke="#ffffff" strokeWidth={1.7} strokeLinecap="round" />
+                        <line x1={n.x + n.width - 11} y1={n.y + n.height - 15} x2={n.x + n.width - 11} y2={n.y + n.height - 7}  stroke="#ffffff" strokeWidth={1.7} strokeLinecap="round" />
+                      </g>
+                    ) : null;
+
                     if (!navHref) {
                       return (
                         <g key={n.id} {...dragProps}>
                           {shape}
+                          {collapseBtn}
+                          {addBtn}
                           {editBtn}
                         </g>
                       );
@@ -808,10 +964,29 @@ export function BirdsEyeView({ data, onClose, onChange }: {
                         <a href={navHref} target="_blank" rel="noreferrer">
                           {shape}
                         </a>
+                        {collapseBtn}
+                        {addBtn}
                         {editBtn}
                       </g>
                     );
                   })}
+
+                  {/* Brush / annotation layer — painted over the tree so notes
+                      sit on top. Persisted strokes + the in-progress stroke. */}
+                  <g pointerEvents="none">
+                    {brushStrokes.map((s, i) => (
+                      <polyline key={i}
+                        points={s.points.map(p => `${p.x},${p.y}`).join(' ')}
+                        fill="none" stroke={s.color} strokeWidth={s.width}
+                        strokeLinecap="round" strokeLinejoin="round" />
+                    ))}
+                    {liveStroke.current && liveStroke.current.points.length > 1 && (
+                      <polyline
+                        points={liveStroke.current.points.map(p => `${p.x},${p.y}`).join(' ')}
+                        fill="none" stroke={liveStroke.current.color} strokeWidth={liveStroke.current.width}
+                        strokeLinecap="round" strokeLinejoin="round" opacity={0.8} />
+                    )}
+                  </g>
                 </svg>
               </div>
             </div>
@@ -845,6 +1020,28 @@ export function BirdsEyeView({ data, onClose, onChange }: {
             onSaved={() => { setEditing(null); onChange?.(); }}
           />
         )}
+
+        {addingTaskFor && (() => {
+          const node = addingTaskFor.node;
+          const projectId = node.kind === 'project' ? (node.data as BirdsEyeProject).id
+            : node.kind === 'phase'
+              // Phase-scope view: every task belongs to the same project as
+              // the existing tasks in this view, so we can grab the first.
+              ? (data.tasks[0]?.projectId || '')
+              : '';
+          const phaseName = node.kind === 'phase' ? node.label : undefined;
+          if (!projectId) return null;
+          return (
+            <BirdsEyeNewTaskEditor
+              projectId={projectId}
+              phaseName={phaseName}
+              anchorX={addingTaskFor.clientX}
+              anchorY={addingTaskFor.clientY}
+              onClose={() => setAddingTaskFor(null)}
+              onSaved={() => { setAddingTaskFor(null); onChange?.(); }}
+            />
+          );
+        })()}
       </div>
     </div>,
     document.body,
@@ -950,6 +1147,127 @@ function BirdsEyeTaskEditor({ task, anchorX, anchorY, onClose, onSaved }: {
           <button onClick={save} disabled={saving}
             className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
             <Check size={12} /> {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ── Inline new-task editor ────────────────────────────────────────────────
+   Quick "+" affordance on project/phase nodes. Two fields only — title and
+   assignee — so a lead can spawn work mid-brainstorm without leaving the
+   bird's-eye altitude. The new task carries the parent phase as its
+   `phaseName` when added from a phase node, so it lands in the right
+   column on the next render. */
+function BirdsEyeNewTaskEditor({ projectId, phaseName, anchorX, anchorY, onClose, onSaved }: {
+  projectId: string;
+  phaseName?: string;
+  anchorX: number;
+  anchorY: number;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [due, setDue] = useState('');
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const proj = await api<any>(`/projects/${projectId}`).catch(() => null);
+        const teamId = proj?.teamId;
+        const users = await api<any[]>(`/users${teamId ? `?teamId=${teamId}` : ''}`).catch(() => []);
+        if (!cancelled) setMembers(users.map((u: any) => ({ id: u.id, name: u.name })));
+      } catch (e: any) {
+        if (!cancelled) setErr(e?.message || 'Could not load project');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [projectId]);
+
+  async function save() {
+    const t = title.trim();
+    if (!t) { setErr('Title is required'); return; }
+    setSaving(true); setErr('');
+    try {
+      const body: any = { projectId, title: t };
+      if (assigneeId) body.assigneeId = assigneeId;
+      if (due) body.ccTcd = due;
+      // Resolve phase name → phaseId from the project payload so the new task
+      // lands in the right column. "Unphased" is the synthetic bucket used
+      // when a phase has no name — skip lookup in that case.
+      if (phaseName && phaseName !== 'Unphased') {
+        try {
+          const proj = await api<any>(`/projects/${projectId}`);
+          const phase = (proj?.phases || []).find((p: any) => p.name === phaseName);
+          if (phase?.id) body.phaseId = phase.id;
+        } catch { /* phase lookup is best-effort */ }
+      }
+      await api('/tasks', { method: 'POST', body });
+      onSaved();
+    } catch (e: any) {
+      setErr(e?.message || 'Save failed');
+    } finally { setSaving(false); }
+  }
+
+  const POP_W = 300;
+  const POP_H = 310;
+  const left = Math.min(Math.max(8, anchorX - POP_W / 2), (typeof window !== 'undefined' ? window.innerWidth : 1024) - POP_W - 8);
+  const top  = Math.min(Math.max(8, anchorY + 12), (typeof window !== 'undefined' ? window.innerHeight : 768) - POP_H - 8);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[70]" onClick={onClose} />
+      <div
+        className="fixed z-[71] rounded-xl border border-slate-200 bg-white shadow-2xl p-3 modal-in"
+        style={{ left, top, width: POP_W }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="min-w-0">
+            <div className="text-[9px] font-bold uppercase tracking-widest text-blue-600">Add task</div>
+            <div className="text-[12px] font-bold text-slate-800 truncate">
+              {phaseName ? `Under "${phaseName}"` : 'Under this project'}
+            </div>
+          </div>
+          <button onClick={onClose} className="p-0.5 text-slate-400 hover:text-slate-700"><X size={14} /></button>
+        </div>
+
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-2 mb-1">Title</label>
+        <input
+          autoFocus
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={200}
+          placeholder="What needs doing?"
+          className="w-full text-sm px-2.5 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) save(); }}
+        />
+
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-3 mb-1">Assignee</label>
+        <Select
+          value={assigneeId}
+          onChange={setAssigneeId}
+          ariaLabel="Assignee"
+          placeholder="Unassigned"
+          options={[{ value: '', label: 'Unassigned' }, ...members.map((u) => ({ value: u.id, label: u.name }))]}
+        />
+
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-3 mb-1">Target completion date</label>
+        <DatePicker value={due || null} onChange={(v) => setDue(v || '')} block />
+
+        {err && <div className="mt-2 text-[11px] text-red-600">{err}</div>}
+
+        <div className="flex gap-2 mt-3">
+          <button onClick={onClose} className="flex-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">Cancel</button>
+          <button onClick={save} disabled={saving || !title.trim()}
+            className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+            <Plus size={12} /> {saving ? 'Adding…' : 'Add task'}
           </button>
         </div>
       </div>

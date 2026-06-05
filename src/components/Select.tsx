@@ -124,10 +124,10 @@ export function Select({
         className={`select flex items-center justify-between gap-2 text-left ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} ${open ? 'ring-2 ring-blue-100 border-blue-300' : ''}`}
         style={{ backgroundImage: 'none', paddingRight: '0.75rem' }}
       >
-        <span className={`truncate ${selected ? '' : 'text-slate-400 dark:text-white/35'}`}>
+        <span className={`truncate ${selected ? '' : 'text-slate-400'}`}>
           {selected ? selected.label : placeholder}
         </span>
-        <ChevronDown size={15} className={`shrink-0 text-slate-400 dark:text-white/40 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={15} className={`shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {mounted && open && coords && createPortal(
@@ -167,7 +167,7 @@ export function Select({
                   <span className={`block truncate ${isSel ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-white/80'}`}>
                     {opt.label}
                   </span>
-                  {opt.hint && <span className="block text-[11px] text-slate-400 dark:text-white/40 truncate">{opt.hint}</span>}
+                  {opt.hint && <span className="block text-[11px] text-slate-400 truncate">{opt.hint}</span>}
                 </span>
               </button>
             );

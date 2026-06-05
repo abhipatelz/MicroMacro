@@ -10,7 +10,7 @@ import { chimeIfEnabled } from '@/lib/sound';
 function PrefRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
-      <span className="text-xs font-medium text-slate-600 dark:text-white/60">{label}</span>
+      <span className="text-xs font-medium text-slate-600">{label}</span>
       <button
         type="button"
         role="switch"
@@ -161,12 +161,12 @@ export function NotificationBell({ dark = false, openUp = false, initialUnread =
       </button>
 
       {open && (
-        <div className={`absolute left-0 w-80 max-w-[calc(100vw-2rem)] z-50 bg-white dark:bg-[#1e1e1c] rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden ${
+        <div className={`absolute left-0 w-80 max-w-[calc(100vw-2rem)] z-50 bg-white rounded-xl border border-slate-200 overflow-hidden ${
                openUp ? 'bottom-full mb-2' : 'right-0 left-auto mt-2'
              }`}
              style={{ boxShadow: '0 8px 30px rgba(15,23,42,0.16)' }}>
-          <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100 dark:border-white/8">
-            <span className="text-sm font-bold text-slate-800 dark:text-white/85">Notifications</span>
+          <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100">
+            <span className="text-sm font-bold text-slate-800">Notifications</span>
             <div className="flex items-center gap-2">
               {unread > 0 && (
                 <button onClick={markAllRead} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
@@ -177,7 +177,7 @@ export function NotificationBell({ dark = false, openUp = false, initialUnread =
                 onClick={() => { setPrefsOpen((o) => !o); if (!prefs) loadPrefs(); }}
                 aria-label="Notification preferences"
                 title="Notification preferences"
-                className={`p-1 rounded-md transition-colors ${prefsOpen ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-white/35 dark:hover:text-white/70 dark:hover:bg-white/8'}`}
+                className={`p-1 rounded-md transition-colors ${prefsOpen ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}
               >
                 <SlidersHorizontal size={14} />
               </button>
@@ -185,8 +185,8 @@ export function NotificationBell({ dark = false, openUp = false, initialUnread =
           </div>
 
           {prefsOpen && (
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-white/8 bg-slate-50/60 dark:bg-white/5">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30 mb-1.5">Preferences</div>
+            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Preferences</div>
               {!prefs ? (
                 <div className="text-xs text-slate-400 py-2">Loading…</div>
               ) : (
@@ -195,28 +195,28 @@ export function NotificationBell({ dark = false, openUp = false, initialUnread =
                   <PrefRow label="Due in 24 hours"     checked={prefs.notifTaskDueSoon}   onChange={(v) => setPref('notifTaskDueSoon', v)} />
                   <PrefRow label="Task overdue"        checked={prefs.notifTaskOverdue}   onChange={(v) => setPref('notifTaskOverdue', v)} />
                   <PrefRow label="Project updates"     checked={prefs.notifProjectUpdate} onChange={(v) => setPref('notifProjectUpdate', v)} />
-                  <p className="text-[10px] text-slate-400 dark:text-white/30 mt-2 leading-snug">These appear on your dashboard — Pragati never sends email.</p>
+                  <p className="text-[10px] text-slate-400 mt-2 leading-snug">These appear on your dashboard — Pragati never sends email.</p>
                 </>
               )}
             </div>
           )}
           <div className="max-h-80 overflow-y-auto">
             {items.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-white/40">You're all caught up.</div>
+              <div className="px-4 py-8 text-center text-sm text-slate-400">You're all caught up.</div>
             ) : (
               items.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => openItem(n)}
-                  className={`w-full text-left px-4 py-3 border-b border-slate-50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors flex gap-2.5 ${
-                    n.read ? '' : 'bg-blue-50/40 dark:bg-blue-500/15'
+                  className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors flex gap-2.5 ${
+                    n.read ? '' : 'bg-blue-50/40'
                   }`}
                 >
                   <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${n.read ? 'bg-transparent' : 'bg-blue-500'}`} />
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-semibold text-slate-800 dark:text-white/80 leading-snug">{n.title}</span>
-                    {n.body && <span className="block text-xs text-slate-500 dark:text-white/55 line-clamp-2 mt-0.5 leading-snug">{n.body}</span>}
-                    <span className="block text-[11px] text-slate-400 dark:text-white/40 mt-0.5">{timeAgo(n.createdAt)}</span>
+                    <span className="block text-[13px] font-semibold text-slate-800 leading-snug">{n.title}</span>
+                    {n.body && <span className="block text-xs text-slate-500 line-clamp-2 mt-0.5 leading-snug">{n.body}</span>}
+                    <span className="block text-[11px] text-slate-400 mt-0.5">{timeAgo(n.createdAt)}</span>
                   </span>
                 </button>
               ))

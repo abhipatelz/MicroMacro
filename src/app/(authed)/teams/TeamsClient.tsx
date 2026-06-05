@@ -106,7 +106,7 @@ export default function TeamsClient({
           )}
         </div>
       ) : (
-        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))' }}>
+        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(440px, 1fr))' }}>
           {filtered.map((t) => (
             <TeamCard
               key={t.id}
@@ -167,15 +167,15 @@ function TeamCard({
   const extra = Math.max(0, members.length - visibleMembers.length);
 
   return (
-    <div className="card p-5 group hover:shadow-md transition-shadow flex flex-col">
+    <div className="card p-6 group hover:shadow-md transition-shadow flex flex-col min-h-[220px]">
       {/* Top row: avatar + name + function tag + manage actions */}
-      <div className="flex items-start gap-3">
-        <Avatar name={team.name} size={40} />
+      <div className="flex items-start gap-4">
+        <Avatar name={team.name} size={48} />
         <div className="flex-1 min-w-0">
-          <Link href={`/teams/${team.id}`} className="font-bold text-[15px] text-slate-900 hover:text-brand-700 truncate block leading-snug">
+          <Link href={`/teams/${team.id}`} className="font-bold text-[17px] text-slate-900 hover:text-brand-700 truncate block leading-snug">
             {team.name}
           </Link>
-          <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${tone.bg} ${tone.text} ${tone.border}`}>
+          <span className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${tone.bg} ${tone.text} ${tone.border}`}>
             {FUNCTION_LABEL[team.function] || team.function}
           </span>
         </div>
@@ -202,16 +202,16 @@ function TeamCard({
       </div>
 
       {team.description && (
-        <p className="mt-2 text-xs text-slate-500 line-clamp-1">{team.description}</p>
+        <p className="mt-3 text-[13px] text-slate-500 line-clamp-2 leading-relaxed">{team.description}</p>
       )}
 
-      <div className="mt-2 text-[11px] text-slate-400">
+      <div className="mt-3 text-[11px] text-slate-400">
         <span className="font-semibold uppercase tracking-wider">Team leader · </span>
         <span className="text-slate-600 font-medium">{lead?.name || 'Unassigned'}</span>
       </div>
 
       {/* Member rail */}
-      <div className="mt-3 flex items-center -space-x-2">
+      <div className="mt-4 flex items-center -space-x-2">
         {visibleMembers.length === 0 ? (
           <span className="text-[11px] text-slate-400 italic">No members yet</span>
         ) : (
@@ -219,32 +219,32 @@ function TeamCard({
             <div
               key={m.id}
               title={m.name}
-              className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-white dark:ring-[#262624] bg-white relative"
+              className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-white dark:ring-[#262624] bg-white relative"
             >
-              <UserAvatar userId={m.id} name={m.name} size={28} />
+              <UserAvatar userId={m.id} name={m.name} size={32} />
             </div>
           ))
         )}
         {extra > 0 && (
-          <div className="w-7 h-7 rounded-full ring-2 ring-white dark:ring-[#262624] bg-slate-100 text-[10px] font-bold text-slate-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full ring-2 ring-white dark:ring-[#262624] bg-slate-100 text-[11px] font-bold text-slate-600 flex items-center justify-center">
             +{extra}
           </div>
         )}
       </div>
 
       {/* Footer — same structure as project card's bottom-meta row */}
-      <div className="mt-auto pt-3 border-t border-slate-100 dark:border-white/[0.05] flex items-center justify-between gap-3">
-        <span className="text-xs text-slate-500">
+      <div className="mt-auto pt-4 border-t border-slate-100 dark:border-white/[0.05] flex items-center justify-between gap-3">
+        <span className="text-[13px] text-slate-500">
           <strong className="text-slate-700 font-semibold">{team.memberCount}</strong> member{team.memberCount !== 1 ? 's' : ''}
           <span className="text-slate-300 mx-1.5">·</span>
           <strong className="text-slate-700 font-semibold">{team.projectCount}</strong> project{team.projectCount !== 1 ? 's' : ''}
         </span>
         <Link
           href={`/teams/${team.id}`}
-          className="group/cta inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+          className="group/cta inline-flex items-center gap-1 text-[12px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
         >
           Open team
-          <ArrowRight size={11} className="transition-transform group-hover/cta:translate-x-0.5" />
+          <ArrowRight size={12} className="transition-transform group-hover/cta:translate-x-0.5" />
         </Link>
       </div>
     </div>

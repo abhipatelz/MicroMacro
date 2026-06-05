@@ -112,10 +112,7 @@
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
-html {
-  scroll-behavior: smooth;
-  background: var(--bg-page);
-}
+html { scroll-behavior: smooth; }
 
 body {
   @apply text-slate-800 antialiased;
@@ -124,6 +121,7 @@ body {
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 /* ── Selection ────────────────────────────────────────────────────────────── */
@@ -381,18 +379,10 @@ body {
   55%  { transform: scaleX(1);   opacity: 0.5; }
   100% { transform: scaleX(0.85); opacity: 0.35; }
 }
-/* A soft ring that expands once at the moment of touchdown — delayed to sync
-   with the mark settling (~0.4s into the landing) so it reads as ground contact. */
-@keyframes bird-ripple {
-  0%   { transform: translate(-50%, 0) scale(0.3); opacity: 0; }
-  40%  { opacity: 0.5; }
-  100% { transform: translate(-50%, 0) scale(1.7); opacity: 0; }
-}
 .bird-land    { animation: bird-land 0.85s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .bird-shadow  { animation: land-shadow 0.85s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.bird-ripple  { animation: bird-ripple 1.1s ease-out 0.38s both; }
 @media (prefers-reduced-motion: reduce) {
-  .bird-land, .bird-shadow, .bird-ripple { animation: none; }
+  .bird-land, .bird-shadow { animation: none; }
 }
 
 /* ── Celebration animations ───────────────────────────────────────────────── */
@@ -474,27 +464,29 @@ body {
 
 /* ── Page transition ─────────────────────────────────────────────────────── */
 @keyframes page-enter {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-/* Pure opacity fade — no translateY so the wrapper never creates a new
-   stacking context that would break position:fixed modals, and no layout
-   shift is introduced (CLS fix). */
-.page-enter { animation: page-enter 0.15s ease-out; will-change: opacity; }
+/* `backwards` (not `both`): keep the entrance slide, but DON'T retain
+   transform:translateY(0) after it ends — a lingering transform turns this
+   wrapper into the containing block for position:fixed, which made modals
+   (e.g. "Can't mark completed") center relative to the scrolled page
+   instead of the viewport. */
+.page-enter { animation: page-enter 0.18s cubic-bezier(0.22,1,0.36,1) backwards; }
 
 /* ── Stat-card stagger ───────────────────────────────────────────────────── */
 @keyframes fade-up-stagger {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
-.fade-up-stagger { animation: fade-up-stagger 0.4s ease-out; }
+.fade-up-stagger { animation: fade-up-stagger 0.55s cubic-bezier(0.22,1,0.36,1) both; }
 
 /* ── Late-arriving footer fade (daily quote) ─────────────────────────────── */
 @keyframes fade-in-late {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-.fade-in-late { animation: fade-in-late 0.4s 0.5s ease-out both; }
+.fade-in-late { animation: fade-in-late 0.5s 0.7s ease-out both; }
 
 /* ── Hero greeting — gradient sweep, alive feel ──────────────────────────── */
 @keyframes hero-shine {
@@ -599,13 +591,6 @@ a { transition: color 0.15s ease, opacity 0.15s ease; }
 .dark [class*="bg-slate-100"] {
   background-color: var(--bg-subtle) !important;
 }
-.dark .bg-slate-200,
-.dark .bg-slate-300 {
-  background-color: #3a3935 !important;
-}
-/* Filter/tab chips */
-.dark .hover\:bg-slate-200:hover { background-color: #3a3935 !important; }
-.dark .hover\:bg-slate-100:hover { background-color: var(--bg-subtle) !important; }
 
 /* Section header bar — class-based so it can theme in dark mode (inline
    background styles can't be overridden by .dark rules). */
@@ -639,16 +624,13 @@ a { transition: color 0.15s ease, opacity 0.15s ease; }
 .dark .input,
 .dark .select,
 .dark .textarea {
-  /* background-color (not shorthand) so it doesn't reset background-image */
-  background-color: #30302e !important;
+  background: #30302e !important;
   border-color: rgba(255,255,255,0.10) !important;
   color: #faf9f5 !important;
 }
 .dark .select {
-  /* Lighter chevron for native <select> elements. No !important so that
-     elements with inline style="background-image:none" (e.g. custom Select
-     component) can suppress this — preventing the double-arrow bug. */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a8a09a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+  /* Lighter chevron so it stays visible on the dark surface. */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.45)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
 }
 .dark .input:focus,
 .dark .select:focus,
@@ -687,49 +669,6 @@ a { transition: color 0.15s ease, opacity 0.15s ease; }
 .dark .border-blue-100,
 .dark .border-blue-200 { border-color: rgba(217,119,87,0.22) !important; }
 
-/* Semantic status colours — keep red=danger, green=success, amber=warning */
-.dark .bg-red-50   { background-color: rgba(239,68,68,0.10)  !important; }
-.dark .bg-red-100  { background-color: rgba(239,68,68,0.16)  !important; }
-.dark .text-red-500 { color: #fca5a5 !important; }
-.dark .text-red-600 { color: #f87171 !important; }
-.dark .text-red-700 { color: #fca5a5 !important; }
-.dark .text-red-800 { color: #fecaca !important; }
-.dark .border-red-100,
-.dark .border-red-200 { border-color: rgba(239,68,68,0.22) !important; }
-
-.dark .bg-emerald-50,
-.dark .bg-green-50  { background-color: rgba(34,197,94,0.09)  !important; }
-.dark .bg-emerald-100,
-.dark .bg-green-100 { background-color: rgba(34,197,94,0.15)  !important; }
-.dark .text-emerald-600,
-.dark .text-green-600 { color: #6ee7b7 !important; }
-.dark .text-emerald-700,
-.dark .text-green-700 { color: #a7f3d0 !important; }
-.dark .text-emerald-800,
-.dark .text-green-800 { color: #bbf7d0 !important; }
-.dark .border-emerald-100,
-.dark .border-green-100,
-.dark .border-emerald-200,
-.dark .border-green-200 { border-color: rgba(34,197,94,0.20) !important; }
-
-.dark .bg-amber-50  { background-color: rgba(245,158,11,0.10) !important; }
-.dark .bg-amber-100 { background-color: rgba(245,158,11,0.16) !important; }
-.dark .text-amber-600 { color: #fcd34d !important; }
-.dark .text-amber-700 { color: #fde68a !important; }
-.dark .text-amber-800 { color: #fef3c7 !important; }
-.dark .border-amber-100,
-.dark .border-amber-200 { border-color: rgba(245,158,11,0.22) !important; }
-
-.dark .bg-purple-50  { background-color: rgba(168,85,247,0.10) !important; }
-.dark .bg-violet-50  { background-color: rgba(139,92,246,0.10) !important; }
-.dark .text-purple-600,
-.dark .text-violet-600 { color: #c4b5fd !important; }
-.dark .text-purple-700,
-.dark .text-violet-700 { color: #ddd6fe !important; }
-.dark .bg-indigo-50  { background-color: rgba(99,102,241,0.10) !important; }
-.dark .bg-teal-50    { background-color: rgba(20,184,166,0.10) !important; }
-.dark .bg-cyan-50    { background-color: rgba(6,182,212,0.10)  !important; }
-
 /* Kanban horizontal scroller — slim track so the slider doesn't add visual weight. */
 .kanban-scroll::-webkit-scrollbar         { height: 8px; }
 .kanban-scroll::-webkit-scrollbar-track   { background: transparent; }
@@ -744,41 +683,6 @@ a { transition: color 0.15s ease, opacity 0.15s ease; }
   border-color: rgba(255,255,255,0.10) !important;
   box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4) !important;
 }
-
-/* Modal sheets — hardcoded bg-white in older components goes dark.
-   .modal-in is the class we use on every modal content panel. */
-.dark .modal-in {
-  background: #262624 !important;
-  border-color: rgba(255,255,255,0.10) !important;
-  color: #faf9f5 !important;
-}
-/* Ensure nested text elements inherit the dark modal colour */
-.dark .modal-in .text-slate-900 { color: #faf9f5 !important; }
-.dark .modal-in .text-slate-800 { color: rgba(250,249,245,0.90) !important; }
-.dark .modal-in .text-slate-700 { color: rgba(250,249,245,0.80) !important; }
-.dark .modal-in .text-slate-600 { color: rgba(250,249,245,0.65) !important; }
-.dark .modal-in .text-slate-500 { color: rgba(250,249,245,0.50) !important; }
-.dark .modal-in .text-slate-400 { color: rgba(250,249,245,0.35) !important; }
-.dark .modal-in .text-slate-300 { color: rgba(250,249,245,0.25) !important; }
-/* Nested containers that are bg-white/bg-slate-50 inside a dark modal */
-.dark .modal-in .bg-white          { background: rgba(255,255,255,0.05) !important; }
-.dark .modal-in .bg-slate-50       { background: rgba(255,255,255,0.04) !important; }
-.dark .modal-in .bg-slate-100      { background: rgba(255,255,255,0.07) !important; }
-.dark .modal-in .border-slate-100,
-.dark .modal-in .border-slate-200  { border-color: rgba(255,255,255,0.08) !important; }
-/* Info/status panels inside modals */
-.dark .modal-in .bg-blue-50   { background: rgba(59,130,246,0.12) !important; }
-.dark .modal-in .bg-amber-50  { background: rgba(245,158,11,0.12) !important; }
-.dark .modal-in .bg-red-50    { background: rgba(239,68,68,0.12)  !important; }
-.dark .modal-in .bg-green-50,
-.dark .modal-in .bg-emerald-50 { background: rgba(34,197,94,0.10) !important; }
-.dark .modal-in .border-blue-200  { border-color: rgba(59,130,246,0.25) !important; }
-.dark .modal-in .border-amber-200 { border-color: rgba(245,158,11,0.25) !important; }
-.dark .modal-in .border-red-200   { border-color: rgba(239,68,68,0.25)  !important; }
-.dark .modal-in .text-blue-700    { color: #93c5fd !important; }
-.dark .modal-in .text-blue-500    { color: #60a5fa !important; }
-.dark .modal-in .text-amber-800   { color: #fcd34d !important; }
-.dark .modal-in .text-red-700     { color: #fca5a5 !important; }
 
 /* Selection */
 .dark ::selection { background: rgba(217,119,87,0.35); color: #faf9f5; }
@@ -802,22 +706,23 @@ a { transition: color 0.15s ease, opacity 0.15s ease; }
   animation: dashboard-expand-nudge 1s ease-out 3;
 }
 
-/* ── Project-card green expand-pulse ───────────────────────────────────────
-   A soft green ring + tint that ripples behind the *whole* project-card
-   header (not just the chevron) on first paint, so the user notices the
-   row is interactive. Pulses twice then settles silent. */
+/* ── Expand-chevron green pulse ────────────────────────────────────────────
+   A soft green pulse on JUST the expand chevron (not the whole header)
+   so the row's interactivity reads without flooding the entire card.
+   Pulses twice then settles silent. */
 @keyframes pragati-row-expand-blink {
   0%, 100% {
-    box-shadow: inset 0 0 0 0 rgba(34, 197, 94, 0);
-    background-color: transparent;
+    color: rgb(16 185 129);
+    transform: scale(1);
   }
   40% {
-    box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.30);
-    background-color: rgba(34, 197, 94, 0.06);
+    color: rgb(5 150 105);
+    transform: scale(1.35);
   }
 }
 .pragati-row-expand-blink {
-  animation: pragati-row-expand-blink 1200ms ease-out 2;
+  animation: pragati-row-expand-blink 1000ms ease-in-out 2;
+  transform-origin: center;
 }
 
 /* ── Bird's-Eye trigger blink ──────────────────────────────────────────────

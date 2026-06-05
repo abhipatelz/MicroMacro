@@ -295,9 +295,14 @@ export default function DashboardClient({
             <span className="text-[0.7em] translate-y-[0.05em] opacity-80" suppressHydrationWarning>{greetingEmoji()}</span>
           </h1>
         </div>
-        {/* Bird's-eye view trigger — custom icon, blinks once per session. */}
+        {/* Bird's-eye view trigger — custom icon, blinks once per session.
+            Wrapped in a tour tooltip that appears once-ever (localStorage),
+            and only when the workspace has at least one active project so
+            empty-state users aren't introduced to a feature they can't use. */}
         {!isFirstRun && (
-          <BirdEyeButton scopeKey="dashboard" onClick={() => setBirdsEyeOpen(true)} className="shrink-0" />
+          <BirdEyeTourWrapper hasActiveProjects={dash.projects.some(p => p.status !== 'completed' && p.status !== 'cancelled')}>
+            <BirdEyeButton scopeKey="dashboard" onClick={() => setBirdsEyeOpen(true)} className="shrink-0" />
+          </BirdEyeTourWrapper>
         )}
       </div>
       {/* Subline removed. The summary chips below (Ongoing / Open / Overdue
@@ -412,6 +417,54 @@ function ExpandButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/* ── Bird's-Eye first-login tour ───────────────────────────────────────────
+   Small spotlight tooltip next to the Bird's-Eye trigger, shown ONCE per
+   workspace (keyed in localStorage) and only when at least one active
+   project exists — so the cue introduces the feature on a workspace where
+   it'll actually surface something useful. */
+function BirdEyeTourWrapper({ children, hasActiveProjects }: { children: React.ReactNode; hasActiveProjects: boolean }) {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (!hasActiveProjects) return;
+    if (typeof window === 'undefined') return;
+    const K = 'pragati-bve-tour-v1';
+    if (localStorage.getItem(K)) return;
+    // Defer slightly so it fades in after the page paints rather than during it.
+    const t = window.setTimeout(() => setShow(true), 800);
+    return () => window.clearTimeout(t);
+  }, [hasActiveProjects]);
+
+  function dismiss() {
+    setShow(false);
+    try { localStorage.setItem('pragati-bve-tour-v1', '1'); } catch {}
+  }
+
+  return (
+    <div className="relative shrink-0">
+      {children}
+      {show && (
+        <div
+          className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-blue-200 bg-white shadow-xl p-3 z-30 fade-in-soft"
+          role="tooltip"
+        >
+          <div className="absolute -top-1.5 right-3 w-3 h-3 rotate-45 bg-white border-l border-t border-blue-200" />
+          <div className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1">New · Bird&apos;s-eye</div>
+          <div className="text-[12px] text-slate-700 leading-snug">
+            See your whole workspace as one map — teams, projects, tasks. Click here any time.
+          </div>
+          <button
+            onClick={dismiss}
+            className="mt-2 text-[11px] font-bold text-blue-600 hover:text-blue-800"
+          >
+            Got it
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Summary chip ────────────────────────────────────────────────────────── */
 function SummaryChip({
   label, value, accent, href, onClick,
@@ -490,7 +543,7 @@ function SummaryTaskPopup({
               return (
                 <li key={t.id}>
                   <Link href={`/tasks/${t.id}`} onClick={onClose}
-                    className={`block px-4 py-3 border-l-2 transition-colors ${overdue ? 'border-red-300 hover:bg-red-50/60' : 'border-blue-200 hover:bg-blue-50/60'}`}>
+                    className={`block px-4 py-3 transition-colors ${overdue ? 'hover:bg-red-50/60' : 'hover:bg-slate-50/60'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-bold text-slate-800 dark:text-white/80 line-clamp-1">{t.title}</div>
@@ -841,10 +894,10 @@ function ProjectRow({
           essential metrics — progress, tasks-done, due, owner. */}
       <header
         onClick={() => setOpen(o => !o)}
-        className={`px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors select-none ${nudgeExpand && !open ? 'pragati-row-expand-blink' : ''}`}
+        className="px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors select-none"
       >
         <button
-          className="p-0.5 text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform rounded-full shrink-0"
+          className={`p-0.5 text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform rounded-full shrink-0 ${nudgeExpand && !open ? 'pragati-row-expand-blink' : ''}`}
           aria-label={open ? 'Collapse project tasks' : 'Expand project tasks'}
           style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}
         >
@@ -1013,7 +1066,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
             return (
               <li key={t.id}>
                 <Link href={`/tasks/${t.id}`}
-                  className={`block px-4 py-2.5 transition-colors group border-l-2 ${overdue ? 'border-red-300 hover:bg-red-50/45 dark:hover:bg-red-500/[0.05]' : 'border-blue-200 hover:bg-blue-50/45 dark:hover:bg-blue-500/[0.05]'}`}>
+                  className={`block px-4 py-2.5 transition-colors group ${overdue ? 'hover:bg-red-50/45 dark:hover:bg-red-500/[0.05]' : 'hover:bg-slate-50/60 dark:hover:bg-white/[0.025]'}`}>
                   <div className="flex items-start gap-2">
                     <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_COLORS[t.status] ? '' : 'bg-slate-300'}`}
                       style={{ background: t.status === 'in_progress' ? '#3B82F6' : t.status === 'review' ? '#8B5CF6' : t.status === 'blocked' ? '#EF4444' : '#94A3B8' }} />
@@ -1118,22 +1171,25 @@ function UpNextPanel({ tasks }: { tasks: TeamTask[] }) {
 
   const totalCount = overdue.length + due.length;
   const inner = (
-    <div>
-      {/* Section header — same visual weight + spacing as "Your team's
-          projects" on the left column, so the two sections sit on the same
-          baseline and the dashboard reads as a single inline strip. */}
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <TrendingUp size={14} className="text-slate-400 shrink-0" />
-          <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 truncate">
-            Up Next
-          </h2>
-          <span className="text-[10px] text-slate-300 font-semibold shrink-0">{totalCount}</span>
-        </div>
-        {!expanded && <ExpandButton onClick={() => setExpanded(true)} />}
-      </div>
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
+      {/* Header — matches the My Tasks header geometry (px-4 py-3, gap-2,
+          border-b) so the two right-column panels read on the same baseline. */}
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-white/[0.05] flex items-center gap-2">
+        <TrendingUp size={13} className="text-slate-400 dark:text-white/30" />
+        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">Up Next</h3>
+        <span className="ml-auto text-[10px] font-bold text-slate-300 dark:text-white/20">{totalCount}</span>
+        {!expanded && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            aria-label="Expand Up Next"
+            className="p-1 -mr-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
+          >
+            <Maximize2 size={11} />
+          </button>
+        )}
+      </div>
       <div className="overflow-y-auto" style={{ maxHeight: expanded ? 'calc(100vh - 220px)' : '60vh' }}>
         {/* Overdue group — sits at the top: nothing to filter, just the
             tasks that have slipped past their date. */}
@@ -1200,7 +1256,6 @@ function UpNextPanel({ tasks }: { tasks: TeamTask[] }) {
         </div>
       </div>
     </section>
-    </div>
   );
 
   return expanded
@@ -1254,10 +1309,10 @@ function ActionGroup({
             return (
               <li key={t.id}>
                 <Link href={`/tasks/${t.id}`}
-                  className={`block px-4 py-2.5 transition-colors group border-l-2 ${
+                  className={`block px-4 py-2.5 transition-colors group ${
                     isOverdue
-                      ? 'border-red-300 hover:bg-red-50/45 dark:hover:bg-red-500/[0.05]'
-                      : 'border-blue-200 hover:bg-blue-50/45 dark:hover:bg-blue-500/[0.05]'
+                      ? 'hover:bg-red-50/45 dark:hover:bg-red-500/[0.05]'
+                      : 'hover:bg-slate-50/60 dark:hover:bg-white/[0.025]'
                   }`}>
                   <div className="flex items-center gap-2">
                     {/* Title + project code on row 1 — code is a chip, not a
@@ -1345,7 +1400,7 @@ function ContributorsPanel({
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
       <div
-        className={`px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
+        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors"
         onClick={() => setPanelOpen(o => !o)}
       >
         <UsersIcon size={13} className="text-slate-400 dark:text-white/30" />
@@ -1355,7 +1410,7 @@ function ContributorsPanel({
         <span className="ml-auto text-[10px] text-slate-300 dark:text-white/20 font-semibold">{people.length}</span>
         <ChevronDown
           size={12}
-          className="text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full"
+          className={`text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
           style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
         />
       </div>
@@ -1431,7 +1486,7 @@ function MyFocusPanel({
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
       <div
-        className={`px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
+        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors"
         onClick={() => setPanelOpen((o) => !o)}
       >
         <FolderKanban size={13} className="text-slate-400 dark:text-white/30" />
@@ -1439,7 +1494,7 @@ function MyFocusPanel({
         <span className="ml-auto text-[10px] text-slate-300 dark:text-white/20 font-semibold">{rows.length}</span>
         <ChevronDown
           size={12}
-          className="text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full"
+          className={`text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
           style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
         />
       </div>

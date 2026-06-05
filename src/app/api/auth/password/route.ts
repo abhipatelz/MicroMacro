@@ -6,7 +6,6 @@ import { User } from '@/models/User';
 import { requireUser } from '@/lib/auth';
 import { readBody, handleError } from '@/lib/http';
 import { rateLimit } from '@/lib/rateLimit';
-import { logOperation } from '@/lib/audit';
 
 export const runtime = 'nodejs';
 
@@ -36,16 +35,6 @@ export async function PATCH(req: NextRequest) {
     if (!ok) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
     user.passwordHash = bcrypt.hashSync(body.newPassword, 10);
     await user.save();
-
-    // 21 CFR Part 11 §11.10(e): password changes are security-significant
-    // events that must appear in the immutable audit trail with actor + time.
-    await logOperation({
-      action: 'auth.password_change', category: 'auth',
-      actor: { id: me!.sub, name: me!.name },
-      targetType: 'user', targetId: me!.sub, targetLabel: me!.name || '',
-      summary: 'Changed their password',
-    });
-
     return NextResponse.json({ ok: true });
   } catch (e) {
     return handleError(e);

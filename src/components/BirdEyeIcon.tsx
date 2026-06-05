@@ -2,11 +2,12 @@
 
 /**
  * Custom Bird's-Eye glyph used as the trigger icon across the app.
- * A circular "lens" containing a compact tree silhouette — reads as both a
- * compass (top-down vantage) and an org chart (the actual content). Strokes
- * follow the brand palette: brand blue trunk with an emerald root node.
+ * A compact tree-of-nodes with a glowing root, brand-blue branches and
+ * emerald leaves — reads as "see the whole structure from above". The
+ * outer lens is dropped in favour of more visual breathing room around
+ * the tree itself, which renders better at small sizes.
  *
- * Pass `blink` to draw attention on first paint — pulses the outer ring twice
+ * Pass `blink` to draw attention on first paint — pulses the icon twice
  * then settles. Useful as a feature-discovery cue without a tour modal.
  */
 export function BirdEyeIcon({
@@ -32,17 +33,32 @@ export function BirdEyeIcon({
       className={`${blink ? 'pragati-birdeye-blink' : ''} ${className}`.trim()}
     >
       <title>{title}</title>
-      {/* Outer lens */}
-      <circle cx="12" cy="12" r="9.25" stroke="currentColor" strokeWidth="1.6" />
-      {/* Trunk node (root, top) */}
-      <circle cx="12" cy="6.5" r="1.6" fill="currentColor" />
-      {/* Trunk → branch */}
-      <path d="M12 8.1 V11.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      {/* Branch — symmetric Y */}
-      <path d="M12 11.6 L7.4 15.2 M12 11.6 L16.6 15.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      {/* Leaf nodes */}
-      <circle cx="7.4" cy="16" r="1.35" fill="#22c55e" stroke="currentColor" strokeWidth="1.1" />
-      <circle cx="16.6" cy="16" r="1.35" fill="#22c55e" stroke="currentColor" strokeWidth="1.1" />
+      {/* Soft gradient lens — gives the icon presence without a hard border */}
+      <defs>
+        <radialGradient id="be-lens" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#1565C0" stopOpacity="0.10" />
+          <stop offset="100%" stopColor="#1565C0" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="12" cy="12" r="11" fill="url(#be-lens)" />
+      <circle cx="12" cy="12" r="10.5" stroke="currentColor" strokeOpacity="0.35" strokeWidth="1.1" fill="none" />
+
+      {/* Branches — drawn before nodes so node fills cover the join cleanly */}
+      <path d="M12 5.5 V11" stroke="#1565C0" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 11 L6.5 16.2 M12 11 L17.5 16.2 M12 11 V16.2"
+            stroke="#1565C0" strokeWidth="1.5" strokeLinecap="round" />
+
+      {/* Root node — brand blue, prominent */}
+      <circle cx="12" cy="5.5" r="2" fill="#1565C0" />
+      <circle cx="12" cy="5.5" r="2" fill="white" fillOpacity="0.18" />
+
+      {/* Mid junction */}
+      <circle cx="12" cy="11" r="1.2" fill="#1565C0" />
+
+      {/* Three leaf nodes — emerald, slightly different sizes for life */}
+      <circle cx="6.5"  cy="17"   r="1.6" fill="#10b981" stroke="white" strokeWidth="0.6" />
+      <circle cx="12"   cy="17"   r="1.6" fill="#10b981" stroke="white" strokeWidth="0.6" />
+      <circle cx="17.5" cy="17"   r="1.6" fill="#10b981" stroke="white" strokeWidth="0.6" />
     </svg>
   );
 }

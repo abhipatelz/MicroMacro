@@ -88,9 +88,6 @@ export async function listProjectsForUser(
     User.find({ _id: { $in: projects.map((p) => p.ownerId).filter(Boolean) } }).lean(),
     Task.aggregate([
       { $match: { projectId: { $in: projectIds } } },
-      // Only the fields the rollup needs — keeps Mongo from loading full task
-      // docs (comments, subtasks, effort logs) just to count statuses.
-      { $project: { projectId: 1, status: 1, dueDate: 1 } },
       {
         $group: {
           _id: '$projectId',

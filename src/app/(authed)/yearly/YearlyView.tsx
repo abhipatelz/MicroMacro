@@ -80,45 +80,71 @@ export default function YearlyView({ targetUserId }: { targetUserId?: string }) 
       )}
 
       {!data ? (
-        <Card>Loading…</Card>
+        // Themed skeleton — 5 stat tiles + chart placeholder + 2 cards.
+        // Reads as the page-in-progress rather than an empty "Loading…" frame.
+        <div className="space-y-6" aria-busy="true" aria-live="polite">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-slate-200/80 bg-white p-5">
+                <div className="skeleton h-3 w-24 mb-3" />
+                <div className="skeleton h-8 w-16 mb-2" />
+                <div className="skeleton h-3 w-32" />
+              </div>
+            ))}
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5">
+            <div className="skeleton h-4 w-44 mb-4" />
+            <div className="skeleton h-64 w-full" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-slate-200/80 bg-white p-5">
+                <div className="skeleton h-4 w-48 mb-4" />
+                <div className="space-y-2">
+                  {Array.from({ length: 4 }).map((_, j) => (
+                    <div key={j} className="flex items-center gap-3 py-1">
+                      <div className="skeleton h-3 w-3 rounded-full" />
+                      <div className="skeleton h-3 flex-1" />
+                      <div className="skeleton h-3 w-20" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <span className="sr-only">Loading yearly review…</span>
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <Card>
-              <div className="text-xs font-semibold uppercase text-slate-500">Tasks completed</div>
-              <div className="text-3xl font-semibold mt-1">{data.totals.tasksCompleted}</div>
-            </Card>
-            <Card>
-              <div className="text-xs font-semibold uppercase text-slate-500">
-                Micro-tasks completed
-              </div>
-              <div className="text-3xl font-semibold mt-1">{data.totals.subtasksCompleted}</div>
-            </Card>
-            <Card>
-              <div className="text-xs font-semibold uppercase text-slate-500">Big deliveries</div>
-              <div className="text-3xl font-semibold mt-1 text-brand-700">
-                {data.totals.bigTasksCompleted}
-              </div>
-              <div className="text-xs text-slate-500 mt-1">GxP / QA sign-off / approvals</div>
-            </Card>
-            <Card>
-              <div className="text-xs font-semibold uppercase text-slate-500">
-                Early completions
-              </div>
-              <div className="text-3xl font-semibold mt-1 text-emerald-600">
-                {data.totals.earlyCompletions}
-              </div>
-              <div className="text-xs text-slate-500 mt-1">Micro &amp; macro combined</div>
-            </Card>
-            <Card>
-              <div className="text-xs font-semibold uppercase text-slate-500">
-                Extra-effort score
-              </div>
-              <div className="text-3xl font-semibold mt-1 text-amber-600">
-                {data.totals.extraEffortScore}
-              </div>
-              <div className="text-xs text-slate-500 mt-1">Days delivered ahead of deadline</div>
-            </Card>
+            <StatTile
+              label="Tasks completed"
+              value={data.totals.tasksCompleted}
+              accent="slate"
+            />
+            <StatTile
+              label="Micro-tasks completed"
+              value={data.totals.subtasksCompleted}
+              accent="slate"
+            />
+            <StatTile
+              label="Big deliveries"
+              value={data.totals.bigTasksCompleted}
+              hint="GxP · QA sign-off · approvals"
+              accent="brand"
+            />
+            <StatTile
+              label="Early completions"
+              value={data.totals.earlyCompletions}
+              hint="Micro & macro combined"
+              accent="emerald"
+            />
+            <StatTile
+              label="Extra-effort score"
+              value={data.totals.extraEffortScore}
+              hint="Days delivered ahead of deadline"
+              accent="amber"
+            />
           </div>
 
           <Card title={`Monthly activity — ${year}`}>
@@ -196,6 +222,36 @@ export default function YearlyView({ targetUserId }: { targetUserId?: string }) 
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* ── Stat tile ─────────────────────────────────────────────────────────────
+   A richer stand-in for the bare Card boxes — coloured accent rail on the
+   left, generous spacing, large tabular numeric. Same five accents the
+   rest of the app uses (slate / brand / emerald / amber / red). */
+function StatTile({ label, value, hint, accent }: {
+  label: string;
+  value: number | string;
+  hint?: string;
+  accent: 'slate' | 'brand' | 'emerald' | 'amber' | 'red';
+}) {
+  const ACCENT: Record<typeof accent, { rail: string; num: string; bg: string }> = {
+    slate:   { rail: '#94a3b8', num: 'text-slate-800',   bg: 'bg-slate-50/40' },
+    brand:   { rail: '#1565C0', num: 'text-brand-700',   bg: 'bg-blue-50/40'  },
+    emerald: { rail: '#10b981', num: 'text-emerald-600', bg: 'bg-emerald-50/40' },
+    amber:   { rail: '#f59e0b', num: 'text-amber-600',   bg: 'bg-amber-50/40' },
+    red:     { rail: '#ef4444', num: 'text-red-600',     bg: 'bg-red-50/40'   },
+  };
+  const a = ACCENT[accent];
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border border-slate-200/80 ${a.bg} p-5 transition-shadow hover:shadow-md`}>
+      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: a.rail }} />
+      <div className="pl-2">
+        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</div>
+        <div className={`text-[2rem] font-black tabular-nums leading-none mt-2 ${a.num}`}>{value}</div>
+        {hint && <div className="text-[11px] text-slate-500 mt-2 leading-snug">{hint}</div>}
+      </div>
     </div>
   );
 }
