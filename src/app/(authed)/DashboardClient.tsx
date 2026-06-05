@@ -394,6 +394,50 @@ function ExpandButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/* ── Shared right-column panel header ─────────────────────────────────────
+   One header geometry for Up Next / My Tasks / Individual Contributors so the
+   right rail reads as one aligned set rather than three slightly-different
+   cards. A tinted icon tile + uppercase label + count, with an optional
+   trailing slot (overdue badge, maximize, chevron). */
+function PanelHeader({
+  icon, tint, title, count, countSuffix, trailing, onClick,
+}: {
+  icon: React.ReactNode;
+  tint: { bg: string; fg: string };
+  title: string;
+  count?: number | string;
+  countSuffix?: string;
+  trailing?: React.ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className={`px-4 h-12 flex items-center gap-2.5 border-b border-slate-100 dark:border-white/[0.05] ${
+        onClick ? 'cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors' : ''
+      }`}
+    >
+      <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg shrink-0"
+        style={{ background: tint.bg, color: tint.fg }}>
+        {icon}
+      </span>
+      <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600 dark:text-white/45">{title}</h3>
+      {count != null && (
+        <span className="text-[10px] font-bold text-slate-400 dark:text-white/25 tabular-nums">
+          {count}{countSuffix}
+        </span>
+      )}
+      <div className="ml-auto flex items-center gap-1.5">{trailing}</div>
+    </div>
+  );
+}
+
+const PANEL_TINTS = {
+  blue:    { bg: 'rgba(21,101,192,0.10)',  fg: '#1565C0' },
+  emerald: { bg: 'rgba(16,185,129,0.12)',  fg: '#059669' },
+  violet:  { bg: 'rgba(124,58,237,0.12)',  fg: '#7c3aed' },
+} as const;
+
 /* ── Summary chip ────────────────────────────────────────────────────────── */
 function SummaryChip({
   label, value, accent, href, onClick,
@@ -1021,14 +1065,16 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
   return (
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      <div className="px-4 py-3 border-b border-slate-100 dark:border-white/[0.05] flex items-center gap-2">
-        <CheckCircle2 size={13} className="text-slate-400 dark:text-white/30" />
-        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">My tasks</h3>
-        <span className="ml-auto text-[10px] font-bold text-slate-300 dark:text-white/20">{myTasks.length} open</span>
-        {myOverdue > 0 && (
-          <span className="text-[10px] font-bold text-red-400">{myOverdue} overdue</span>
-        )}
-      </div>
+      <PanelHeader
+        icon={<CheckCircle2 size={13} />}
+        tint={PANEL_TINTS.emerald}
+        title="My tasks"
+        count={myTasks.length}
+        countSuffix=" open"
+        trailing={myOverdue > 0
+          ? <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-full">{myOverdue} overdue</span>
+          : null}
+      />
       {myTasks.length === 0 ? (
         <div className="py-7 text-center">
           <CheckCircle2 size={18} className="mx-auto text-emerald-300 mb-1.5" />
@@ -1150,23 +1196,27 @@ function UpNextPanel({ tasks }: { tasks: TeamTask[] }) {
   const inner = (
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      {/* Header — matches the My Tasks header geometry (px-4 py-3, gap-2,
-          border-b) so the two right-column panels read on the same baseline. */}
-      <div className="px-4 py-3 border-b border-slate-100 dark:border-white/[0.05] flex items-center gap-2">
-        <TrendingUp size={13} className="text-slate-400 dark:text-white/30" />
-        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">Up Next</h3>
-        <span className="ml-auto text-[10px] font-bold text-slate-300 dark:text-white/20">{totalCount}</span>
-        {!expanded && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            aria-label="Expand Up Next"
-            className="p-1 -mr-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
-          >
-            <Maximize2 size={11} />
-          </button>
-        )}
-      </div>
+      {/* Header — shared geometry with My Tasks / Contributors. Hidden when
+          shown inside the full-screen overlay (which supplies its own title),
+          so "Up Next" isn't printed twice. */}
+      {!expanded && (
+        <PanelHeader
+          icon={<TrendingUp size={13} />}
+          tint={PANEL_TINTS.blue}
+          title="Up Next"
+          count={totalCount}
+          trailing={
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              aria-label="Expand Up Next"
+              className="p-1 -mr-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
+            >
+              <Maximize2 size={12} />
+            </button>
+          }
+        />
+      )}
       <div className="overflow-y-auto" style={{ maxHeight: expanded ? 'calc(100vh - 220px)' : '60vh' }}>
         {/* Overdue group — sits at the top: nothing to filter, just the
             tasks that have slipped past their date. */}
@@ -1362,10 +1412,7 @@ function ContributorsPanel({
     return (
       <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
         style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-        <div className="px-4 py-3 flex items-center gap-2">
-          <UsersIcon size={13} className="text-slate-400 dark:text-white/30" />
-          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">Individual Contributors</h3>
-        </div>
+        <PanelHeader icon={<UsersIcon size={13} />} tint={PANEL_TINTS.violet} title="Individual Contributors" />
       </section>
     );
   }
@@ -1376,21 +1423,20 @@ function ContributorsPanel({
   return (
     <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      <div
-        className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors"
+      <PanelHeader
+        icon={<UsersIcon size={13} />}
+        tint={PANEL_TINTS.violet}
+        title="Individual Contributors"
+        count={people.length}
         onClick={() => setPanelOpen(o => !o)}
-      >
-        <UsersIcon size={13} className="text-slate-400 dark:text-white/30" />
-        <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
-          Individual Contributors
-        </h3>
-        <span className="ml-auto text-[10px] text-slate-300 dark:text-white/20 font-semibold">{people.length}</span>
-        <ChevronDown
-          size={12}
-          className={`text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
-          style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-        />
-      </div>
+        trailing={
+          <ChevronDown
+            size={14}
+            className={`text-violet-500 dark:text-violet-400 transition-transform duration-200 ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
+            style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+          />
+        }
+      />
 
       {panelOpen && (
         <ul className="divide-y divide-slate-50 dark:divide-white/[0.04] border-t border-slate-100 dark:border-white/[0.05]">
