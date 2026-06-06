@@ -9,6 +9,7 @@ import { TaskCreateSchema } from '@/lib/validations';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { notify } from '@/lib/notify';
 import { logOperation } from '@/lib/audit';
+import { bustDashboardCache } from '@/lib/leadDashboard';
 
 export const runtime = 'nodejs';
 
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    void bustDashboardCache(user!.sub, user!.role);
     return NextResponse.json(taskS(task));
   } catch (e) {
     return handleError(e);

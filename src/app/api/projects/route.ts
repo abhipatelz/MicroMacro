@@ -11,6 +11,7 @@ import { LIFECYCLES, LifecycleKey } from '@/lib/lifecycles';
 import { ProjectCreateSchema } from '@/lib/validations';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { logOperation } from '@/lib/audit';
+import { bustDashboardCache } from '@/lib/leadDashboard';
 import mongoose from 'mongoose';
 
 export const runtime = 'nodejs';
@@ -181,6 +182,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    void bustDashboardCache(user!.sub, user!.role);
     return NextResponse.json(projectS(project));
   } catch (e) {
     return handleError(e);

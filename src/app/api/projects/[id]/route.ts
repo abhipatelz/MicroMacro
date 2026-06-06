@@ -12,6 +12,7 @@ import { ProjectUpdateSchema, DeleteProjectSchema } from '@/lib/validations';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { getProjectDetail } from '@/lib/projectDetail';
 import { logOperation } from '@/lib/audit';
+import { bustDashboardCache } from '@/lib/leadDashboard';
 import bcrypt from 'bcryptjs';
 
 export const runtime = 'nodejs';
@@ -102,6 +103,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       });
     }
 
+    void bustDashboardCache(user!.sub, user!.role);
     return NextResponse.json(projectS(fresh));
   } catch (e) {
     return handleError(e);
@@ -145,6 +147,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       });
     }
 
+    void bustDashboardCache(user!.sub, user!.role);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return handleError(e);

@@ -7,6 +7,7 @@ import { requireRole } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { project as projectS } from '@/lib/serialize';
 import { logOperation } from '@/lib/audit';
+import { bustDashboardCache } from '@/lib/leadDashboard';
 
 export const runtime = 'nodejs';
 
@@ -54,6 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       meta: { archived, code: (updated as any).code || '' },
     });
 
+    void bustDashboardCache(user!.sub, user!.role);
     return NextResponse.json({ ok: true, project: projectS(updated) });
   } catch (e) {
     return handleError(e);
