@@ -255,13 +255,16 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                   </div>
                   <div className="h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-white/[0.06]">
                     <div
-                      className="h-full rounded-full transition-all duration-700"
+                      className="relative h-full rounded-full overflow-hidden transition-all duration-700"
                       style={{
                         width: `${Math.max(pct, p.taskCount ? 2 : 0)}%`,
                         background: progressGradient,
                         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35)',
                       }}
-                    />
+                    >
+                      {/* App-theme travelling sheen — same cue as the dashboard bars. */}
+                      {pct > 0 && <span aria-hidden className="progress-bar-sheen" />}
+                    </div>
                   </div>
                 </div>
 

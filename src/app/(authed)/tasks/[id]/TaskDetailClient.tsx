@@ -11,7 +11,7 @@ import { Select } from '@/components/Select';
 import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { chimeIfEnabled } from '@/lib/sound';
-import { ChevronRight, Shield, FileText, MessageSquare, Timer, Activity, Clock, Trash2, ScrollText } from 'lucide-react';
+import { ChevronRight, Shield, FileText, MessageSquare, Clock, Trash2, ScrollText } from 'lucide-react';
 import { FlowSignalTaskStrip } from '@/components/FlowSignalTaskStrip';
 
 // TaskCompletePop is only shown on task completion — off the critical render
@@ -604,75 +604,53 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 </div>
               </div>
             </div>
-            <details className="pt-1 group">
-              <summary className="text-[11px] font-semibold text-slate-400 cursor-pointer select-none hover:text-slate-600 transition-colors">
-                Advanced options
-              </summary>
-              <div className="flex gap-4 pt-2 text-xs">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="checkbox" checked={!!task.requiresQaSignoff} disabled={!isLead}
-                    onChange={(e) => isLead && update({ requiresQaSignoff: e.target.checked })} />
-                  Approval required
-                </label>
-              </div>
-            </details>
           </div>
         </Card>
 
-        {/* ── Advanced (effort tracking, reference fields) ──────────────
-           Hidden by default. Pragati's day-to-day workflow only needs
-           title + assignee + status + due — these power-user fields stay
-           tucked away so the task page reads at a glance, Zerodha-Kite
-           minimal. Open when you actually need to log time or look up
-           a change-control number. */}
-        <details className="group">
-          <summary className="cursor-pointer select-none text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
-            <span className="inline-block transition-transform group-open:rotate-90">▸</span>
-            Show effort log &amp; reference details
-          </summary>
-          <div className="mt-3 space-y-3">
-            <ScheduleEffortCard task={task} onChanged={load} />
-            {(task.ccNo || task.documentNo || task.deployStage !== 'na') && (
-              <div className="card p-4 space-y-2">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Reference Summary</h4>
-                {task.ccNo && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">Ref No.</span>
-                    <span className="font-mono font-semibold text-slate-700">{task.ccNo}</span>
-              </div>
-            )}
-            {task.ccTcd && (
-              <div className="flex justify-between text-xs">
-                <span className="text-slate-400">Target Date</span>
-                <span className="font-medium text-slate-700">{formatDate(task.ccTcd)}</span>
-              </div>
-            )}
-            {task.documentNo && (
-              <div className="flex justify-between text-xs">
-                <span className="text-slate-400">Doc No.</span>
-                <span className="font-mono font-semibold text-slate-700">{task.documentNo}</span>
-              </div>
-            )}
-            {task.applicableSite && task.applicableSite !== 'na' && (
-              <div className="flex justify-between text-xs">
-                <span className="text-slate-400">Site</span>
-                <span className="font-medium text-slate-700 uppercase">{task.applicableSite.replace('_',' + ')}</span>
-              </div>
-            )}
-            {task.deployStage && task.deployStage !== 'na' && (
-              <div className="flex justify-between text-xs items-center">
-                <span className="text-slate-400">Stage</span>
-                <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                  task.deployStage === 'prd' ? 'bg-green-50 text-green-700' :
-                  task.deployStage === 'int' ? 'bg-blue-50 text-blue-700' :
-                  'bg-purple-50 text-purple-700'
-                }`}>{task.deployStage.toUpperCase()}</span>
-              </div>
-            )}
-              </div>
-            )}
-          </div>
-        </details>
+        {/* ── Reference details ─────────────────────────────────────────
+           The change-control / document reference summary for this task.
+           Shown plainly (no effort-tracking here) so the page reads at a
+           glance. Only renders when the task actually carries reference data. */}
+        {hasReferenceData && (
+          <Card title="Reference details">
+            <div className="space-y-2">
+              {task.ccNo && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400 dark:text-white/35">Ref No.</span>
+                  <span className="font-mono font-semibold text-slate-700 dark:text-white/80">{task.ccNo}</span>
+                </div>
+              )}
+              {task.ccTcd && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400 dark:text-white/35">Target Date</span>
+                  <span className="font-medium text-slate-700 dark:text-white/80">{formatDate(task.ccTcd)}</span>
+                </div>
+              )}
+              {task.documentNo && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400 dark:text-white/35">Doc No.</span>
+                  <span className="font-mono font-semibold text-slate-700 dark:text-white/80">{task.documentNo}</span>
+                </div>
+              )}
+              {task.applicableSite && task.applicableSite !== 'na' && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400 dark:text-white/35">Site</span>
+                  <span className="font-medium text-slate-700 dark:text-white/80 uppercase">{task.applicableSite.replace('_', ' + ')}</span>
+                </div>
+              )}
+              {task.deployStage && task.deployStage !== 'na' && (
+                <div className="flex justify-between text-xs items-center">
+                  <span className="text-slate-400 dark:text-white/35">Stage</span>
+                  <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                    task.deployStage === 'prd' ? 'bg-green-50 text-green-700' :
+                    task.deployStage === 'int' ? 'bg-blue-50 text-blue-700' :
+                    'bg-purple-50 text-purple-700'
+                  }`}>{task.deployStage.toUpperCase()}</span>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
 
         {canSignoff && (
           <Card title="Formal Sign-off">
@@ -690,104 +668,3 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   );
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   Log effort — simple time-spent tracker on a task.
-   ────────────────────────────────────────────────────────────────────────── */
-function ScheduleEffortCard({ task, onChanged }: { task: any; onChanged: () => void }) {
-  const [openEffort, setOpenEffort] = useState(false);
-  const [savingEffort, setSavingEffort] = useState(false);
-
-  const [minutes, setMinutes] = useState<number>(30);
-  const [note, setNote] = useState('');
-
-  async function logEffort() {
-    if (!minutes || minutes < 1) return;
-    setSavingEffort(true);
-    try {
-      await api(`/tasks/${task.id}/effort`, { method: 'POST', body: { minutes, note: note.trim() } });
-      setMinutes(30); setNote('');
-      setOpenEffort(false);
-      onChanged();
-    } finally {
-      setSavingEffort(false);
-    }
-  }
-
-  const totalMins = task.effortMins || 0;
-  const totalLabel = totalMins >= 60
-    ? `${Math.floor(totalMins / 60)}h ${totalMins % 60 ? totalMins % 60 + 'm' : ''}`.trim()
-    : `${totalMins}m`;
-  const recent: any[] = (task.effortLog || []).slice(-3).reverse();
-
-  return (
-    <div className="card overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
-        <Activity size={13} className="text-brand-500" />
-        <h3 className="text-sm font-semibold text-slate-700">Pulse</h3>
-        {totalMins > 0 && (
-          <span className="ml-auto text-[10px] font-bold text-forest-700 bg-forest-50 border border-forest-100 px-1.5 py-0.5 rounded">
-            {totalLabel} logged
-          </span>
-        )}
-      </div>
-
-      <div className="p-3 space-y-2">
-        <button
-          type="button"
-          onClick={() => setOpenEffort(v => !v)}
-          className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border ${
-            openEffort
-              ? 'bg-forest-50 text-forest-700 border-forest-200'
-              : 'bg-white text-slate-600 border-slate-200 hover:border-forest-200 hover:text-forest-700'
-          }`}
-        >
-          <Timer size={13} /> Log effort
-        </button>
-
-        {openEffort && (
-          <div className="rounded-lg border border-forest-100 bg-forest-50/40 p-3 space-y-2.5 fade-in-soft">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-forest-700">Log time spent</div>
-            <div className="flex flex-wrap gap-1">
-              {[15, 30, 45, 60, 90, 120].map((m) => (
-                <button key={m} type="button" onClick={() => setMinutes(m)}
-                  className={`px-2 py-1 rounded-full text-[11px] font-bold border transition-all ${
-                    minutes === m ? 'bg-forest-600 text-white border-forest-600' : 'bg-white text-slate-500 border-slate-200 hover:border-forest-300'
-                  }`}>
-                  {m < 60 ? `${m}m` : `${m / 60}h`}
-                </button>
-              ))}
-              <input type="number" min={1} max={720} value={minutes}
-                onChange={(e) => setMinutes(Math.max(1, Number(e.target.value) || 0))}
-                className="input text-xs py-1 w-20" aria-label="Custom minutes" />
-            </div>
-            <input className="input text-xs py-1.5" placeholder="Optional note — what did you work on?"
-              value={note} onChange={(e) => setNote(e.target.value)} />
-            <button onClick={logEffort} disabled={savingEffort} className="btn-success w-full justify-center text-xs"
-              style={{ background: 'linear-gradient(135deg, #2B8C29 0%, #43A047 100%)' }}>
-              {savingEffort ? 'Saving…' : `Log ${minutes}m`}
-            </button>
-          </div>
-        )}
-
-        {recent.length > 0 && (
-          <div className="pt-1.5">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Recent</div>
-            <ul className="space-y-1">
-              {recent.map((e: any) => (
-                <li key={e.id} className="flex items-start gap-2 text-xs">
-                  <span className="text-forest-600 font-bold tabular-nums shrink-0">
-                    {e.minutes < 60 ? `${e.minutes}m` : `${(e.minutes / 60).toFixed(1)}h`}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-slate-500">{e.note || (e.source === 'calendar' ? 'Scheduled meeting' : 'Worked on it')}</span>
-                    <span className="text-[10px] text-slate-300 ml-1.5">{e.onDate || formatDate(e.createdAt)}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
