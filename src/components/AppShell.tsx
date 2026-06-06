@@ -8,6 +8,7 @@ import { PragatiMark } from './PragatiMark';
 import { CurrentUserProvider } from './CurrentUserContext';
 import { AvatarRegistryProvider } from './AvatarRegistry';
 import { NotificationBell } from './NotificationBell';
+import { SidebarCalendar } from './SidebarCalendar';
 import { api } from '@/lib/client/api';
 
 // Force-password modal — only ships when a user has mustChangePassword set.
@@ -347,6 +348,11 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
             );
           })}
         </div>
+
+        {/* Sidebar calendar — compact month view with due-date dots. Hidden on
+            the collapsed icon rail; sits just above "My Day" so My Day stays
+            pinned closest to the footer. */}
+        {!showCollapsed && <SidebarCalendar dark={dark} />}
 
         {/* My Day — pinned just above the footer so it's always reachable */}
         <div className="mt-2 pt-2 border-t" style={{ borderColor: dark ? 'rgba(255,255,255,0.06)' : '#eef2f7' }}>
