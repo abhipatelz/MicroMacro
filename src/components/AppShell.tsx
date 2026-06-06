@@ -11,22 +11,11 @@ import { NotificationBell } from './NotificationBell';
 import { SidebarCalendar } from './SidebarCalendar';
 import { api } from '@/lib/client/api';
 
-// Force-password modal — only ships when a user has mustChangePassword set.
-// Keeps the long form code (strength meter, validators) out of the main bundle.
-const ForcePasswordModal = dynamic(
-  () => import('./ForcePasswordModal').then(m => m.ForcePasswordModal),
-  { ssr: false, loading: () => null },
-);
-// Mandatory Quick-PIN setup on first login — lazy so it stays out of the bundle
-// for everyone who already has a PIN.
-const SetPinModal = dynamic(
-  () => import('./SetPinModal').then(m => m.SetPinModal),
-  { ssr: false, loading: () => null },
-);
-// Spotlight onboarding tour — mounted at the shell level so contributors,
-// leads, and admins all get it on whichever page they land on.
-const FirstTimeTour = dynamic(
-  () => import('./FirstTimeTour').then(m => m.FirstTimeTour),
+// Shell side-effects (idle auto-logout, onboarding gates, session warning)
+// loaded after the shell itself has hydrated so heavy event listeners don't
+// run during the critical hydration pass. Falls back to null on server.
+const ShellEffects = dynamic(
+  () => import('./ShellEffects').then(m => m.ShellEffects),
   { ssr: false, loading: () => null },
 );
 import {
@@ -82,21 +71,8 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
 
   const [open, setOpen]               = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [idleWarning, setIdleWarning] = useState(false);
   const [dark, toggleDark]            = useDarkMode(initialDark);
-  const [mustChangePw, setMustChangePw] = useState(!!user.mustChangePassword);
-  // Show the PIN modal only when ALL of these hold:
-  //  • the user doesn't already have a PIN
-  //  • they've completed at least 2 full logins (first visit is busy with
-  //    password change + onboarding tour)
-  //  • they haven't dismissed the prompt this session with "Maybe later"
-  const shouldOfferPin =
-    !user.hasPin &&
-    (user.loginCount ?? 0) >= 2 &&
-    !user.pinPromptDismissedAt;
-  const [needsPin, setNeedsPin] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const lastActivityRef = useRef(Date.now());
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
   // Desktop "distraction-free" collapse: shrinks the sidebar to an icon rail
@@ -130,33 +106,6 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
     };
   }, [accountMenuOpen]);
 
-  // ── Idle auto-logout ────────────────────────────────────────────────
-  // 21 CFR Part 11 §11.10(d): unattended sessions must not stay open.
-  // At 25 min idle we show a "Still there?" modal; at 30 min we force log out.
-  useEffect(() => {
-    const WARN_MS = 25 * 60 * 1000;
-    const IDLE_MS = 30 * 60 * 1000;
-    const mark = () => { lastActivityRef.current = Date.now(); setIdleWarning(false); };
-    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
-    events.forEach((e) => window.addEventListener(e, mark, { passive: true }));
-    const iv = setInterval(() => {
-      const idle = Date.now() - lastActivityRef.current;
-      if (idle >= IDLE_MS) {
-        clearInterval(iv);
-        setIdleWarning(false);
-        api('/auth/logout', { method: 'POST' }).finally(() => {
-          router.replace('/login');
-          router.refresh();
-        });
-      } else if (idle >= WARN_MS) {
-        setIdleWarning(true);
-      }
-    }, 30_000);
-    return () => {
-      clearInterval(iv);
-      events.forEach((e) => window.removeEventListener(e, mark));
-    };
-  }, [router]);
 
   type NavItem = { href: string; label: string; icon: any; iconColor: string; iconBg: string };
 
@@ -565,32 +514,10 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
         </main>
       </div>
 
-      {mustChangePw && (
-        <ForcePasswordModal onDone={() => { setMustChangePw(false); router.refresh(); }} />
-      )}
-
-      {/* Spotlight onboarding tour — runs once per user (server-tracked via
-          hasSeenTour). Mounted here so every role sees it regardless of
-          which page they land on after login, and so it doesn't clash with
-          the password / PIN gates above (it's lazy and exits cleanly when
-          alreadySeen). */}
-      {!mustChangePw && !needsPin && (
-        <FirstTimeTour alreadySeen={user.hasSeenTour !== false} />
-      )}
-
-      {/* Quick-PIN prompt — only after the password step (if any) is cleared,
-          and from the user's second login onward (see shouldOfferPin above).
-          Dismissable: "Maybe later" records pinPromptDismissedAt so we stop
-          blocking and re-offer gently next session. */}
-      {!mustChangePw && needsPin && (
-        <SetPinModal
-          onDone={() => { setNeedsPin(false); router.refresh(); }}
-          onDismiss={async () => {
-            setNeedsPin(false);
-            try { await api('/me/pin-prompt-dismissed', { method: 'POST' }); } catch { /* best-effort */ }
-          }}
-        />
-      )}
+      {/* Deferred shell effects — idle auto-logout, onboarding gates, and
+          session warning. Loaded after the shell hydrates so the 6 window
+          event listeners and the 30s interval don't block the hydration pass. */}
+      <ShellEffects user={user} dark={dark} />
 
       {/* Sign-out confirmation — fixed centered modal, works in both expanded and collapsed sidebar */}
       {confirmLogout && (
@@ -625,38 +552,6 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
         </div>
       )}
 
-      {/* Idle session warning — 5 min before automatic sign-out */}
-      {idleWarning && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-[320px] rounded-2xl p-6 flex flex-col gap-4 text-center shadow-2xl"
-            style={{ background: dark ? '#262624' : '#ffffff', border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0' }}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto"
-              style={{ background: dark ? 'rgba(245,158,11,0.12)' : '#FEF3C7' }}>
-              <AlertTriangle size={22} className="text-amber-500" />
-            </div>
-            <div>
-              <div className={`text-base font-bold ${dark ? 'text-white/90' : 'text-slate-800'}`}>Still there?</div>
-              <div className={`text-xs mt-1 leading-snug ${dark ? 'text-white/45' : 'text-slate-500'}`}>
-                You'll be signed out in 5 minutes due to inactivity.
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => {
-                lastActivityRef.current = Date.now();
-                setIdleWarning(false);
-              }} className="flex-1 py-2 rounded-xl text-sm font-bold transition-colors"
-                style={dark ? { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.8)' } : { background: '#F1F5F9', color: '#475569' }}>
-                Continue
-              </button>
-              <button onClick={logout}
-                className="flex-1 py-2 rounded-xl text-sm font-bold text-red-500 transition-colors"
-                style={dark ? { background: 'rgba(239,68,68,0.18)' } : { background: '#FEF2F2' }}>
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
     </AvatarRegistryProvider>
     </CurrentUserProvider>
