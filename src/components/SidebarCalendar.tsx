@@ -42,7 +42,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
   const today = useMemo(() => new Date(), []);
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [tasks, setTasks] = useState<CalTask[]>([]);
-  const [hover, setHover] = useState<{ key: string; x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<{ key: string; x: number; y: number; placeLeft: boolean } | null>(null);
   const [headerHovered, setHeaderHovered] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -100,7 +100,19 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
   function openHover(key: string, el: HTMLElement) {
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     const r = el.getBoundingClientRect();
-    setHover({ key, x: r.right + 10, y: r.top + r.height / 2 });
+    // Place the card to the right of the day cell, but flip to the left when
+    // there isn't room (keeps it from spilling off-screen). Vertically it's
+    // centred on the cell, then clamped so a bottom-row day's card never runs
+    // past the viewport edges.
+    const CARD_W = 248;
+    const CARD_H = 240;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const placeLeft = r.right + CARD_W + 16 > vw;
+    const x = placeLeft ? r.left - 10 : r.right + 10;
+    const half = CARD_H / 2;
+    const y = Math.max(half + 8, Math.min(r.top + r.height / 2, vh - half - 8));
+    setHover({ key, x, y, placeLeft });
   }
   function closeHover() {
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
@@ -199,12 +211,12 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
       {hover && hoverList.length > 0 && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed z-[1200] -translate-y-1/2 pointer-events-auto"
-          style={{ left: hover.x, top: hover.y }}
+          style={{ left: hover.x, top: hover.y, transform: hover.placeLeft ? 'translate(-100%, -50%)' : 'translateY(-50%)' }}
           onMouseEnter={() => { if (hoverTimer.current) clearTimeout(hoverTimer.current); }}
           onMouseLeave={closeHover}
         >
           <div
-            className="w-[230px] rounded-xl border p-2.5 shadow-2xl"
+            className="w-[248px] rounded-xl border p-2.5 shadow-2xl"
             style={{
               background: dark ? '#2b2b29' : '#ffffff',
               borderColor: dark ? 'rgba(255,255,255,0.10)' : '#e2e8f0',
@@ -227,14 +239,16 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                       <div className={`text-[11.5px] font-medium leading-snug truncate ${dark ? 'text-white/80' : 'text-slate-700'}`}>
                         {t.title}
                       </div>
-                      <div className={`text-[9.5px] mt-px flex items-center gap-1 ${dark ? 'text-white/35' : 'text-slate-400'}`}>
+                      {/* Meta line: owner/team truncates, code + overdue keep their
+                          width so a long team name can't wrap the row into a mess. */}
+                      <div className={`text-[9.5px] mt-px flex items-center gap-1 min-w-0 ${dark ? 'text-white/35' : 'text-slate-400'}`}>
                         {t.mine
-                          ? <span className="font-semibold text-blue-500">You</span>
+                          ? <span className="font-semibold text-blue-500 shrink-0">You</span>
                           : t.teamName
-                            ? <span className="font-semibold" style={{ color: '#22a565' }}>{t.teamName}</span>
-                            : <span>Team</span>}
-                        {t.projectCode && <span className="font-mono">· {t.projectCode}</span>}
-                        {overdue && <span className="font-semibold text-red-500">· overdue</span>}
+                            ? <span className="font-semibold truncate min-w-0" style={{ color: '#22a565' }}>{t.teamName}</span>
+                            : <span className="shrink-0">Team</span>}
+                        {t.projectCode && <span className="font-mono shrink-0">· {t.projectCode}</span>}
+                        {overdue && <span className="font-semibold text-red-500 shrink-0">· overdue</span>}
                       </div>
                     </div>
                   </div>
