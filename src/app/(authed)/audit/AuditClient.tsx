@@ -131,24 +131,29 @@ export default function AuditClient({ initialRows, initialNextBefore = null }: {
 
   return (
     <div className="max-w-5xl space-y-5 pb-12">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-            <ScrollText size={20} className="text-blue-500" /> Operation logs
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            An immutable record of operational activity — who did what, and when.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/audit/changelog"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 px-2.5 py-1.5 rounded-lg transition-colors">
-            <Sparkles size={13} /> Changelog
-          </Link>
-          <button onClick={load} disabled={busy}
-            className="btn-secondary flex items-center gap-1.5 text-xs">
-            <RefreshCw size={13} className={busy ? 'animate-spin' : ''} /> Refresh
-          </button>
+      <div className="pb-5 mb-1 border-b border-slate-100 dark:border-white/[0.06]">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 page-icon-box bg-blue-50 dark:bg-blue-500/10 shrink-0">
+              <ScrollText size={19} className="text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h1 className="page-title">Operation logs</h1>
+              <p className="text-sm text-slate-500 dark:text-white/45 mt-1 leading-snug">
+                An immutable record of operational activity — who did what, and when.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+            <Link href="/audit/changelog"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 px-2.5 py-1.5 rounded-lg transition-colors">
+              <Sparkles size={13} /> Changelog
+            </Link>
+            <button onClick={load} disabled={busy}
+              className="btn-secondary flex items-center gap-1.5 text-xs">
+              <RefreshCw size={13} className={busy ? 'animate-spin' : ''} /> Refresh
+            </button>
+          </div>
         </div>
       </div>
 

@@ -329,18 +329,23 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
                     : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white/90 hover:bg-slate-50 dark:hover:bg-white/5'
                 }`}
                 style={active ? (showCollapsed ? {
-                  background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
+                  background: dark ? 'rgba(255,255,255,0.09)' : n.iconBg,
+                  boxShadow: dark ? 'none' : `inset 0 0 0 1px ${n.iconColor}18`,
                 } : {
-                  background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
-                  borderLeft: `3px solid ${n.iconColor}`,
+                  background: dark
+                    ? `linear-gradient(to right, ${n.iconColor}28, rgba(255,255,255,0.03))`
+                    : `linear-gradient(to right, ${n.iconBg} 0%, transparent 100%)`,
+                  borderLeft: `2.5px solid ${n.iconColor}`,
                   paddingLeft: '9px',
+                  boxShadow: dark ? 'none' : `inset 0 0 0 1px ${n.iconColor}10`,
                 }) : {}}
               >
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
                   style={{
                     background: active
-                      ? (dark ? `${n.iconColor}30` : n.iconBg)
+                      ? (dark ? `${n.iconColor}35` : n.iconBg)
                       : (dark ? `${n.iconColor}18` : `${n.iconColor}14`),
+                    boxShadow: active ? (dark ? 'none' : `0 0 0 1px ${n.iconColor}20`) : 'none',
                   }}>
                   <Icon size={14} style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }} />
                 </div>
@@ -365,18 +370,23 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
                     : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white/90 hover:bg-slate-50 dark:hover:bg-white/5'
                 }`}
                 style={active ? (showCollapsed ? {
-                  background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
+                  background: dark ? 'rgba(255,255,255,0.09)' : n.iconBg,
+                  boxShadow: dark ? 'none' : `inset 0 0 0 1px ${n.iconColor}18`,
                 } : {
-                  background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
-                  borderLeft: `3px solid ${n.iconColor}`,
+                  background: dark
+                    ? `linear-gradient(to right, ${n.iconColor}28, rgba(255,255,255,0.03))`
+                    : `linear-gradient(to right, ${n.iconBg} 0%, transparent 100%)`,
+                  borderLeft: `2.5px solid ${n.iconColor}`,
                   paddingLeft: '9px',
+                  boxShadow: dark ? 'none' : `inset 0 0 0 1px ${n.iconColor}10`,
                 }) : {}}
               >
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
                   style={{
                     background: active
-                      ? (dark ? `${n.iconColor}30` : n.iconBg)
+                      ? (dark ? `${n.iconColor}35` : n.iconBg)
                       : (dark ? `${n.iconColor}18` : `${n.iconColor}14`),
+                    boxShadow: active ? (dark ? 'none' : `0 0 0 1px ${n.iconColor}20`) : 'none',
                   }}>
                   <Icon size={14} style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }} />
                 </div>

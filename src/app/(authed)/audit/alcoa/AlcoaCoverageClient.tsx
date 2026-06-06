@@ -81,24 +81,29 @@ export default function AlcoaCoverageClient() {
 
   return (
     <div className="max-w-5xl space-y-5 pb-12">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <Link href="/audit"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mb-1.5">
-            <ArrowLeft size={13} /> Back to logs
-          </Link>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldCheck size={20} className="text-emerald-500" /> ALCOA+ coverage
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Read-only data-integrity rollup across GxP-critical tasks. Deterministic — every
-            gap traces to a rule in the scorer. Close gaps from each task page.
-          </p>
+      <div className="pb-5 mb-1 border-b border-slate-100 dark:border-white/[0.06]">
+        <Link href="/audit"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mb-3">
+          <ArrowLeft size={13} /> Back to logs
+        </Link>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 page-icon-box bg-emerald-50 dark:bg-emerald-500/10 shrink-0">
+              <ShieldCheck size={19} className="text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h1 className="page-title">ALCOA+ coverage</h1>
+              <p className="text-sm text-slate-500 dark:text-white/45 mt-1 leading-snug">
+                Read-only data-integrity rollup across GxP-critical tasks. Deterministic — every
+                gap traces to a rule in the scorer. Close gaps from each task page.
+              </p>
+            </div>
+          </div>
+          <button onClick={load} disabled={loading}
+            className="btn-secondary flex items-center gap-1.5 text-xs mt-0.5">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
         </div>
-        <button onClick={load} disabled={loading}
-          className="btn-secondary flex items-center gap-1.5 text-xs">
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
-        </button>
       </div>
 
       {err && (

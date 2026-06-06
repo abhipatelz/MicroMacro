@@ -61,15 +61,19 @@ export default function TriagePage() {
     <div className="max-w-2xl mx-auto space-y-6 pb-10">
 
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2.5 mb-1">
-          <FlaskConical size={20} className="text-brand-600" />
-          <h1 className="text-2xl font-black text-slate-900">QA Triage Assistant</h1>
+      <div className="pb-5 mb-1 border-b border-slate-100 dark:border-white/[0.06]">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 page-icon-box bg-violet-50 dark:bg-violet-500/10 shrink-0">
+            <FlaskConical size={19} className="text-violet-600 dark:text-violet-400" />
+          </div>
+          <div>
+            <h1 className="page-title">QA Triage Assistant</h1>
+            <p className="text-sm text-slate-500 dark:text-white/45 mt-1 leading-snug">
+              Describe a quality event — deviation, audit finding, data integrity issue, or CAPA trigger.
+              The engine will classify severity, suggest CAPA actions, and surface similar past events.
+            </p>
+          </div>
         </div>
-        <p className="text-sm text-slate-500">
-          Describe a quality event — deviation, audit finding, data integrity issue, or CAPA trigger.
-          The engine will classify severity, suggest CAPA actions, and surface similar past events.
-        </p>
       </div>
 
       {/* Form */}

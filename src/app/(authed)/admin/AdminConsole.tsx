@@ -993,27 +993,24 @@ export default function AdminConsole({
   return (
     <div className="pb-14">
       {/* Page header */}
-      <div className="flex items-start justify-between gap-4 pt-1 mb-8">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
-              <Layers size={13} className="text-white" />
+      <div className="pb-5 mb-8 border-b border-slate-100 dark:border-white/[0.06] pt-1">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 page-icon-box bg-indigo-50 dark:bg-indigo-500/10 shrink-0">
+              <Layers size={19} className="text-indigo-600 dark:text-indigo-400" />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 dark:text-white/30">
-              Admin Console
-            </span>
+            <div>
+              <h1 className="page-title">Workspace settings</h1>
+              <p className="text-sm text-slate-500 dark:text-white/45 mt-1 leading-snug">
+                Manage your workspace, members, and platform configuration.
+              </p>
+            </div>
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white/90">
-            Workspace settings
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-white/40 mt-1">
-            Manage your workspace, members, and platform configuration.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link href="/audit" className="btn-secondary gap-2 text-sm">
-            <ScrollText size={14} /> Audit log
-          </Link>
+          <div className="flex items-center gap-2 shrink-0 mt-0.5">
+            <Link href="/audit" className="btn-secondary gap-2 text-sm">
+              <ScrollText size={14} /> Audit log
+            </Link>
+          </div>
         </div>
       </div>
 

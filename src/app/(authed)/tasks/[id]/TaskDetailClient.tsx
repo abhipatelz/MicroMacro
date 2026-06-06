@@ -347,11 +347,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
 
         {/* ── Reference & Tracking details ─────────────────────────────── */}
         <div className="card overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
+          <div className="panel-header">
             <FileText size={14} className="text-blue-500" />
-            <h3 className="text-sm font-semibold text-slate-700">Reference & Tracking</h3>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-white/70">Reference & Tracking</h3>
             {hasReferenceData && (
-              <span className="ml-auto text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Filled</span>
+              <span className="ml-auto text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-500/15 dark:text-blue-400 px-1.5 py-0.5 rounded">Filled</span>
             )}
           </div>
           <div className="p-4 space-y-4">
@@ -724,9 +724,9 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
         {/* ── Past Cases — institutional memory surface ─────────────── */}
         {pastCases && pastCases.length > 0 && (
           <div className="card overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
-              <BookOpen size={13} className="text-slate-400" />
-              <h3 className="text-sm font-semibold text-slate-600">Past cases like this</h3>
+            <div className="panel-header">
+              <BookOpen size={13} className="text-slate-400 dark:text-white/30" />
+              <h3 className="text-sm font-semibold text-slate-600 dark:text-white/60">Past cases like this</h3>
             </div>
             <div className="p-3 space-y-2.5">
               {pastCases.map((c: any) => (

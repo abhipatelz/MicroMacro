@@ -250,21 +250,25 @@ export default function RiskRadarPage() {
   return (
     <div className="max-w-3xl space-y-5 pb-10">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Activity size={20} className="text-red-500" />
-            <h1 className="text-2xl font-black text-slate-900">Task Triage</h1>
+      <div className="pb-5 mb-1 border-b border-slate-100 dark:border-white/[0.06]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 page-icon-box bg-red-50 dark:bg-red-500/10 shrink-0">
+              <Activity size={19} className="text-red-500 dark:text-red-400" />
+            </div>
+            <div>
+              <h1 className="page-title">Task Triage</h1>
+              <p className="text-sm text-slate-500 dark:text-white/45 mt-1 leading-snug">
+                Open tasks ranked by deadline-miss probability — fix the riskiest first, right from here.
+                {data && <span className="ml-1 text-slate-400 dark:text-white/25">(model trained on {data.model.trainedOn} closed tasks)</span>}
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-slate-500">
-            Open tasks ranked by deadline-miss probability — fix the riskiest first, right from here.
-            {data && <span className="ml-1 text-slate-400">(model trained on {data.model.trainedOn} closed tasks)</span>}
-          </p>
+          <button onClick={load} disabled={loading} className="btn-secondary flex items-center gap-1.5 text-xs shrink-0 mt-1">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
         </div>
-        <button onClick={load} disabled={loading} className="btn-secondary flex items-center gap-1.5 text-xs shrink-0">
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
       </div>
 
       {/* Summary tiles */}

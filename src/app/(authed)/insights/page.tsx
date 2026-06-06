@@ -108,12 +108,19 @@ export default function InsightsPage() {
     <div className="space-y-6 pb-10">
 
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-slate-900">Trends</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          How your teams are moving over time — velocity, momentum and people load.
-          <Link href="/org" className="ml-1 text-brand-600 hover:underline">See today's project health →</Link>
-        </p>
+      <div className="pb-5 mb-1 border-b border-slate-100 dark:border-white/[0.06]">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 page-icon-box bg-blue-50 dark:bg-blue-500/10 shrink-0">
+            <TrendingUp size={19} className="text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="page-title">Trends</h1>
+            <p className="text-sm text-slate-500 dark:text-white/45 mt-1 leading-snug">
+              How your teams are moving over time — velocity, momentum and people load.
+              <Link href="/org" className="ml-1 text-blue-600 dark:text-blue-400 hover:underline font-medium">Project health →</Link>
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Executive brief */}

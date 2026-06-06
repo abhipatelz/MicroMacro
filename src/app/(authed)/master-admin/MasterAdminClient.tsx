@@ -36,23 +36,26 @@ export default function MasterAdminClient({
 }) {
   return (
     <div className="max-w-5xl pb-12 space-y-6">
-      <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-widest text-purple-600">Platform · Master admin</div>
-          <h1 className="text-2xl font-black text-slate-900 mt-0.5 flex items-center gap-2">
-            <Globe size={22} className="text-purple-500" />
-            Tenant registry
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Signed in as <span className="font-semibold text-slate-700">{adminName}</span>.
-            This console is visible only to users with the <code className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">master_admin</code> role.
-          </p>
+      <header className="pb-5 mb-1 border-b border-slate-100 dark:border-white/[0.06]">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 page-icon-box bg-purple-50 dark:bg-purple-500/10 shrink-0">
+              <Globe size={19} className="text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h1 className="page-title">Tenant registry</h1>
+              <p className="text-sm text-slate-500 dark:text-white/45 mt-1 leading-snug">
+                Signed in as <span className="font-semibold text-slate-700 dark:text-white/70">{adminName}</span>.
+                This console is visible only to users with the <code className="font-mono text-xs bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded">master_admin</code> role.
+              </p>
+            </div>
+          </div>
+          <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full mt-0.5 ${
+            active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
+          }`}>
+            {active ? 'Runtime: Active' : 'Runtime: Dormant'}
+          </span>
         </div>
-        <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${
-          active ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-        }`}>
-          {active ? 'Runtime: Active' : 'Runtime: Dormant'}
-        </span>
       </header>
 
       {!active && (

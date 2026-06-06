@@ -23,17 +23,17 @@ export default async function ChangelogPage() {
   return (
     <div className="max-w-3xl pb-12">
       {/* Header */}
-      <div className="mb-6 pt-1">
+      <div className="pb-5 mb-6 border-b border-slate-100 dark:border-white/[0.06] pt-1">
         <Link href="/audit" className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 mb-3">
           <ArrowLeft size={13} /> Back to audit
         </Link>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-500/15 flex items-center justify-center">
-            <Sparkles size={18} className="text-indigo-600 dark:text-indigo-300" />
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 page-icon-box bg-indigo-50 dark:bg-indigo-500/10 shrink-0">
+            <Sparkles size={19} className="text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white/90 tracking-tight">Changelog</h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <h1 className="page-title">Changelog</h1>
+            <p className="text-sm text-slate-500 dark:text-white/45 mt-1 leading-snug">
               What's new in Pragati — most recent first.
             </p>
           </div>

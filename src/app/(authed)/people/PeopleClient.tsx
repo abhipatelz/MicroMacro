@@ -9,7 +9,7 @@ const ActivityGraph = dynamic(
   () => import('@/components/ActivityGraph').then(m => m.ActivityGraph),
   { ssr: false, loading: () => <div className="h-40 skeleton rounded-xl" /> },
 );
-import { UserPlus, Upload, Copy, Check, X, Shield, User, AlertTriangle, Pencil, Trash2, BarChart3, Search, UserX, RotateCcw, ScrollText, CheckSquare, Square, MinusSquare } from 'lucide-react';
+import { UserPlus, Upload, Copy, Check, X, Shield, User, Users, AlertTriangle, Pencil, Trash2, BarChart3, Search, UserX, RotateCcw, ScrollText, CheckSquare, Square, MinusSquare } from 'lucide-react';
 
 /* ── Activity peek modal — team leaders click a teammate to see how they're
    tracking: contribution graph, streak and badges (read-only, no private
@@ -1064,20 +1064,27 @@ export default function PeopleClient({ initialUsers, contribTotal = 0, contribPa
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 pt-1">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">People</h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Workspace user management — add people, promote contributors to leads, reset passwords, and unlock accounts.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button onClick={() => setShowImport(true)} className="btn-secondary gap-2">
-            <Upload size={14} /> Import
-          </button>
-          <button onClick={() => setShowAdd(true)} className="btn-primary gap-2">
-            <UserPlus size={14} /> Add member
-          </button>
+      <div className="pb-5 mb-1 border-b border-slate-100 dark:border-white/[0.06]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 page-icon-box bg-indigo-50 dark:bg-indigo-500/10 shrink-0">
+              <Users size={19} className="text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h1 className="page-title">People</h1>
+              <p className="text-sm text-slate-500 dark:text-white/45 mt-1 leading-snug">
+                Workspace user management — add people, promote contributors to leads, reset passwords, and unlock accounts.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 mt-0.5">
+            <button onClick={() => setShowImport(true)} className="btn-secondary gap-2">
+              <Upload size={14} /> Import
+            </button>
+            <button onClick={() => setShowAdd(true)} className="btn-primary gap-2">
+              <UserPlus size={14} /> Add member
+            </button>
+          </div>
         </div>
       </div>
 
