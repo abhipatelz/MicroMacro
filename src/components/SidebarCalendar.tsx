@@ -28,12 +28,7 @@ interface CalTask {
   priority: string | null;
 }
 
-// First name only — the calendar hover is tight, and a first name reads fastest.
-function firstName(name?: string | null): string {
-  return (name || '').trim().split(/\s+/)[0] || '';
-}
-
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 // Local YYYY-MM-DD key (avoids UTC drift from toISOString).
@@ -125,10 +120,21 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
     hoverTimer.current = setTimeout(() => setHover(null), 80);
   }
 
-  const monthLabel = `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
+  const monthName  = MONTHS[cursor.getMonth()];
+  const monthYear  = cursor.getFullYear();
+  const monthLabel = `${monthName} ${monthYear}`;
   const isCurrentMonth = cursor.getMonth() === today.getMonth() && cursor.getFullYear() === today.getFullYear();
 
   const hoverList = hover ? (byDay.get(hover.key) || []) : [];
+
+  // Determine the dominant accent color for the hover card's left-border:
+  // overdue → red, mine (no overdue) → blue, team only → green.
+  function hoverAccentColor(list: CalTask[]): string {
+    const sig = signals(list);
+    if (sig.overdue) return '#ef4444';
+    if (sig.mine)    return '#1976D2';
+    return '#22a565';
+  }
 
   return (
     <div className="mt-2 pt-2.5 border-t" style={{ borderColor: dark ? 'rgba(255,255,255,0.06)' : '#eef2f7' }}>
@@ -140,12 +146,13 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
       >
         <button
           onClick={() => !isCurrentMonth && setCursor(new Date(today.getFullYear(), today.getMonth(), 1))}
-          className={`text-[11px] font-bold tracking-tight truncate transition-colors ${
-            dark ? 'text-white/70' : 'text-slate-600'
-          } ${isCurrentMonth ? 'cursor-default' : 'hover:text-blue-500 cursor-pointer'}`}
+          className={`flex items-baseline gap-1 text-[11px] tracking-tight truncate transition-colors ${
+            isCurrentMonth ? 'cursor-default' : 'hover:text-blue-500 cursor-pointer'
+          }`}
           title={isCurrentMonth ? undefined : 'Back to this month'}
         >
-          {monthLabel}
+          <span className={`font-black ${dark ? 'text-white/80' : 'text-slate-700'}`}>{monthName}</span>
+          <span className={`font-semibold ${dark ? 'text-white/35' : 'text-slate-400'}`}>{monthYear}</span>
         </button>
         <div
           className="flex items-center gap-0.5 shrink-0 transition-all duration-150"
@@ -189,7 +196,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                 onMouseEnter={(e) => list && openHover(k, e.currentTarget)}
                 onMouseLeave={closeHover}
                 onClick={(e) => list && openHover(k, e.currentTarget)}
-                className={`relative w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-semibold transition-colors ${
+                className={`relative rounded-full flex items-center justify-center text-[10px] font-semibold transition-colors ${
                   list ? 'cursor-pointer' : 'cursor-default'
                 } ${
                   isToday
@@ -198,15 +205,17 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                       ? (dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100')
                       : (dark ? 'text-white/20' : 'text-slate-300')
                 }`}
-                style={isToday ? { background: 'linear-gradient(135deg,#1565C0,#1976D2)' } : {}}
+                style={isToday
+                  ? { width: 26, height: 26, background: 'linear-gradient(135deg,#0d47a1 0%,#1565C0 45%,#1e88e5 100%)', boxShadow: '0 2px 8px rgba(21,101,192,0.45)' }
+                  : { width: 24, height: 24 }}
               >
                 {d.getDate()}
               </button>
               {/* Dots — at most two (mine=blue, team=green); overdue paints red */}
-              <div className="flex items-center gap-[2px] h-[5px] mt-[1px]">
-                {sig?.overdue && <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#ef4444' }} />}
-                {!sig?.overdue && sig?.mine && <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#1976D2' }} />}
-                {!sig?.overdue && sig?.team && <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#22a565' }} />}
+              <div className="flex items-center gap-[2px] h-[6px] mt-[1px]">
+                {sig?.overdue && <span className="w-[6px] h-[6px] rounded-full" style={{ background: '#ef4444' }} />}
+                {!sig?.overdue && sig?.mine && <span className="w-[6px] h-[6px] rounded-full" style={{ background: '#1976D2' }} />}
+                {!sig?.overdue && sig?.team && <span className="w-[6px] h-[6px] rounded-full" style={{ background: '#22a565' }} />}
               </div>
             </div>
           );
@@ -227,9 +236,10 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
               background: dark ? '#2b2b29' : '#ffffff',
               borderColor: dark ? 'rgba(255,255,255,0.10)' : '#e2e8f0',
               boxShadow: dark ? '0 18px 44px rgba(0,0,0,0.5)' : '0 18px 44px rgba(15,23,42,0.18)',
+              borderLeft: `3px solid ${hoverAccentColor(hoverList)}`,
             }}
           >
-            <div className={`text-[11px] font-black tracking-tight mb-1.5 ${dark ? 'text-white/85' : 'text-slate-700'}`}>
+            <div className={`text-[12px] font-black tracking-tight mb-1.5 ${dark ? 'text-white/85' : 'text-slate-700'}`}>
               {new Date(hover.key + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
             </div>
             <div className="space-y-1.5 max-h-[220px] overflow-y-auto no-scrollbar">
@@ -238,7 +248,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                 return (
                   <div key={t.id} className="flex items-start gap-1.5">
                     <span
-                      className="w-[5px] h-[5px] rounded-full mt-[5px] shrink-0"
+                      className="w-[6px] h-[6px] rounded-full mt-[5px] shrink-0"
                       style={{ background: overdue ? '#ef4444' : t.mine ? '#1976D2' : '#22a565' }}
                     />
                     <div className="min-w-0 flex-1">

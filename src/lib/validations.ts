@@ -55,6 +55,13 @@ export const ProjectLifecycleEnum = z.enum([
   'personal_wellness',
   'personal_declutter',
   'personal_network',
+  // Life Sciences — additional regulatory / operational lifecycles
+  'regulatory_submission',
+  'computer_system_retirement',
+  'incident_management',
+  'vendor_qualification',
+  'training_program',
+  'product_recall',
 ]);
 
 export const GxpImpactEnum = z.enum(['none', 'low', 'medium', 'high']);
@@ -162,6 +169,9 @@ export const ProjectUpdateSchema = z.object({
   startDate: dateString.nullable().optional(),
   dueDate: dateString.nullable().optional(),
   gxpImpact: GxpImpactEnum.optional(),
+  // Project-level Change Control reference number — a GxP identifier whose
+  // every change must be logged with a before/after record.
+  ccNo: z.string().max(60).optional(),
   // E-signature fields for controlled status changes on shared projects
   // (21 CFR Part 11 §11.10/§11.50). The route re-verifies `password` and
   // records `remarks` (the reason) verbatim in the audit trail. Optional here

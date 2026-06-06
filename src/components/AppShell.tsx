@@ -72,7 +72,7 @@ function useDarkMode(initialDark: boolean): [boolean, () => void] {
 }
 
 /* ── Main shell ─────────────────────────────────────────────────────── */
-export default function AppShell({ user, initialDark, initialSidebarCollapsed = false, initialAvatars, initialUnread = 0, children }: { user: CurrentUser; initialDark: boolean; initialSidebarCollapsed?: boolean; initialAvatars?: Record<string, { letter: string; bg: string; font: number }>; initialUnread?: number; children: React.ReactNode }) {
+export default function AppShell({ user, initialDark, initialSidebarCollapsed = false, initialSidebarWidth = 220, initialAvatars, initialUnread = 0, children }: { user: CurrentUser; initialDark: boolean; initialSidebarCollapsed?: boolean; initialSidebarWidth?: number; initialAvatars?: Record<string, { letter: string; bg: string; font: number }>; initialUnread?: number; children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
 
@@ -105,6 +105,48 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
     document.cookie = `sidebar_collapsed=${next ? '1' : '0'}; path=/; max-age=31536000; SameSite=Lax`;
     return next;
   });
+
+  // Resizable sidebar width — clamped between 180 and 340. Only applies when
+  // the sidebar is expanded. Persisted in a cookie so it survives refreshes.
+  const SIDEBAR_MIN = 180;
+  const SIDEBAR_MAX = 340;
+  const clampWidth = (w: number) => Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, w));
+  const [sidebarWidth, setSidebarWidth] = useState(() => clampWidth(initialSidebarWidth));
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartWRef = useRef(0);
+
+  function onDragHandleMouseDown(e: React.MouseEvent) {
+    // Only drag when sidebar is expanded and not on mobile.
+    if (collapsed || open) return;
+    e.preventDefault();
+    isDraggingRef.current = true;
+    dragStartXRef.current = e.clientX;
+    dragStartWRef.current = sidebarWidth;
+
+    const onMouseMove = (mv: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const delta = mv.clientX - dragStartXRef.current;
+      setSidebarWidth(clampWidth(dragStartWRef.current + delta));
+    };
+    const onMouseUp = (mu: MouseEvent) => {
+      isDraggingRef.current = false;
+      const delta = mu.clientX - dragStartXRef.current;
+      const final = clampWidth(dragStartWRef.current + delta);
+      setSidebarWidth(final);
+      document.cookie = `sidebar_width=${final}; path=/; max-age=31536000; SameSite=Lax`;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }
+
+  // Keyboard shortcuts modal state
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // "G then X" two-key navigation buffer
+  const gPressedRef = useRef(false);
+  const gTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setOpen(false); setAccountMenuOpen(false); }, [pathname]);
   useEffect(() => {
@@ -169,6 +211,61 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
       clearInterval(iv);
       events.forEach((e) => window.removeEventListener(e, mark));
     };
+  }, [router]);
+
+  // ── Global keyboard shortcuts ───────────────────────────────────────────────
+  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day, ?: shortcuts modal
+  // Skipped when focus is on a text input / textarea / contenteditable.
+  useEffect(() => {
+    function isTextFocused(): boolean {
+      const el = document.activeElement;
+      if (!el) return false;
+      const tag = el.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return true;
+      if ((el as HTMLElement).isContentEditable) return true;
+      return false;
+    }
+
+    function handleKey(e: KeyboardEvent) {
+      if (isTextFocused()) return;
+
+      // Shortcuts modal: open with '?', close with Escape
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
+      if (e.key === 'Escape') {
+        setShortcutsOpen(false);
+        return;
+      }
+
+      // 'G' starts the two-key sequence (up to 500 ms window)
+      if (e.key === 'g' || e.key === 'G') {
+        if (gTimerRef.current) clearTimeout(gTimerRef.current);
+        gPressedRef.current = true;
+        gTimerRef.current = setTimeout(() => { gPressedRef.current = false; }, 500);
+        return;
+      }
+
+      if (gPressedRef.current) {
+        gPressedRef.current = false;
+        if (gTimerRef.current) clearTimeout(gTimerRef.current);
+        const dest: Record<string, string> = {
+          d: '/', D: '/',
+          p: '/projects', P: '/projects',
+          t: '/teams', T: '/teams',
+          m: '/my-day', M: '/my-day',
+        };
+        if (dest[e.key]) {
+          e.preventDefault();
+          router.push(dest[e.key]);
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
   }, [router]);
 
   type NavItem = { href: string; label: string; icon: any; iconColor: string; iconBg: string };
@@ -505,7 +602,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
           ${collapsed && !open && sidebarHovered ? 'lg:fixed lg:z-50' : ''}
         `}
         style={{
-          width: showCollapsed ? 68 : 220,
+          width: showCollapsed ? 68 : sidebarWidth,
           background: dark ? '#262624' : '#ffffff',
           borderRight: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e8edf4',
           boxShadow: collapsed && !open && sidebarHovered ? (dark ? '4px 0 24px rgba(0,0,0,0.5)' : '4px 0 24px rgba(15,23,42,0.18)') : undefined,
@@ -515,6 +612,23 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
         onClick={() => { if (collapsed && !open && sidebarHovered) { toggleCollapsed(); setSidebarHovered(false); } }}
       >
         {SidebarInner}
+
+        {/* Drag-to-resize handle — shown on expanded desktop sidebar only.
+            A 4px strip on the right edge; a thin blue highlight appears on hover
+            to signal the resize affordance. */}
+        {!showCollapsed && (
+          <div
+            className="hidden lg:block absolute right-0 top-0 bottom-0 w-1 group/drag cursor-col-resize z-20"
+            onMouseDown={onDragHandleMouseDown}
+            aria-hidden="true"
+          >
+            <div
+              className="absolute right-0 top-0 bottom-0 w-[3px] transition-all duration-150 rounded-full opacity-0 group-hover/drag:opacity-100"
+              style={{ background: '#3b82f6', margin: '8px 0' }}
+            />
+          </div>
+        )}
+
         {/* Collapse/expand ribbon — desktop only, on the right edge of sidebar */}
         <button
           className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-5 h-10 items-center justify-center rounded-full transition-colors"
@@ -623,6 +737,60 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
                 Sign out
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Keyboard shortcuts modal ─────────────────────────────────────── */}
+      {shortcutsOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShortcutsOpen(false)}
+        >
+          <div
+            className="w-[340px] rounded-2xl p-5 shadow-2xl"
+            style={{
+              background: dark ? '#262624' : '#ffffff',
+              border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`text-sm font-black mb-4 tracking-tight ${dark ? 'text-white/90' : 'text-slate-800'}`}>
+              Keyboard shortcuts
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { keys: ['G', 'D'], label: 'Dashboard' },
+                { keys: ['G', 'P'], label: 'Projects' },
+                { keys: ['G', 'T'], label: 'Teams' },
+                { keys: ['G', 'M'], label: 'My Day' },
+                { keys: ['?'],      label: 'Shortcuts' },
+                { keys: ['Esc'],    label: 'Close dialogs' },
+              ].map(({ keys, label }) => (
+                <div key={label} className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 shrink-0">
+                    {keys.map((k, i) => (
+                      <span key={i}
+                        className={`inline-flex items-center justify-center rounded-md px-1.5 py-0.5 text-[11px] font-bold font-mono leading-none ${
+                          dark ? 'bg-white/10 text-white/70 border border-white/15' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}
+                      >
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                  <span className={`text-[12px] font-medium ${dark ? 'text-white/55' : 'text-slate-500'}`}>{label}</span>
+                </div>
+              ))}
+            </div>
+            <button
+              className={`mt-4 w-full py-2 rounded-xl text-xs font-semibold transition-colors ${
+                dark ? 'text-white/50 hover:text-white/70 bg-white/5 hover:bg-white/8' : 'text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100'
+              }`}
+              onClick={() => setShortcutsOpen(false)}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

@@ -57,7 +57,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    (u as any).pinHash = bcrypt.hashSync(body.pin, 10);
+    // Reuse guard — block the last 3 PINs.
+    const pinHistory: string[] = (u as any).pinHistory || [];
+    for (const oldHash of pinHistory) {
+      if (bcrypt.compareSync(body.pin, oldHash)) {
+        return NextResponse.json({ error: 'You cannot reuse one of your last 3 PINs.' }, { status: 400 });
+      }
+    }
+
+    const newPinHash = bcrypt.hashSync(body.pin, 10);
+    if ((u as any).pinHash) {
+      (u as any).pinHistory = [(u as any).pinHash, ...pinHistory].slice(0, 3);
+    }
+    (u as any).pinHash = newPinHash;
     (u as any).pinSetAt = new Date();
     (u as any).pinFailedAttempts = 0;
     await u.save();

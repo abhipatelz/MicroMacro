@@ -37,6 +37,13 @@ export default async function AuthedLayout({ children }: { children: React.React
   // useEffect kicked in after hydration.
   const initialDark = cookies().get('theme')?.value === 'dark';
 
+  // Persisted sidebar width — clamped server-side so an invalid cookie can't
+  // produce a broken layout. Falls back to 220 if the cookie is absent.
+  const rawSidebarWidth = parseInt(cookies().get('sidebar_width')?.value ?? '', 10);
+  const initialSidebarWidth = Number.isFinite(rawSidebarWidth)
+    ? Math.max(180, Math.min(340, rawSidebarWidth))
+    : 220;
+
   return (
     <AppShell
       user={{
@@ -57,6 +64,7 @@ export default async function AuthedLayout({ children }: { children: React.React
         hasSeenTour:      (dbUser as any)?.hasSeenTour !== false,
       }}
       initialDark={initialDark}
+      initialSidebarWidth={initialSidebarWidth}
       initialAvatars={initialAvatars}
     >
       {children}

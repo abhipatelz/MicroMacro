@@ -43,10 +43,16 @@ const LIFECYCLE_GROUPS = [
     label: 'Life Sciences',
     description: 'GxP-validated lifecycles',
     options: [
-      { value: 'csv',               label: 'CSV / GAMP 5',          hint: 'Computer System Validation' },
-      { value: 'sop',               label: 'SOP Development',       hint: 'Author → review → train → release' },
-      { value: 'audit',             label: 'Audit',                 hint: 'Internal or external GxP audit' },
-      { value: 'validation',        label: 'Validation',            hint: 'Process / method validation' },
+      { value: 'csv',                        label: 'CSV / GAMP 5',          hint: 'Computer System Validation' },
+      { value: 'sop',                        label: 'SOP Development',       hint: 'Author → review → train → release' },
+      { value: 'audit',                      label: 'Audit',                 hint: 'Internal or external GxP audit' },
+      { value: 'validation',                 label: 'Validation',            hint: 'Process / method validation' },
+      { value: 'regulatory_submission',      label: 'Regulatory Submission', hint: 'Planning → dossier → filing → approval' },
+      { value: 'computer_system_retirement', label: 'System Retirement',     hint: 'Feasibility → migration → closure' },
+      { value: 'incident_management',        label: 'Incident Management',   hint: 'Triage → RCA → CAPA → closure' },
+      { value: 'vendor_qualification',       label: 'Vendor Qualification',  hint: 'Audit → gap assessment → ASL' },
+      { value: 'training_program',           label: 'Training Program',      hint: 'Needs assessment → rollout → review' },
+      { value: 'product_recall',             label: 'Product Recall',        hint: 'Alert → notification → prevention' },
     ]
   },
   {
@@ -302,6 +308,8 @@ export default function NewProjectPage() {
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
   const [customTemplateId, setCustomTemplateId] = useState<string | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  // Template list collapse — show only the first 6 built-in options by default
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
   // Current user id (populated from /auth/me once)
   const [currentUserId, setCurrentUserId] = useState<string>('');
 
@@ -597,43 +605,116 @@ export default function NewProjectPage() {
                   it's off, show the full QI / Life Sciences / General set
                   (without the Personal group). ICs can browse the lead-only
                   templates so they understand the workflows the team uses,
-                  even though they can only commit a personal project. */}
-              {(personal
-                ? [
-                    { label: 'Start fresh', description: '', options: [{ value: 'generic', label: 'Custom / Blank', hint: 'Start from scratch' }] },
-                    LIFECYCLE_GROUPS.find(g => g.label === 'Personal')!,
-                  ]
-                : LIFECYCLE_GROUPS.filter(g => g.label !== 'Personal')
-              ).map(group => (
-                <div key={group.label}>
-                  <div className="flex items-baseline gap-2 mb-1.5">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{group.label}</div>
-                    <div className="text-[10px] text-slate-300">{group.description}</div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
-                    {group.options.map(opt => {
-                      const active = !customTemplateId && form.lifecycle === opt.value;
-                      return (
-                        <button key={opt.value} type="button"
-                          onClick={() => selectBuiltInLifecycle(opt.value)}
-                          className={`text-left px-3 py-2 rounded-lg text-xs transition-all border ${
-                            active
-                              ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300'
-                              : 'bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
-                          }`}>
-                          <div className="flex items-center gap-1.5">
-                            {opt.value === 'generic' && <Sparkles size={11} className="opacity-60 shrink-0" />}
-                            <span className={active ? 'font-bold' : 'font-semibold'}>{opt.label}</span>
-                          </div>
-                          <div className={`mt-0.5 text-[10px] ${active ? 'text-blue-600/80 dark:text-blue-300/80' : 'text-slate-400 dark:text-slate-500'}`}>
-                            {opt.hint}
-                          </div>
+                  even though they can only commit a personal project.
+                  Non-personal view: collapsed to 6 templates by default with
+                  a "Show all" toggle so the list doesn't overwhelm new users. */}
+              {(() => {
+                const groups = personal
+                  ? [
+                      { label: 'Start fresh', description: '', options: [{ value: 'generic', label: 'Custom / Blank', hint: 'Start from scratch' }] },
+                      LIFECYCLE_GROUPS.find(g => g.label === 'Personal')!,
+                    ]
+                  : LIFECYCLE_GROUPS.filter(g => g.label !== 'Personal');
+
+                // For non-personal view, flatten all options and apply the
+                // "show first 6" limit — but always show the active selection.
+                if (!personal) {
+                  const COLLAPSE_LIMIT = 6;
+                  const allOptions = groups.flatMap(g => g.options);
+                  const activeValue = !customTemplateId ? form.lifecycle : null;
+                  const visibleSet = showAllTemplates
+                    ? new Set(allOptions.map(o => o.value))
+                    : new Set([
+                        ...allOptions.slice(0, COLLAPSE_LIMIT).map(o => o.value),
+                        // Always include the active selection even when collapsed
+                        ...(activeValue ? [activeValue] : []),
+                      ]);
+
+                  const renderedGroups = groups.map(group => {
+                    const visibleOptions = group.options.filter(o => visibleSet.has(o.value));
+                    if (visibleOptions.length === 0) return null;
+                    return (
+                      <div key={group.label}>
+                        <div className="flex items-baseline gap-2 mb-1.5">
+                          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{group.label}</div>
+                          <div className="text-[10px] text-slate-300">{group.description}</div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                          {visibleOptions.map(opt => {
+                            const active = !customTemplateId && form.lifecycle === opt.value;
+                            return (
+                              <button key={opt.value} type="button"
+                                onClick={() => selectBuiltInLifecycle(opt.value)}
+                                className={`text-left px-3 py-2 rounded-lg text-xs transition-all border ${
+                                  active
+                                    ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300'
+                                    : 'bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
+                                }`}>
+                                <div className="flex items-center gap-1.5">
+                                  {opt.value === 'generic' && <Sparkles size={11} className="opacity-60 shrink-0" />}
+                                  <span className={active ? 'font-bold' : 'font-semibold'}>{opt.label}</span>
+                                </div>
+                                <div className={`mt-0.5 text-[10px] ${active ? 'text-blue-600/80 dark:text-blue-300/80' : 'text-slate-400 dark:text-slate-500'}`}>
+                                  {opt.hint}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  });
+
+                  return (
+                    <>
+                      {renderedGroups}
+                      {allOptions.length > COLLAPSE_LIMIT && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllTemplates(v => !v)}
+                          className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1"
+                        >
+                          {showAllTemplates
+                            ? '← Show fewer templates'
+                            : `Show all templates → (${allOptions.length - COLLAPSE_LIMIT} more)`}
                         </button>
-                      );
-                    })}
+                      )}
+                    </>
+                  );
+                }
+
+                // Personal view — show all groups as-is (no collapse needed)
+                return groups.map(group => (
+                  <div key={group.label}>
+                    <div className="flex items-baseline gap-2 mb-1.5">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{group.label}</div>
+                      <div className="text-[10px] text-slate-300">{group.description}</div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                      {group.options.map(opt => {
+                        const active = !customTemplateId && form.lifecycle === opt.value;
+                        return (
+                          <button key={opt.value} type="button"
+                            onClick={() => selectBuiltInLifecycle(opt.value)}
+                            className={`text-left px-3 py-2 rounded-lg text-xs transition-all border ${
+                              active
+                                ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300'
+                                : 'bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
+                            }`}>
+                            <div className="flex items-center gap-1.5">
+                              {opt.value === 'generic' && <Sparkles size={11} className="opacity-60 shrink-0" />}
+                              <span className={active ? 'font-bold' : 'font-semibold'}>{opt.label}</span>
+                            </div>
+                            <div className={`mt-0.5 text-[10px] ${active ? 'text-blue-600/80 dark:text-blue-300/80' : 'text-slate-400 dark:text-slate-500'}`}>
+                              {opt.hint}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ));
+              })()}
 
               {/* Custom templates group */}
               {customTemplates.length > 0 && (

@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const scope = await getLeadScope(user!.sub, user!.role);
     const body = await readBody(req, ProjectUpdateSchema);
     const { password, remarks, ...updates } = body;
-    const current = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).select('status isPersonal code').lean();
+    const current = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).select('status isPersonal code ccNo').lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const isShared = !((current as any).isPersonal || String((current as any).code || '').startsWith('PRSN-'));
@@ -92,15 +92,24 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     await Project.updateOne({ _id: params.id }, { $set: patch });
     const fresh = await Project.findById(params.id).lean();
 
+    const ccNoChanging = updates.ccNo !== undefined && updates.ccNo !== ((current as any).ccNo || '');
     if (isShared) {
+      const meta: Record<string, any> = {};
+      if (ccNoChanging) {
+        // GxP identifier change: record exact before/after values.
+        meta.ccNo = { before: (current as any).ccNo || '', after: updates.ccNo };
+      }
+      if (remarks) meta.remarks = remarks.trim();
       await logOperation({
-        action: statusChanging ? 'project.status' : 'project.update', category: 'project', actor: user,
+        action: ccNoChanging ? 'project.ccno' : statusChanging ? 'project.status' : 'project.update',
+        category: 'project', actor: user,
         targetType: 'project', targetId: params.id, targetLabel: (fresh as any)?.name || '',
-        // The signed reason rides along on status changes so the audit entry is
-        // self-contained (who, what, when, and — critically — why).
-        summary: statusChanging
-          ? `Project status → ${updates.status}${remarks ? ` — ${remarks.trim()}` : ''}`
-          : 'Updated project details',
+        summary: ccNoChanging
+          ? `Project CC# changed: "${(current as any).ccNo || '—'}" → "${updates.ccNo}"`
+          : statusChanging
+            ? `Project status → ${updates.status}${remarks ? ` — ${remarks.trim()}` : ''}`
+            : 'Updated project details',
+        meta,
       });
     }
 

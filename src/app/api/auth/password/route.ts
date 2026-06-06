@@ -33,7 +33,22 @@ export async function PATCH(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
     const ok = bcrypt.compareSync(body.currentPassword, user.passwordHash);
     if (!ok) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
-    user.passwordHash = bcrypt.hashSync(body.newPassword, 10);
+
+    // Reuse guard: reject if the new password matches any of the last 3.
+    const history: string[] = (user as any).passwordHistory || [];
+    for (const oldHash of history) {
+      if (bcrypt.compareSync(body.newPassword, oldHash)) {
+        return NextResponse.json(
+          { error: 'You cannot reuse one of your last 3 passwords.' },
+          { status: 400 },
+        );
+      }
+    }
+
+    const newHash = bcrypt.hashSync(body.newPassword, 10);
+    // Prepend current hash to history, keep only 3 entries.
+    (user as any).passwordHistory = [user.passwordHash, ...history].slice(0, 3);
+    user.passwordHash = newHash;
     await user.save();
     return NextResponse.json({ ok: true });
   } catch (e) {

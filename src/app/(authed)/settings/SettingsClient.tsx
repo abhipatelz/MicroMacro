@@ -427,6 +427,7 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
 
   const [name, setName]           = useState(initialUser.name || '');
   const [employeeId, setEmpId]    = useState(initialUser.employeeId || '');
+  const [githubUrl, setGithubUrl] = useState(initialUser.githubUrl || '');
   const [identitySaving, setIdentitySaving] = useState(false);
   const [identityMsg, setIdentityMsg] = useState('');
 
@@ -510,7 +511,7 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
     e?.preventDefault();
     setIdentityMsg(''); setIdentitySaving(true);
     try {
-      await api('/users/me', { method: 'PATCH', body: { name } });
+      await api('/users/me', { method: 'PATCH', body: { name, githubUrl } });
       setIdentityMsg('Saved');
       setTimeout(() => setIdentityMsg(''), 2500);
     } catch (err: any) { setIdentityMsg(err.message || 'Save failed.'); }
@@ -605,6 +606,16 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
             </div>
             <Field label="Full name">
               <input className="input" value={name} onChange={e => setName(e.target.value)} required />
+            </Field>
+            <Field label="GitHub profile URL" hint="Optional — shown on your public profile">
+              <input
+                className="input"
+                type="url"
+                placeholder="https://github.com/username"
+                value={githubUrl}
+                onChange={e => setGithubUrl(e.target.value)}
+                pattern="^(https://github\.com/[A-Za-z0-9_.-]{1,39})?$"
+              />
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <ReadonlyField label="Username" value={user.username ? `@${user.username}` : '—'} />

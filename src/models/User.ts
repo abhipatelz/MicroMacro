@@ -142,6 +142,19 @@ const UserSchema = new Schema(
     // Audible drop-cue preference. Defaults to true (ships with sound).
     // Synthesised in-browser via Web Audio, so there's no asset to deliver.
     soundDropEnabled: { type: Boolean, default: true },
+
+    // ── Social / public profile ─────────────────────────────────────────
+    githubUrl: { type: String, default: '' },
+    // IDs of users this person follows (mutual awareness within workspace).
+    following: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+
+    // ── Password & PIN reuse prevention ────────────────────────────────
+    // Stores the 3 most recently used password bcrypt hashes so the user
+    // cannot immediately recycle an old credential (21 CFR Part 11 §11.10(d)).
+    // New hash is prepended; array is truncated at 3 entries on each change.
+    passwordHistory: { type: [String], default: [] },
+    // Same guard for Quick-PIN hashes.
+    pinHistory: { type: [String], default: [] },
   },
   { timestamps: true }
 );

@@ -67,6 +67,8 @@ export function u(user: any) {
     avatarBg:     user.avatarBg     || '',
     avatarFont:   typeof user.avatarFont === 'number' ? user.avatarFont : 0,
     soundDropEnabled: user.soundDropEnabled !== false,
+    githubUrl: user.githubUrl || '',
+    following: (user.following || []).map((id: any) => String(id)),
   };
 }
 
@@ -110,6 +112,7 @@ export function project(p: any, extras: Any = {}) {
     archivedBy: id(p.archivedBy),
     isPersonal: !!(p.isPersonal || p.personal),
     personal: !!(p.isPersonal || p.personal),
+    ccNo:      p.ccNo || '',
     createdAt: date(p.createdAt),
     ...extras
   };

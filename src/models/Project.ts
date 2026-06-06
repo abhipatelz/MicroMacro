@@ -62,6 +62,13 @@ const ProjectSchema = new Schema(
     // users (including admins) anywhere in the app. Any authenticated user
     // can create one; it carries no team.
     personal: { type: Boolean, default: false },
+
+    // ── GxP / Change-Control project reference ──────────────────────────
+    // A project-level Change Control reference that ties this project to a
+    // formal CC document (e.g. "CC-2025-042"). Distinct from the per-task
+    // ccNo — this is the project-wide regulatory identifier. Every change is
+    // audited (before/after) because it is a regulated GxP record identifier.
+    ccNo: { type: String, default: '' },
   },
   { timestamps: true }
 );

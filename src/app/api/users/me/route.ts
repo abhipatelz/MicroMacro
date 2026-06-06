@@ -14,6 +14,8 @@ const EditableBody = z.object({
   title:       z.string().max(120).optional(),
   phone:       z.string().max(40).optional(),
   location:    z.string().max(80).optional(),
+  // Public social link — validated as a GitHub URL to prevent arbitrary redirects.
+  githubUrl:   z.string().max(200).regex(/^(https:\/\/github\.com\/[A-Za-z0-9_.-]{1,39})?$/, 'Must be a valid GitHub profile URL or empty').optional(),
   // Notifications
   notifTaskAssigned:  z.boolean().optional(),
   notifTaskDueSoon:   z.boolean().optional(),
@@ -67,6 +69,7 @@ export async function PATCH(req: NextRequest) {
     if (d.title       !== undefined) user.title       = d.title as any;
     if (d.phone       !== undefined) user.phone       = d.phone as any;
     if (d.location    !== undefined) user.location    = d.location as any;
+    if (d.githubUrl   !== undefined) (user as any).githubUrl = d.githubUrl;
     if (d.notifTaskAssigned  !== undefined) user.notifTaskAssigned  = d.notifTaskAssigned as any;
     if (d.notifTaskDueSoon   !== undefined) user.notifTaskDueSoon   = d.notifTaskDueSoon  as any;
     if (d.notifTaskOverdue   !== undefined) user.notifTaskOverdue   = d.notifTaskOverdue  as any;

@@ -21,7 +21,21 @@ export async function POST(req: NextRequest) {
     if (!user.mustChangePassword) {
       return NextResponse.json({ error: 'Password already set' }, { status: 400 });
     }
-    user.passwordHash = bcrypt.hashSync(body.newPassword, 10);
+
+    // Reuse guard — also applies to forced first-set after admin reset.
+    const history: string[] = (user as any).passwordHistory || [];
+    for (const oldHash of history) {
+      if (bcrypt.compareSync(body.newPassword, oldHash)) {
+        return NextResponse.json(
+          { error: 'You cannot reuse one of your last 3 passwords.' },
+          { status: 400 },
+        );
+      }
+    }
+
+    const newHash = bcrypt.hashSync(body.newPassword, 10);
+    (user as any).passwordHistory = [user.passwordHash, ...history].slice(0, 3);
+    user.passwordHash = newHash;
     user.mustChangePassword = false;
     await user.save();
 

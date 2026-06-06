@@ -13,7 +13,11 @@ const TeamSchema = new Schema(
       type: String,
       enum: ['general', 'ctb', 'rtb', 'data_integrity', 'csv_validation', 'pharmacovigilance', 'lab_informatics', 'audit', 'training'],
       default: 'general'
-    }
+    },
+    // Custom team avatar: base-64 encoded JPEG, ~128 px, resized client-side
+    // before upload. Excluded from list queries via select('-avatarImage') so
+    // it never bloats the teams index. Retrieved only on the team detail page.
+    avatarImage: { type: String, default: null, select: false },
   },
   { timestamps: true }
 );

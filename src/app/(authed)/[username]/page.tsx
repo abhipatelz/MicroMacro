@@ -41,5 +41,33 @@ export default async function PublicProfilePage({ params }: { params: { username
   if (!profile?.id) notFound();
   const isSelf = profile.id === jwt.sub;
 
-  return <ProfileView profile={{ ...profile, id: profile.id }} isSelf={isSelf} />;
+  // Count how many users follow this profile (people whose `following` array
+  // contains this user's _id). Run in parallel with fetching the viewer doc.
+  const [followerCount, viewerDoc] = await Promise.all([
+    User.countDocuments({ following: (doc as any)._id }),
+    isSelf
+      ? Promise.resolve(null)
+      : User.findById(jwt.sub).select('following').lean(),
+  ]);
+
+  // Does the logged-in viewer already follow this profile?
+  const viewerIsFollowing = isSelf
+    ? false
+    : ((viewerDoc as any)?.following || []).some(
+        (id: any) => String(id) === profile.id,
+      );
+
+  return (
+    <ProfileView
+      profile={{
+        ...profile,
+        id: profile.id,
+        githubUrl: profile.githubUrl || '',
+        followingCount: profile.following?.length ?? 0,
+        followerCount,
+        viewerIsFollowing,
+      }}
+      isSelf={isSelf}
+    />
+  );
 }

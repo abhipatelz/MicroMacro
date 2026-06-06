@@ -1,10 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { useCurrentUser } from '@/components/CurrentUserContext';
-import { Trash2, BarChart3, X } from 'lucide-react';
+import { Trash2, BarChart3, X, Camera } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 import dynamic from 'next/dynamic';
 // Heavy interactive SVG canvas — defer it until a viewer opens the modal.
@@ -53,6 +53,11 @@ export default function TeamDetailPage() {
   const [newMember, setNewMember] = useState('');
   const [activityMember, setActivityMember] = useState<any | null>(null);
   const [showBirdEye, setShowBirdEye] = useState(false);
+  // Team avatar — loaded on mount, updated on upload/remove
+  const [avatarImage, setAvatarImage] = useState<string | null>(null);
+  const [avatarHover, setAvatarHover] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const me = useCurrentUser();
   const isLead = me?.role === 'lead' || me?.role === 'admin';
   // An IC's team view is personal: they see their own micro-tasks only and
@@ -84,7 +89,69 @@ export default function TeamDetailPage() {
     // The user list only feeds the add-member dropdown (owner/admin only); a
     // failure here must never block the team view from rendering.
     api<any[]>('/users').then(setUsers).catch(() => {});
+    // Load team avatar on mount — stored separately (select: false on the
+    // model) so we always do a dedicated fetch rather than rely on the team
+    // payload.
+    api<{ avatarImage: string | null }>(`/teams/${id}/avatar`)
+      .then(r => setAvatarImage(r.avatarImage))
+      .catch(() => {});
   }, [id]);
+
+  // Resize a File to 128×128 JPEG (quality 0.85) and return a data-URL.
+  function resizeToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width  = 128;
+          canvas.height = 128;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject(new Error('Canvas 2d context unavailable')); return; }
+          // Draw centred square crop then scale to 128×128
+          const size = Math.min(img.width, img.height);
+          const sx = (img.width  - size) / 2;
+          const sy = (img.height - size) / 2;
+          ctx.drawImage(img, sx, sy, size, size, 0, 0, 128, 128);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset so the same file can be picked again after a remove
+    e.target.value = '';
+    setAvatarUploading(true);
+    try {
+      const dataUrl = await resizeToDataUrl(file);
+      await api(`/teams/${id}/avatar`, { method: 'PUT', body: { image: dataUrl } });
+      setAvatarImage(dataUrl);
+    } catch {
+      // Silent fail — keep the existing avatar
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
+  async function removeAvatar() {
+    setAvatarUploading(true);
+    try {
+      await api(`/teams/${id}/avatar`, { method: 'PUT', body: { image: null } });
+      setAvatarImage(null);
+    } catch {
+      // Silent fail
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
 
   if (loadError) {
     return (
@@ -180,10 +247,63 @@ export default function TeamDetailPage() {
         </div>
       )}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{team.name}</h1>
-          {team.description && <p className="text-slate-600 mt-1">{team.description}</p>}
-          <p className="text-sm text-slate-500 mt-1">Function: {team.function}</p>
+        <div className="flex items-start gap-4">
+          {/* Team avatar — 64px rounded square; leads/admins can change it on hover */}
+          <div
+            className="relative shrink-0 cursor-pointer"
+            onMouseEnter={() => setAvatarHover(true)}
+            onMouseLeave={() => setAvatarHover(false)}
+            onClick={() => isOwnerOrAdmin && avatarInputRef.current?.click()}
+            title={isOwnerOrAdmin ? 'Change team avatar' : undefined}
+          >
+            {avatarImage ? (
+              <img
+                src={avatarImage}
+                alt={`${team.name} avatar`}
+                className="w-16 h-16 rounded-xl object-cover border border-slate-200"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center">
+                <span className="text-2xl font-black text-slate-400 select-none">
+                  {team.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
+            {/* Change-avatar overlay — only for owner/admin */}
+            {isOwnerOrAdmin && (avatarHover || avatarUploading) && (
+              <div className="absolute inset-0 rounded-xl bg-black/40 flex items-center justify-center">
+                {avatarUploading
+                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <Camera size={18} className="text-white" />
+                }
+              </div>
+            )}
+          </div>
+          {/* Hidden file input */}
+          {isOwnerOrAdmin && (
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarFileChange}
+            />
+          )}
+          <div>
+            <h1 className="text-2xl font-bold">{team.name}</h1>
+            {team.description && <p className="text-slate-600 mt-1">{team.description}</p>}
+            <p className="text-sm text-slate-500 mt-1">Function: {team.function}</p>
+            {/* Remove avatar option — shown when avatar is set and user is owner/admin */}
+            {isOwnerOrAdmin && avatarImage && (
+              <button
+                onClick={removeAvatar}
+                disabled={avatarUploading}
+                className="mt-1 text-[11px] text-slate-400 hover:text-red-500 transition-colors"
+              >
+                Remove avatar
+              </button>
+            )}
+          </div>
         </div>
         {/* Any team lead (not just the team's owner) or an admin can export
             a presentable team report. One "Export" button → PDF / CSV / HTML;

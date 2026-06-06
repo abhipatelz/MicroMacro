@@ -32,6 +32,13 @@ export type LifecycleKey =
   | 'personal_wellness'
   | 'personal_declutter'
   | 'personal_network'
+  // Life Sciences — additional regulated lifecycles
+  | 'regulatory_submission'
+  | 'computer_system_retirement'
+  | 'incident_management'
+  | 'vendor_qualification'
+  | 'training_program'
+  | 'product_recall'
   ;
 
 export type LifecycleGroup = 'General' | 'Life Sciences' | 'Personal';
@@ -997,6 +1004,369 @@ export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
         { title: 'Remember the important dates',        type: 'task' },
         { title: 'Follow up on conversations',          type: 'review' },
       ]},
+    ]
+  },
+
+  /* ── Additional Life Sciences lifecycles ────────────────────────────────── */
+
+  regulatory_submission: {
+    label: 'Regulatory Submission',
+    description:
+      'End-to-end lifecycle for preparing and filing a regulatory dossier through to agency approval.',
+    regulatoryRefs: 'ICH M4 (CTD), 21 CFR Parts 312/314, EU CTR',
+    group: 'Life Sciences',
+    phases: [
+      {
+        name: 'Planning',
+        tasks: [
+          { title: 'Define submission type & target agency', type: 'task', qa: true, gxp: true },
+          { title: 'Draft submission project plan & timeline', type: 'task', qa: true, gxp: true },
+          { title: 'Assign authors and reviewers per module', type: 'task', qa: true },
+          { title: 'Regulatory intelligence review', type: 'review', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Dossier Preparation',
+        tasks: [
+          { title: 'Compile Module 1 — Regional administrative information', type: 'task', qa: true, gxp: true },
+          { title: 'Compile Module 2 — Summaries & overviews', type: 'task', qa: true, gxp: true },
+          { title: 'Compile Module 3 — Quality (CMC)', type: 'task', qa: true, gxp: true },
+          { title: 'Compile Modules 4 & 5 — Non-clinical & Clinical', type: 'task', qa: true, gxp: true },
+          { title: 'Data integrity check across all modules (ALCOA+)', type: 'data_review', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Internal Review',
+        tasks: [
+          { title: 'Cross-functional dossier review (QA, Medical, Regulatory)', type: 'review', qa: true, gxp: true },
+          { title: 'Resolve review comments & gap closure', type: 'task', qa: true, gxp: true },
+          { title: 'QA sign-off on submission package', type: 'approval', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Regulatory Filing',
+        tasks: [
+          { title: 'Publish & format dossier (eCTD / paper)', type: 'task', qa: true, gxp: true },
+          { title: 'Agency submission & acknowledgement receipt', type: 'task', qa: true, gxp: true },
+          { title: 'Log submission in tracking system', type: 'task', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Response Management',
+        tasks: [
+          { title: 'Track agency questions & clock stops', type: 'task', qa: true, gxp: true },
+          { title: 'Prepare & review responses to agency queries', type: 'review', qa: true, gxp: true },
+          { title: 'QA approval of responses before submission', type: 'approval', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Approval',
+        tasks: [
+          { title: 'Receive & review agency approval letter / label', type: 'review', qa: true, gxp: true },
+          { title: 'Update submission tracker & notify stakeholders', type: 'task', qa: true },
+          { title: 'Archive approved dossier (GxP records)', type: 'task', qa: true, gxp: true },
+        ]
+      },
+    ]
+  },
+
+  computer_system_retirement: {
+    label: 'System Retirement',
+    description:
+      'Controlled decommissioning of a validated GxP computerized system — data migration through final closure.',
+    regulatoryRefs: 'GAMP 5, EU Annex 11 §17, 21 CFR Part 11',
+    group: 'Life Sciences',
+    phases: [
+      {
+        name: 'Feasibility',
+        tasks: [
+          { title: 'Retirement rationale & business case', type: 'task', qa: true, gxp: true },
+          { title: 'Inventory of GxP data & records held in system', type: 'task', qa: true, gxp: true },
+          { title: 'Regulatory data retention requirements review', type: 'review', qa: true, gxp: true },
+          { title: 'Impact assessment on validated state', type: 'review', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Data Migration Plan',
+        tasks: [
+          { title: 'Data migration / archival strategy document', type: 'task', qa: true, gxp: true },
+          { title: 'QA review & approval of migration plan', type: 'approval', qa: true, gxp: true },
+          { title: 'Data migration qualification protocol (OQ / PQ)', type: 'task', qa: true, gxp: true },
+          { title: 'Execute data migration test run in non-prod', type: 'test', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Cutover Planning',
+        tasks: [
+          { title: 'Define cutover date & communication plan', type: 'task', qa: true, gxp: true },
+          { title: 'Update SOPs to remove references to retiring system', type: 'task', qa: true, gxp: true },
+          { title: 'Training on replacement system / process', type: 'task', qa: true },
+          { title: 'Change Control Board approval to retire', type: 'approval', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Go-Live',
+        tasks: [
+          { title: 'Execute production data migration', type: 'task', qa: true, gxp: true },
+          { title: 'Verify data completeness & integrity post-migration', type: 'data_review', qa: true, gxp: true },
+          { title: 'Disable / decommission system access', type: 'task', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Hypercare',
+        tasks: [
+          { title: 'Monitor for data retrieval issues (30 days)', type: 'task', qa: true, gxp: true },
+          { title: 'Address post-migration findings', type: 'task', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Closure',
+        tasks: [
+          { title: 'Retirement summary report', type: 'approval', qa: true, gxp: true },
+          { title: 'QA closure sign-off & archive retirement documentation', type: 'approval', qa: true, gxp: true },
+          { title: 'Update validated systems inventory', type: 'task', qa: true, gxp: true },
+        ]
+      },
+    ]
+  },
+
+  incident_management: {
+    label: 'Incident Management',
+    description:
+      'Structured GxP incident response — from detection and triage through root cause, CAPA, and closure review.',
+    regulatoryRefs: 'ICH Q10, 21 CFR 211.192, EU GMP Chapter 3',
+    group: 'Life Sciences',
+    phases: [
+      {
+        name: 'Detection & Triage',
+        tasks: [
+          { title: 'Log incident with timestamp, description & reporter', type: 'deviation', qa: true, gxp: true },
+          { title: 'Initial severity triage (minor / major / critical)', type: 'task', qa: true, gxp: true },
+          { title: 'Notify QA and relevant stakeholders', type: 'task', qa: true, gxp: true },
+          { title: 'Preliminary regulatory reportability assessment', type: 'review', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Investigation',
+        tasks: [
+          { title: 'Assign incident owner & target closure date', type: 'task', qa: true },
+          { title: 'Gather evidence & timeline reconstruction', type: 'task', qa: true, gxp: true },
+          { title: 'Impact assessment on product, batch or system', type: 'review', qa: true, gxp: true },
+          { title: 'Review trend data & comparable incidents', type: 'data_review', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Root Cause Analysis',
+        tasks: [
+          { title: 'Root cause analysis (5-Why / Ishikawa)', type: 'review', qa: true, gxp: true },
+          { title: 'Confirm root cause with supporting evidence', type: 'review', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Containment',
+        tasks: [
+          { title: 'Implement immediate containment actions', type: 'task', qa: true, gxp: true },
+          { title: 'Quarantine affected material / data if applicable', type: 'task', qa: true, gxp: true },
+          { title: 'Document containment evidence', type: 'task', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'CAPA Implementation',
+        tasks: [
+          { title: 'Define corrective actions & assign owners', type: 'capa', qa: true, gxp: true },
+          { title: 'Define preventive actions', type: 'capa', qa: true, gxp: true },
+          { title: 'Execute CAPAs & collect evidence', type: 'task', qa: true, gxp: true },
+          { title: 'Update SOPs / training as required', type: 'task', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Closure & Review',
+        tasks: [
+          { title: 'Effectiveness check of implemented CAPAs', type: 'review', qa: true, gxp: true },
+          { title: 'QA closure approval & sign-off', type: 'approval', qa: true, gxp: true },
+          { title: 'Regulatory reporting (if required)', type: 'task', qa: true, gxp: true },
+          { title: 'Add to incident trend register', type: 'task', qa: true, gxp: true },
+        ]
+      },
+    ]
+  },
+
+  vendor_qualification: {
+    label: 'Vendor Qualification',
+    description:
+      'Qualify a supplier or service provider for GxP use — from requisition through approved supplier list.',
+    regulatoryRefs: 'ICH Q10, EU GMP Chapter 7, 21 CFR 211.68 / 211.84',
+    group: 'Life Sciences',
+    phases: [
+      {
+        name: 'Requisition',
+        tasks: [
+          { title: 'Define vendor requirements & criticality classification', type: 'task', qa: true, gxp: true },
+          { title: 'Identify candidate vendors & request documentation', type: 'task', qa: true },
+          { title: 'Preliminary desk-based assessment (ISO certs, references)', type: 'review', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Audit Planning',
+        tasks: [
+          { title: 'Draft audit plan & questionnaire', type: 'task', qa: true, gxp: true },
+          { title: 'QA review & approval of audit plan', type: 'approval', qa: true, gxp: true },
+          { title: 'Schedule on-site / remote audit with vendor', type: 'task', qa: true },
+        ]
+      },
+      {
+        name: 'On-site Audit',
+        tasks: [
+          { title: 'Opening meeting & facility walkthrough', type: 'task', qa: true, gxp: true },
+          { title: 'Review QMS documentation & SOPs', type: 'review', qa: true, gxp: true },
+          { title: 'Record audit findings & observations', type: 'audit_finding', qa: true, gxp: true },
+          { title: 'Closing meeting — share preliminary findings', type: 'task', qa: true },
+        ]
+      },
+      {
+        name: 'Gap Assessment',
+        tasks: [
+          { title: 'Classify findings (critical / major / minor / observation)', type: 'task', qa: true, gxp: true },
+          { title: 'Request vendor CAPA responses', type: 'capa', qa: true, gxp: true },
+          { title: 'Review & accept vendor CAPA commitments', type: 'review', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Qualification Report',
+        tasks: [
+          { title: 'Draft vendor qualification report', type: 'task', qa: true, gxp: true },
+          { title: 'QA review of qualification report', type: 'review', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Approval',
+        tasks: [
+          { title: 'QA approval to qualify / conditionally qualify / reject', type: 'approval', qa: true, gxp: true },
+          { title: 'Add to Approved Supplier List (ASL)', type: 'task', qa: true, gxp: true },
+          { title: 'Set re-qualification frequency', type: 'task', qa: true, gxp: true },
+        ]
+      },
+    ]
+  },
+
+  training_program: {
+    label: 'Training Program',
+    description:
+      'Design, deliver and evaluate a GxP training program — from needs assessment through effectiveness review.',
+    regulatoryRefs: '21 CFR Part 211.68, ICH Q10, EU GMP Annex 2',
+    group: 'Life Sciences',
+    phases: [
+      {
+        name: 'Needs Assessment',
+        tasks: [
+          { title: 'Identify training gap / regulatory requirement', type: 'task', qa: true, gxp: true },
+          { title: 'Define target audience & learning objectives', type: 'task', qa: true },
+          { title: 'Select delivery format (ILT / eLearning / OJT)', type: 'task', qa: true },
+          { title: 'QA approval of training scope', type: 'approval', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Content Development',
+        tasks: [
+          { title: 'Develop training materials & knowledge checks', type: 'task', qa: true, gxp: true },
+          { title: 'SME review of content accuracy', type: 'review', qa: true, gxp: true },
+          { title: 'QA review of training package', type: 'review', qa: true, gxp: true },
+          { title: 'QA approval of final training materials', type: 'approval', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Pilot Delivery',
+        tasks: [
+          { title: 'Run pilot session with representative audience', type: 'test', qa: true },
+          { title: 'Collect pilot feedback', type: 'data_review', qa: true },
+          { title: 'Incorporate feedback & update materials', type: 'task', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Evaluation',
+        tasks: [
+          { title: 'Assess trainee knowledge (pre/post quiz, practical)', type: 'test', qa: true, gxp: true },
+          { title: 'Record attendance & completion in training system', type: 'task', qa: true, gxp: true },
+          { title: 'Escalate incomplete trainees to line managers', type: 'task', qa: true },
+        ]
+      },
+      {
+        name: 'Rollout',
+        tasks: [
+          { title: 'Deliver to full target audience', type: 'task', qa: true, gxp: true },
+          { title: 'Archive signed training records (21 CFR Part 11)', type: 'task', qa: true, gxp: true },
+          { title: 'Update training matrix / SOP cross-reference', type: 'task', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Effectiveness Review',
+        tasks: [
+          { title: 'Effectiveness check (3–6 months post-training)', type: 'review', qa: true, gxp: true },
+          { title: 'Review deviation / error trends linked to training area', type: 'data_review', qa: true, gxp: true },
+          { title: 'QA closure sign-off', type: 'approval', qa: true, gxp: true },
+        ]
+      },
+    ]
+  },
+
+  product_recall: {
+    label: 'Product Recall',
+    description:
+      'Regulated product recall lifecycle — from alert and agency notification through root cause and prevention.',
+    regulatoryRefs: '21 CFR Part 7, EU GMP Chapter 8, ICH Q10',
+    group: 'Life Sciences',
+    phases: [
+      {
+        name: 'Alert & Assessment',
+        tasks: [
+          { title: 'Receive & log recall trigger (complaint / field signal / internal test)', type: 'deviation', qa: true, gxp: true },
+          { title: 'Assemble recall committee (QA, RA, Medical, Legal, Ops)', type: 'task', qa: true },
+          { title: 'Classify recall class (I / II / III) and scope', type: 'task', qa: true, gxp: true },
+          { title: 'Identify affected lots / batches / distribution scope', type: 'data_review', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Regulatory Notification',
+        tasks: [
+          { title: 'Notify competent authority within required timeframe', type: 'task', qa: true, gxp: true },
+          { title: 'Prepare & submit press release / public notification (if required)', type: 'task', qa: true, gxp: true },
+          { title: 'Confirm regulatory receipt & obtain case reference', type: 'task', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Customer Notification',
+        tasks: [
+          { title: 'Issue recall letters to distributors / pharmacies / hospitals', type: 'task', qa: true, gxp: true },
+          { title: 'Track acknowledgement receipts from recipients', type: 'task', qa: true, gxp: true },
+          { title: 'Set up recall hotline / FAQ for customer queries', type: 'task', qa: true },
+        ]
+      },
+      {
+        name: 'Recovery Coordination',
+        tasks: [
+          { title: 'Coordinate product retrieval from the field', type: 'task', qa: true, gxp: true },
+          { title: 'Track returned inventory & reconciliation (% recovered)', type: 'data_review', qa: true, gxp: true },
+          { title: 'Quarantine & destruction / disposition of recalled product', type: 'task', qa: true, gxp: true },
+          { title: 'Submit interim progress report to authority', type: 'task', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Root Cause',
+        tasks: [
+          { title: 'Root cause analysis of underlying defect', type: 'review', qa: true, gxp: true },
+          { title: 'Impact assessment on remaining in-market product', type: 'review', qa: true, gxp: true },
+          { title: 'Define CAPAs to prevent recurrence', type: 'capa', qa: true, gxp: true },
+        ]
+      },
+      {
+        name: 'Prevention & Closure',
+        tasks: [
+          { title: 'Implement CAPAs & update SOPs / controls', type: 'task', qa: true, gxp: true },
+          { title: 'Submit final recall effectiveness report to authority', type: 'task', qa: true, gxp: true },
+          { title: 'QA closure sign-off & archive recall file', type: 'approval', qa: true, gxp: true },
+          { title: 'Lessons-learned briefing to leadership', type: 'review', qa: true },
+        ]
+      },
     ]
   },
 

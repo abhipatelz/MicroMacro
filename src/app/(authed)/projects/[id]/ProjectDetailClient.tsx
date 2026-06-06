@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import {
-  Card, LifecycleTag, PriorityTag, ProgressBar,
+  Card, LifecycleTag, PriorityTag,
   StatusSelect, StatusPillRow, PROJECT_STATUS_OPTIONS,
   TaskLink, formatDate, useToast,
 } from '@/components/ui';
@@ -932,6 +932,9 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   const [pendingTaskIds, setPendingTaskIds]   = useState<Set<string>>(new Set());
   const { showToast, ToastEl } = useToast();
   const [showBirdEye, setShowBirdEye] = useState(false);
+  // Inline ccNo editor
+  const [editingCcNo, setEditingCcNo]         = useState(false);
+  const [ccNoDraft, setCcNoDraft]             = useState('');
   // Milestone celebration — set when finishing a task closes out its phase or
   // the whole project. The Celebration overlay fires a fanfare + confetti.
   const [celebration, setCelebration] = useState<{ title: string; subtitle?: string; emoji?: string } | null>(null);
@@ -1073,6 +1076,17 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       showToast(e.message || 'Failed to update due date', 'err');
     } finally {
       setSavingDue(false);
+    }
+  }
+
+  async function saveCcNo(value: string) {
+    try {
+      await api(`/projects/${id}`, { method: 'PATCH', body: { ccNo: value.trim() } });
+      setEditingCcNo(false);
+      showToast('CC# updated');
+      load();
+    } catch (e: any) {
+      showToast(e.message || 'Failed to update CC#', 'err');
     }
   }
 
@@ -1226,6 +1240,52 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         {/* Left — identity, description, then status directly below it */}
         <div className="min-w-0 md:flex-1">
           <div className="text-[11px] text-slate-400 font-mono break-all">{project.isPersonal ? 'Personal' : project.code}</div>
+          {!project.isPersonal && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[11px] text-slate-400 font-mono">CC#:</span>
+              {editingCcNo ? (
+                <>
+                  {/* datalist for autocomplete from existing task ccNos */}
+                  <datalist id="ccno-suggestions">
+                    {Array.from(new Set(tasks.map((t: any) => t.ccNo).filter(Boolean))).map((v: any) => (
+                      <option key={v} value={v} />
+                    ))}
+                  </datalist>
+                  <input
+                    type="text"
+                    list="ccno-suggestions"
+                    value={ccNoDraft}
+                    onChange={e => setCcNoDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); saveCcNo(ccNoDraft); }
+                      if (e.key === 'Escape') { setEditingCcNo(false); }
+                    }}
+                    onBlur={() => saveCcNo(ccNoDraft)}
+                    autoFocus
+                    maxLength={60}
+                    placeholder="e.g. CC-2025-042"
+                    className="text-[11px] font-mono text-slate-700 border-b border-blue-400 outline-none bg-transparent px-0.5 w-36"
+                  />
+                  <button onClick={() => setEditingCcNo(false)} className="text-slate-300 hover:text-slate-500 ml-1" title="Cancel">
+                    <X size={11} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-[11px] font-mono text-slate-600">{project.ccNo || '—'}</span>
+                  {isLead && (
+                    <button
+                      onClick={() => { setCcNoDraft(project.ccNo || ''); setEditingCcNo(true); }}
+                      className="ml-1 text-slate-300 hover:text-blue-500 transition-colors"
+                      title="Edit CC#"
+                    >
+                      <Pencil size={11} />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           <h1 className="text-xl sm:text-2xl font-bold mt-0.5 leading-tight break-words">{project.name}</h1>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {project.isPersonal && (
@@ -1250,7 +1310,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
               <StatusPillRow
                 value={project.status}
                 onChange={updateStatus}
-                options={PROJECT_STATUS_OPTIONS}
+                options={PROJECT_STATUS_OPTIONS.filter(s => s !== 'planning') as unknown as string[]}
                 pending={savingStatus}
               />
             ) : (
@@ -1366,7 +1426,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
             <div className={`text-2xl font-black ${stat.danger ? 'text-red-600' : stat.warn ? 'text-amber-600' : 'text-slate-800'}`}>
               {stat.value}
             </div>
-            {'bar' in stat && <ProgressBar value={stat.bar!} />}
             <div className="text-xs text-slate-400">{stat.sub}</div>
           </div>
         ))}
@@ -1407,7 +1466,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                     </span>
                   </div>
                 </div>
-                <ProgressBar value={pctP} className="mb-3" />
                 <div className="divide-y divide-slate-100">
                   {ts.map((t: any, ti: number) => {
                     const canEdit = canManage || (me && t.assigneeId === me.id);
