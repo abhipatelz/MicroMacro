@@ -391,15 +391,17 @@ function ExpandButton({ onClick }: { onClick: () => void }) {
 }
 
 /* ── Shared right-column panel header ─────────────────────────────────────
-   One header geometry for Up Next / My Tasks / Individual Contributors so the
-   right rail reads as one aligned set rather than three slightly-different
-   cards. A tinted icon tile + uppercase label + count, with an optional
-   trailing slot (overdue badge, maximize, chevron). */
+   Styled to match the left column's "Your team's projects" section label —
+   plain muted icon, uppercase tracking-wider title, light count — so both
+   columns read as one inline layout. One geometry across Up Next / My Tasks /
+   Individual Contributors keeps the right rail even; an optional trailing slot
+   carries the maximize / overdue / chevron affordance. `tint` is accepted for
+   call-site compatibility but no longer painted as a tile. */
 function PanelHeader({
-  icon, tint, title, count, countSuffix, trailing, onClick,
+  icon, title, count, countSuffix, trailing, onClick,
 }: {
   icon: React.ReactNode;
-  tint: { bg: string; fg: string };
+  tint?: { bg: string; fg: string };
   title: string;
   count?: number | string;
   countSuffix?: string;
@@ -409,17 +411,14 @@ function PanelHeader({
   return (
     <div
       onClick={onClick}
-      className={`px-4 h-12 flex items-center gap-2.5 border-b border-slate-100 dark:border-white/[0.05] ${
+      className={`px-4 h-12 flex items-center gap-2 border-b border-slate-100 dark:border-white/[0.05] ${
         onClick ? 'cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors' : ''
       }`}
     >
-      <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg shrink-0"
-        style={{ background: tint.bg, color: tint.fg }}>
-        {icon}
-      </span>
-      <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600 dark:text-white/45">{title}</h3>
+      <span className="text-slate-400 dark:text-white/30 shrink-0 inline-flex">{icon}</span>
+      <h3 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/45">{title}</h3>
       {count != null && (
-        <span className="text-[10px] font-bold text-slate-400 dark:text-white/25 tabular-nums">
+        <span className="text-[10px] font-semibold text-slate-300 dark:text-white/20 tabular-nums">
           {count}{countSuffix}
         </span>
       )}
@@ -718,20 +717,9 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
           <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40">
             Tasks by target date
           </span>
-          <div className="flex items-center gap-2 min-w-[120px]">
-            <div className="flex-1 h-1 rounded-full bg-slate-200/70 dark:bg-white/[0.08] overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: sorted.length ? `${Math.round((doneCount / sorted.length) * 100)}%` : '0%',
-                  background: 'linear-gradient(90deg, #22c55e, #16a34a)',
-                }}
-              />
-            </div>
-            <span className="text-[9.5px] font-bold text-slate-500 dark:text-white/40 tabular-nums shrink-0">
-              {doneCount} / {sorted.length}
-            </span>
-          </div>
+          <span className="text-[9.5px] font-bold text-slate-400 dark:text-white/30 tabular-nums">
+            {doneCount} / {sorted.length} done
+          </span>
         </div>
       </li>
 
@@ -901,13 +889,15 @@ function ProjectRow({
         onClick={() => setOpen(o => !o)}
         className="px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors select-none"
       >
-        <button
-          className={`p-0.5 text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform rounded-full shrink-0 ${nudgeExpand && !open ? 'pragati-row-expand-blink' : ''}`}
-          aria-label={open ? 'Collapse project tasks' : 'Expand project tasks'}
-          style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+        <span
+          className={`p-1 text-emerald-500 dark:text-emerald-400 rounded-full shrink-0 inline-flex ${nudgeExpand && !open ? 'pragati-drop-ripple' : ''}`}
+          aria-hidden
         >
-          <ChevronDown size={14} />
-        </button>
+          {/* Points right when collapsed, down when open. The nudge ripples a
+              green ring around the icon (box-shadow only) — it never animates
+              the icon's transform, so the arrow keeps its orientation. */}
+          <ChevronDown size={14} className="transition-transform duration-200" style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+        </span>
 
         {/* Three-level hierarchy:
              1. Title (largest, dark)
@@ -1426,11 +1416,13 @@ function ContributorsPanel({
         count={people.length}
         onClick={() => setPanelOpen(o => !o)}
         trailing={
-          <ChevronDown
-            size={14}
-            className={`text-violet-500 dark:text-violet-400 transition-transform duration-200 ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
-            style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-          />
+          <span className={`inline-flex p-1 rounded-full text-violet-500 dark:text-violet-400 ${showExpandNudge && !panelOpen ? 'pragati-drop-ripple' : ''}`} aria-hidden>
+            <ChevronDown
+              size={14}
+              className="transition-transform duration-200"
+              style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+            />
+          </span>
         }
       />
 
