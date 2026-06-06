@@ -234,6 +234,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
           <Link
             key={item.href}
             href={item.href}
+            prefetch
             className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
               dark ? 'text-white/70 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}

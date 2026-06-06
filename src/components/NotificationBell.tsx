@@ -108,11 +108,47 @@ export function NotificationBell({ dark = false, openUp = false, initialUnread =
     } catch { /* ignore polling errors */ }
   }
 
-  // Initial load + 30s poll.
+  // Initial load + visibility-aware 30s poll.
+  //
+  // A backgrounded tab used to keep polling /notifications every 30s forever,
+  // which at scale is a continuous, pointless load on the DB and serverless
+  // functions (most open tabs are idle in the background). We now pause the
+  // interval whenever the tab is hidden and resume — with one immediate
+  // catch-up fetch — the moment it becomes visible again. The badge stays
+  // correct because it's seeded from the SSR unread count.
   useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      if (timer) return;
+      timer = setInterval(() => load(true), 30_000);
+    };
+    const stopPolling = () => {
+      if (timer) { clearInterval(timer); timer = null; }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        // Catch up on anything that landed while we were backgrounded, then
+        // resume the steady poll. chimeOnIncrease=true so a notification that
+        // arrived while away still announces itself on return.
+        load(true);
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    // First paint: fetch the items list once (badge count is already seeded).
     load(false);
-    const t = setInterval(() => load(true), 30_000);
-    return () => clearInterval(t);
+    if (document.visibilityState === 'visible') startPolling();
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Close on outside click.
