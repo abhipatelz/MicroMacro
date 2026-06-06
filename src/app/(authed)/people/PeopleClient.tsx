@@ -1115,7 +1115,7 @@ export default function PeopleClient({ initialUsers, contribTotal = 0, contribPa
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 <Icon size={12} className={s.color} /> {s.label}
               </div>
-              <div className={`mt-1 text-2xl font-black ${s.color}`}>{s.value}</div>
+              <div className={`tnum mt-1 text-2xl font-black ${s.color}`}>{s.value}</div>
             </div>
           );
         })}

@@ -285,7 +285,7 @@ export default function RiskRadarPage() {
               className={`card p-4 text-left transition-all ${filter === tone ? 'ring-2 ring-brand-400' : ''}`}
             >
               <div className="text-lg">{icon}</div>
-              <div className="text-2xl font-black text-slate-900 mt-1">{count}</div>
+              <div className="tnum text-2xl font-black text-slate-900 mt-1">{count}</div>
               <div className="text-xs text-slate-400 font-medium">{label}</div>
             </button>
           ))}

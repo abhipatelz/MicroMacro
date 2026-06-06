@@ -53,7 +53,14 @@ export function CardGridSkeleton({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className={`skeleton w-full rounded-2xl ${height}`} />
+        // Negative per-item delay offsets each card's shimmer so the wave reads
+        // as a diagonal sweep across the grid rather than every tile pulsing in
+        // lockstep — feels organic, not mechanical.
+        <div
+          key={i}
+          className={`skeleton w-full rounded-2xl ${height}`}
+          style={{ animationDelay: `${(i % 3) * -0.15 + Math.floor(i / 3) * -0.1}s` }}
+        />
       ))}
     </div>
   );
@@ -64,7 +71,11 @@ export function ListSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div className="space-y-2.5">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="skeleton h-16 w-full rounded-xl" />
+        <div
+          key={i}
+          className="skeleton h-16 w-full rounded-xl"
+          style={{ animationDelay: `${i * -0.08}s` }}
+        />
       ))}
     </div>
   );

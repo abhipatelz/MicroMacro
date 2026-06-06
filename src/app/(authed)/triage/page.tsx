@@ -131,7 +131,7 @@ export default function TriagePage() {
                 <div className="flex items-baseline gap-2 flex-wrap">
                   <span className={`text-2xl font-black ${sev.text}`}>{sev.label}</span>
                   <span className="text-sm text-slate-500">severity</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${sev.bg} ${sev.text} ${sev.border}`}>
+                  <span className={`tnum text-xs font-bold px-2 py-0.5 rounded-full border ${sev.bg} ${sev.text} ${sev.border}`}>
                     score {result.severityScore > 0 ? '+' : ''}{result.severityScore}
                   </span>
                 </div>

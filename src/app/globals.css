@@ -134,7 +134,12 @@ body {
      BUTTONS
   ════════════════════════════════════════════════════════════════════ */
   .btn {
-    @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer select-none;
+    @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold cursor-pointer select-none;
+    /* Animate only the properties that actually change on hover/active instead
+       of `transition-all`, so the browser doesn't re-evaluate unrelated props
+       (layout, opacity, etc) on every interaction — crisper, cheaper. */
+    transition: background 150ms ease, box-shadow 150ms ease,
+                transform 150ms ease, color 150ms ease, border-color 150ms ease;
   }
 
   .btn-primary {
@@ -147,7 +152,11 @@ body {
     box-shadow: 0 4px 14px rgba(21,101,192,0.30), 0 2px 6px rgba(46,125,50,0.22);
     transform: translateY(-0.5px);
   }
-  .btn-primary:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0) scale(0.97);
+    /* Shadow collapses on press so the button reads as pushed into the surface */
+    box-shadow: 0 1px 2px rgba(21,101,192,0.22), 0 0 0 0 transparent;
+  }
 
   .btn-secondary {
     @apply btn bg-white border border-slate-200 text-slate-700;
@@ -159,11 +168,15 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.07);
     transform: translateY(-0.5px);
   }
-  .btn-secondary:active { transform: translateY(0) scale(0.97); }
+  .btn-secondary:active {
+    transform: translateY(0) scale(0.97);
+    box-shadow: 0 0 0 0 transparent;
+  }
 
   .btn-ghost {
     @apply btn text-slate-500 hover:bg-slate-100/80 hover:text-slate-700;
   }
+  .btn-ghost:active { transform: scale(0.97); }
 
   .btn-success {
     @apply btn text-white;
@@ -174,11 +187,34 @@ body {
     background: linear-gradient(135deg, #237021 0%, #388E3C 100%);
     transform: translateY(-0.5px);
   }
+  .btn-success:active { transform: translateY(0) scale(0.97); box-shadow: 0 0 0 0 transparent; }
 
   .btn-danger {
     @apply btn text-white;
     background: linear-gradient(135deg, #c62828 0%, #e53935 100%);
     box-shadow: 0 1px 3px rgba(198,40,40,0.3);
+  }
+  .btn-danger:hover {
+    background: linear-gradient(135deg, #b71c1c 0%, #d32f2f 100%);
+    box-shadow: 0 4px 14px rgba(198,40,40,0.30);
+    transform: translateY(-0.5px);
+  }
+  .btn-danger:active { transform: translateY(0) scale(0.97); box-shadow: 0 0 0 0 transparent; }
+
+  /* ── Keyboard focus rings ──────────────────────────────────────────────
+     A single, consistent brand ring on :focus-visible only, so mouse clicks
+     stay clean while keyboard navigation gets a clear, intentional affordance.
+     Offset keeps the ring off the button edge so gradients read crisply. */
+  .btn-primary:focus-visible,
+  .btn-success:focus-visible,
+  .btn-danger:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  .btn-secondary:focus-visible,
+  .btn-ghost:focus-visible {
+    outline: 2px solid rgba(21,101,192,0.55);
+    outline-offset: 2px;
   }
 
   /* ════════════════════════════════════════════════════════════════════
@@ -232,7 +268,11 @@ body {
       0 12px 28px rgba(21,101,192,0.10),
       0 6px 14px rgba(46,125,50,0.08);
     border-color: rgba(21,101,192,0.25);
+    /* Whisper-faint brand wash layers a second cue on top of the lift so the
+       card feels like it's coming alive rather than just translating. */
+    background-color: rgba(21,101,192,0.018);
   }
+  .dark .fluid-card:hover { background-color: rgba(255,255,255,0.02); }
   /* Active sidebar pill */
   .nav-active {
     background: var(--brand-gradient-soft);
@@ -245,7 +285,8 @@ body {
      INPUTS
   ════════════════════════════════════════════════════════════════════ */
   .input, .select, .textarea {
-    @apply w-full border rounded-lg px-3 py-2.5 text-sm transition-all duration-150 bg-white text-slate-800;
+    @apply w-full border rounded-lg px-3 py-2.5 text-sm bg-white text-slate-800;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
     border-color: #dde3ec;
     box-shadow: 0 1px 2px rgba(0,0,0,0.04), inset 0 1px 2px rgba(0,0,0,0.02);
     outline: none;
@@ -260,7 +301,13 @@ body {
   .input:hover:not(:focus), .select:hover:not(:focus), .textarea:hover:not(:focus) {
     border-color: #c5cdd8;
   }
-  .input::placeholder, .textarea::placeholder { @apply text-slate-400; }
+  .input::placeholder, .textarea::placeholder {
+    @apply text-slate-400;
+    transition: opacity 0.2s ease;
+  }
+  /* On focus the placeholder dims but stays as a faint hint rather than
+     vanishing — a small touch that makes the field feel considered. */
+  .input:focus::placeholder, .textarea:focus::placeholder { opacity: 0.55; }
   /* Custom chevron + extra right-padding so the native dropdown arrow doesn't
      read as generic / fighting the rest of the design system. The SVG is
      inlined to avoid an extra request and so the colour matches `text-slate-400`
@@ -321,6 +368,15 @@ body {
 
   .section-title {
     @apply text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-2;
+  }
+
+  /* Numeric display — tabular figures so digits line up in columns/metrics and
+     a hair of negative tracking so big numbers read as a tight, deliberate unit
+     rather than loose body text. Use on stat values, counts, percentages. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'cv01' 1;
+    letter-spacing: -0.01em;
   }
 
   /* ════════════════════════════════════════════════════════════════════
@@ -580,6 +636,19 @@ body {
 @keyframes drain {
   from { transform: scaleX(1); }
   to   { transform: scaleX(0); }
+}
+
+/* ── Popover / dropdown entry ────────────────────────────────────────────────
+   A quick scale+fade so menus, selects and floating panels grow out of their
+   trigger instead of snapping into existence. Transform origin is set by the
+   call site (e.g. `origin-top`) so the panel expands from the correct anchor. */
+@keyframes popover-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.popover-in { animation: popover-in 0.14s cubic-bezier(0.22,1,0.36,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .popover-in { animation: none; }
 }
 
 /* ── Skeleton shimmer ────────────────────────────────────────────────────── */
