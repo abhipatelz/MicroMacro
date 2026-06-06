@@ -79,6 +79,7 @@ export async function GET(req: NextRequest) {
         status: t.status,
         due: effDate.toISOString(),
         mine: String(t.assigneeId) === String(scope.userOid),
+        assigneeName: t.assigneeName || null,
         teamName: teamName || null,
         projectCode: p?.code || null,
         priority: t.priority || null,

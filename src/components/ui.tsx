@@ -161,7 +161,7 @@ export function PriorityTag({ priority }: { priority?: string | null }) {
   const dot = PRIORITY_DOT[priority] ?? '#94a3b8';
   return (
     <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold ${PRIORITY_COLORS[priority] ?? 'bg-slate-100 text-slate-600'}`}
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold capitalize ${PRIORITY_COLORS[priority] ?? 'bg-slate-100 text-slate-600'}`}
     >
       <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dot }} />
       {priority}
@@ -405,9 +405,8 @@ export function Avatar({ name, size = 28, letter, bg, font, ring }: AvatarProps)
         width: size,
         height: size,
         background,
-        // Squircle — echoes the Pragati logo tile. Proportional radius so it
-        // reads the same at every size (matches PragatiMark's ~0.26–0.28 factor).
-        borderRadius: Math.max(4, Math.round(size * 0.28)),
+        // Circle avatars across the whole app (Google/LinkedIn style).
+        borderRadius: '50%',
         boxShadow: ring
           ? '0 0 0 2px rgba(255,255,255,0.9), 0 1px 3px rgba(15,23,42,0.15)'
           : useMonogram

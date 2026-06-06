@@ -126,6 +126,23 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
     };
   }, [accountMenuOpen]);
 
+  // ── Keyboard shortcuts ──────────────────────────────────────────────
+  // Cmd/Ctrl+D toggles dark mode. We preventDefault so it overrides the
+  // browser's "bookmark this page" default while the app is focused.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'd') {
+        const el = document.activeElement as HTMLElement | null;
+        // Don't hijack the shortcut while the user is typing in a field.
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+        e.preventDefault();
+        toggleDark();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleDark]);
+
   // ── Idle auto-logout ────────────────────────────────────────────────
   // 21 CFR Part 11 §11.10(d): unattended sessions must not stay open.
   // At 25 min idle we show a "Still there?" modal; at 30 min we force log out.

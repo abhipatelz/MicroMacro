@@ -22,9 +22,15 @@ interface CalTask {
   status: string;
   due: string;            // ISO
   mine: boolean;
+  assigneeName: string | null;
   teamName: string | null;
   projectCode: string | null;
   priority: string | null;
+}
+
+// First name only — the calendar hover is tight, and a first name reads fastest.
+function firstName(name?: string | null): string {
+  return (name || '').trim().split(/\s+/)[0] || '';
 }
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -239,15 +245,20 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                       <div className={`text-[11.5px] font-medium leading-snug truncate ${dark ? 'text-white/80' : 'text-slate-700'}`}>
                         {t.title}
                       </div>
-                      {/* Meta line: owner/team truncates, code + overdue keep their
-                          width so a long team name can't wrap the row into a mess. */}
+                      {/* Meta line: who it's on (assignee first name), then the
+                          project ref with the team in brackets right after it.
+                          The assignee name truncates; the ref/team and overdue
+                          tags hold their width so a long name can't wrap the row. */}
                       <div className={`text-[9.5px] mt-px flex items-center gap-1 min-w-0 ${dark ? 'text-white/35' : 'text-slate-400'}`}>
-                        {t.mine
-                          ? <span className="font-semibold text-blue-500 shrink-0">You</span>
-                          : t.teamName
-                            ? <span className="font-semibold truncate min-w-0" style={{ color: '#22a565' }}>{t.teamName}</span>
-                            : <span className="shrink-0">Team</span>}
-                        {t.projectCode && <span className="font-mono shrink-0">· {t.projectCode}</span>}
+                        <span className={`font-semibold shrink-0 ${t.mine ? 'text-blue-500' : ''}`}
+                          style={t.mine ? undefined : { color: '#22a565' }}>
+                          {t.mine ? 'You' : (firstName(t.assigneeName) || 'Unassigned')}
+                        </span>
+                        {t.projectCode && (
+                          <span className="font-mono truncate min-w-0" title={`${t.projectCode}${t.teamName ? ` (${t.teamName})` : ''}`}>
+                            · {t.projectCode}{t.teamName ? ` (${t.teamName})` : ''}
+                          </span>
+                        )}
                         {overdue && <span className="font-semibold text-red-500 shrink-0">· overdue</span>}
                       </div>
                     </div>

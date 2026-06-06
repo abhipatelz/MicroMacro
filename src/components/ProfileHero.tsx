@@ -24,6 +24,7 @@ export function ProfileHero({
   avatar,
   actions,
   linkUsername = false,
+  showMemberId = true,
 }: {
   name: string;
   username?: string | null;
@@ -39,6 +40,8 @@ export function ProfileHero({
   actions?: ReactNode;
   /** When true, @username links to the public profile route. */
   linkUsername?: boolean;
+  /** Member ID is internal — hidden on the public profile view. */
+  showMemberId?: boolean;
 }) {
   const meta = [
     title        ? { icon: Briefcase, text: title } : null,
@@ -91,15 +94,17 @@ export function ProfileHero({
             </div>
           </div>
 
-          <div className="grid w-full grid-cols-2 gap-2 lg:min-w-[260px] lg:w-auto">
+          <div className={`grid w-full gap-2 lg:w-auto ${showMemberId ? 'grid-cols-2 lg:min-w-[260px]' : 'grid-cols-1 lg:min-w-[140px]'}`}>
             <div className="rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white backdrop-blur">
               <div className="text-[10px] font-black uppercase tracking-wider text-white/60">Access</div>
               <div className="mt-1 text-sm font-black">{roleText}</div>
             </div>
-            <div className="rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white backdrop-blur">
-              <div className="text-[10px] font-black uppercase tracking-wider text-white/60">Member ID</div>
-              <div className="mt-1 text-sm font-black">{employeeId || '—'}</div>
-            </div>
+            {showMemberId && (
+              <div className="rounded-2xl border border-white/25 bg-white/15 px-4 py-3 text-white backdrop-blur">
+                <div className="text-[10px] font-black uppercase tracking-wider text-white/60">Member ID</div>
+                <div className="mt-1 text-sm font-black">{employeeId || '—'}</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
