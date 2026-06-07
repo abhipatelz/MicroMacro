@@ -8,8 +8,18 @@ import { PragatiMark } from './PragatiMark';
 import { CurrentUserProvider } from './CurrentUserContext';
 import { AvatarRegistryProvider } from './AvatarRegistry';
 import { NotificationBell } from './NotificationBell';
-import { SidebarCalendar } from './SidebarCalendar';
+import { SidebarCalendar, clearSidebarCalendarCache } from './SidebarCalendar';
+import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
+
+// Wipe every module-level, cross-mount client cache that could carry one
+// user's data into the next session sharing this browser tab (e.g. team-leader
+// logs out, admin logs in — without this, the admin would briefly see the
+// team-leader's calendar/activity until their own fetch overwrites it).
+function clearSessionScopedCaches() {
+  clearSidebarCalendarCache();
+  clearActivityGraphCache();
+}
 
 // Force-password modal — only ships when a user has mustChangePassword set.
 // Keeps the long form code (strength meter, validators) out of the main bundle.
@@ -199,6 +209,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
       if (idle >= IDLE_MS) {
         clearInterval(iv);
         setIdleWarning(false);
+        clearSessionScopedCaches();
         api('/auth/logout', { method: 'POST' }).finally(() => {
           router.replace('/login');
           router.refresh();
@@ -309,6 +320,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname?.startsWith(href);
 
   async function logout() {
+    clearSessionScopedCaches();
     await api('/auth/logout', { method: 'POST' });
     router.replace('/login');
     router.refresh();

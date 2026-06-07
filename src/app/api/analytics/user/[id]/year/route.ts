@@ -5,6 +5,7 @@ import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
 import { isLead, requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
+import { NOT_PERSONAL } from '@/lib/leadScope';
 
 export const runtime = 'nodejs';
 
@@ -20,28 +21,42 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const start = new Date(Date.UTC(year, 0, 1));
     const end = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
     const uid = mongoose.Types.ObjectId.createFromHexString(params.id);
+    // Personal projects are owner-only — a lead/admin viewing someone else's
+    // year-in-review must never see their personal project names, task titles
+    // or any record that lives inside one. Self-views are unrestricted.
+    const viewingSelf = user.sub === params.id;
 
-    const completedTasks = await Task.find({
+    const completedTasksRaw = await Task.find({
       assigneeId: uid,
       status: 'done',
       completedAt: { $gte: start, $lte: end }
     }).lean();
 
-    const projectIds = [...new Set(completedTasks.map((t) => String(t.projectId)))];
+    const rawProjectIds = [...new Set(completedTasksRaw.map((t) => String(t.projectId)))];
     const projects = await Project.find({
-      _id: { $in: projectIds.map((id) => new mongoose.Types.ObjectId(id)) }
+      _id: { $in: rawProjectIds.map((id) => new mongoose.Types.ObjectId(id)) },
+      ...(viewingSelf ? {} : NOT_PERSONAL),
     }).select('_id code name lifecycle').lean();
     const pMap = new Map(projects.map((p) => [String(p._id), p]));
+    const completedTasks = viewingSelf
+      ? completedTasksRaw
+      : completedTasksRaw.filter((t) => pMap.has(String(t.projectId)));
 
     // Subtasks completed by this user within the year (look across all tasks)
-    const subtaskHolders = await Task.find({
+    const subtaskHoldersRaw = await Task.find({
       'subtasks.assigneeId': uid,
       'subtasks.completedAt': { $gte: start, $lte: end }
     }).lean();
+    const subtaskHolders = viewingSelf
+      ? subtaskHoldersRaw
+      : subtaskHoldersRaw.filter((t) => pMap.has(String(t.projectId)));
     const completedSubtasks: any[] = [];
     for (const t of subtaskHolders) {
-      const p = pMap.get(String(t.projectId)) || (await Project.findById(t.projectId).lean());
-      if (p && !pMap.has(String(t.projectId))) pMap.set(String(t.projectId), p as any);
+      let p = pMap.get(String(t.projectId));
+      if (!p && viewingSelf) {
+        p = (await Project.findById(t.projectId).lean()) as any;
+        if (p) pMap.set(String(t.projectId), p);
+      }
       for (const s of (t as any).subtasks || []) {
         if (
           String(s.assigneeId) === params.id &&

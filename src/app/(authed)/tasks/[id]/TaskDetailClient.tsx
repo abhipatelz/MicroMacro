@@ -11,7 +11,7 @@ import { Select } from '@/components/Select';
 import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { chimeIfEnabled } from '@/lib/sound';
-import { ChevronRight, Shield, FileText, MessageSquare, Clock, Trash2, ScrollText } from 'lucide-react';
+import { ChevronRight, Shield, FileText, MessageSquare, Clock, Trash2, ScrollText, Pencil, Check, X } from 'lucide-react';
 import { FlowSignalTaskStrip } from '@/components/FlowSignalTaskStrip';
 
 // TaskCompletePop is only shown on task completion — off the critical render
@@ -56,6 +56,10 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const [teamId, setTeamId] = useState<string | null>(null);
   const [me, setMe] = useState<any>(initialMe);
   const [comment, setComment] = useState('');
+  // Inline comment editing — author-only. Holds the id of the comment being
+  // edited and its working text.
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentBody, setEditingCommentBody] = useState('');
   const [newSub, setNewSub] = useState('');
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
@@ -215,6 +219,24 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
       setComment(''); load();
     } catch (e: any) {
       showToast(e?.message || 'Failed to post comment', 'err');
+    }
+  }
+  async function saveCommentEdit(commentId: string) {
+    if (!editingCommentBody.trim()) return;
+    try {
+      await api(`/tasks/${id}/comments/${commentId}`, { method: 'PATCH', body: { body: editingCommentBody.trim() } });
+      setEditingCommentId(null); setEditingCommentBody(''); load();
+    } catch (e: any) {
+      showToast(e?.message || 'Failed to update comment', 'err');
+    }
+  }
+  async function deleteComment(commentId: string) {
+    if (!confirm('Delete this comment? This cannot be undone.')) return;
+    try {
+      await api(`/tasks/${id}/comments/${commentId}`, { method: 'DELETE' });
+      load();
+    } catch (e: any) {
+      showToast(e?.message || 'Failed to delete comment', 'err');
     }
   }
   async function signoff() { await api(`/tasks/${id}/signoff`, { method: 'POST' }); load(); }
@@ -442,17 +464,68 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
         {/* Comments */}
         <Card title={`Comments (${task.comments.length})`}>
           <div className="space-y-3 mb-3">
-            {task.comments.map((c: any) => (
-              <div key={c.id} className="flex gap-3">
-                <UserAvatar userId={c.userId} name={c.userName} size={28} />
-                <div className="flex-1">
-                  <div className="text-xs text-slate-500">
-                    <span className="font-semibold text-slate-700">{c.userName}</span> · {formatDate(c.createdAt)}
+            {task.comments.map((c: any) => {
+              const isAuthor = !!(me && String(c.userId) === String(me.id));
+              const isEditing = editingCommentId === c.id;
+              const edited = c.updatedAt && c.createdAt && new Date(c.updatedAt).getTime() - new Date(c.createdAt).getTime() > 1000;
+              return (
+                <div key={c.id} className="group/comment flex gap-3">
+                  <UserAvatar userId={c.userId} name={c.userName} size={28} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-slate-500 flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-700">{c.userName}</span>
+                      <span>· {formatDate(c.createdAt)}</span>
+                      {edited && <span className="text-slate-400 italic">(edited)</span>}
+                      {/* Author-only edit / delete — revealed on row hover */}
+                      {isAuthor && !isEditing && (
+                        <span className="ml-auto flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => { setEditingCommentId(c.id); setEditingCommentBody(c.body); }}
+                            className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
+                            title="Edit comment"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            onClick={() => deleteComment(c.id)}
+                            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            title="Delete comment"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    {isEditing ? (
+                      <div className="mt-1 flex items-start gap-1.5">
+                        <textarea
+                          autoFocus
+                          rows={2}
+                          className="input text-sm flex-1 resize-none"
+                          value={editingCommentBody}
+                          onChange={(e) => setEditingCommentBody(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveCommentEdit(c.id);
+                            if (e.key === 'Escape') { setEditingCommentId(null); setEditingCommentBody(''); }
+                          }}
+                          maxLength={4000}
+                        />
+                        <button onClick={() => saveCommentEdit(c.id)}
+                          className="p-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors" title="Save">
+                          <Check size={13} />
+                        </button>
+                        <button onClick={() => { setEditingCommentId(null); setEditingCommentBody(''); }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="Cancel">
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-slate-700 mt-0.5 whitespace-pre-wrap break-words">{c.body}</div>
+                    )}
                   </div>
-                  <div className="text-sm text-slate-700 mt-0.5">{c.body}</div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {task.comments.length === 0 && (
               <div className="text-xs text-slate-400">No comments yet.</div>
             )}

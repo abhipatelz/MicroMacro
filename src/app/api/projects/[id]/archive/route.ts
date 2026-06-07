@@ -8,6 +8,7 @@ import { handleError, readBody } from '@/lib/http';
 import { project as projectS } from '@/lib/serialize';
 import { bustDashboardCache } from '@/lib/leadDashboard';
 import { bustProjectsPageCache } from '@/lib/projectList';
+import { NOT_PERSONAL } from '@/lib/leadScope';
 
 export const runtime = 'nodejs';
 
@@ -33,8 +34,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const { archived } = await readBody(req, Body);
     await connectDB();
 
-    const updated = await Project.findByIdAndUpdate(
-      params.id,
+    // Personal projects are invisible to admins by design — archiving (or even
+    // confirming the existence of) one must behave exactly like a 404.
+    const updated = await Project.findOneAndUpdate(
+      { _id: params.id, ...NOT_PERSONAL },
       {
         $set: {
           archived,

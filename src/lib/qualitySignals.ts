@@ -25,6 +25,7 @@ import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { tokenize, bagOfWords, cosine } from '@/lib/ai/triage';
 import { QA_TASK_TYPES } from '@/lib/qaTaskTypes';
+import { NOT_PERSONAL } from '@/lib/leadScope';
 
 export { QA_TASK_TYPES };
 
@@ -138,14 +139,18 @@ export async function findPastCases(
   if (!candidates.length) return [];
 
   const projectIds = [...new Set(candidates.map((c: any) => String(c.projectId)))];
-  const projects = await Project.find({ _id: { $in: projectIds } })
+  // Institutional memory must never surface a personal project's task — its
+  // title and project code are owner-private, full stop. Drop those candidates
+  // before they ever reach the similarity scoring / response.
+  const projects = await Project.find({ _id: { $in: projectIds }, ...NOT_PERSONAL })
     .select('_id code')
     .lean() as any[];
   const codeMap = new Map(projects.map((p: any) => [String(p._id), p.code || '']));
+  const visibleCandidates = candidates.filter((c: any) => codeMap.has(String(c.projectId)));
 
   const targetVec = bagOfWords(tokenize(targetText));
 
-  return candidates
+  return visibleCandidates
     .map((c: any) => {
       const score = cosine(
         targetVec,
@@ -185,6 +190,7 @@ export async function checkCapaEffectiveness(
   completedAt: Date,
 ): Promise<EffectivenessSignal | null> {
   const { Task } = await import('@/models/Task');
+  const { Project } = await import('@/models/Project');
   await connectDB();
 
   // Too recent to judge
@@ -202,14 +208,24 @@ export async function checkCapaEffectiveness(
   const targetVec = bagOfWords(tokenize(targetText));
   const windowEnd = new Date(completedAt.getTime() + 90 * 86_400_000);
 
-  const newer = await Task.find({
+  const newerRaw = await Task.find({
     _id: { $ne: new mongoose.Types.ObjectId(taskId) },
     taskType: { $in: ['deviation', 'capa', 'audit_finding', 'data_review'] },
     createdAt: { $gte: completedAt, $lte: windowEnd },
   })
-    .select('_id title description')
+    .select('_id title description projectId')
     .limit(200)
     .lean() as any[];
+
+  if (!newerRaw.length) return null;
+
+  // A recurrence signal must never name-drop a task from someone's personal
+  // project — filter those out before scoring or surfacing any title.
+  const newerProjectIds = [...new Set(newerRaw.map((t: any) => String(t.projectId)))];
+  const visibleProjects = await Project.find({ _id: { $in: newerProjectIds }, ...NOT_PERSONAL })
+    .select('_id').lean() as any[];
+  const visibleProjectIds = new Set(visibleProjects.map((p: any) => String(p._id)));
+  const newer = newerRaw.filter((t: any) => visibleProjectIds.has(String(t.projectId)));
 
   if (!newer.length) return null;
 

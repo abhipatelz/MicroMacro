@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
 // weighted for on-time/priority — never credentials or private records.
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { error } = await requireUser(req);
+    const { error, user } = await requireUser(req);
     if (error) return error;
     await connectDB();
 
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const currentYear = new Date().getFullYear();
     const year = Math.min(Math.max(parseInt(searchParams.get('year') || '') || currentYear, 2020), currentYear + 1);
 
-    const data = await buildContributions(params.id, year);
+    const data = await buildContributions(params.id, year, user!.sub);
     return NextResponse.json(data, {
       headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' },
     });

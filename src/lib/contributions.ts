@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
 import { User } from '@/models/User';
+import { NOT_PERSONAL } from '@/lib/leadScope';
 
 /**
  * Contribution scoring — the data behind the GitHub-style activity graph.
@@ -121,8 +122,16 @@ export function scoreTask(t: {
  * Build the full contribution dataset for one user and one calendar year.
  * Used by both /api/users/me/activity and /api/users/[id]/activity.
  */
-export async function buildContributions(userId: string, year: number): Promise<ContribData> {
-  const cacheKey = `${userId}:${year}`;
+export async function buildContributions(userId: string, year: number, viewerId?: string): Promise<ContribData> {
+  // A colleague's contribution graph is open by design (see CLAUDE.md), but a
+  // personal project is the user's own private to-do list — its task titles,
+  // project names and comments must never leak through someone else's view of
+  // this graph. Only the owner sees the unfiltered picture; everyone else gets
+  // the same activity feed with personal-project items stripped out, and the
+  // cache is keyed per-viewer so a stripped result can never be served back to
+  // the owner (or the reverse).
+  const viewingSelf = !viewerId || viewerId === userId;
+  const cacheKey = `${userId}:${year}:${viewingSelf ? 'self' : 'other'}`;
   const cached = contributionCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cloneContribData(cached.data);
@@ -192,18 +201,37 @@ export async function buildContributions(userId: string, year: number): Promise<
   ]);
 
   // Resolve project labels for the items we'll surface (tasks + commented tasks).
-  const projectIds = Array.from(new Set(
+  const rawProjectIds = Array.from(new Set(
     [...yearTasks, ...(commentTasks as any[])].map((t: any) => String(t.projectId)).filter(Boolean),
   ));
-  const projects = projectIds.length
-    ? await Project.find({ _id: { $in: projectIds } }).select('code name').lean()
+  const rawProjects = rawProjectIds.length
+    ? await Project.find({ _id: { $in: rawProjectIds } })
+        .select(`code name${viewingSelf ? '' : ' isPersonal personal'}`).lean()
     : [];
-  const projMap = new Map(projects.map((p: any) => [String(p._id), { code: p.code || '', name: p.name || '' }]));
+  // Strip personal-project entries entirely from someone else's view — the
+  // project, and every task/comment that lives inside it, must vanish from
+  // the feed as if it never happened.
+  const visibleProjectIds = viewingSelf
+    ? new Set(rawProjects.map((p: any) => String(p._id)))
+    : new Set(rawProjects.filter((p: any) =>
+        !(p.isPersonal || p.personal || String(p.code || '').startsWith('PRSN-'))
+      ).map((p: any) => String(p._id)));
+  const yearTasksVisible = viewingSelf
+    ? (yearTasks as any[])
+    : (yearTasks as any[]).filter((t) => visibleProjectIds.has(String(t.projectId)));
+  const commentTasksVisible = viewingSelf
+    ? (commentTasks as any[])
+    : (commentTasks as any[]).filter((t) => visibleProjectIds.has(String(t.projectId)));
+  const projMap = new Map(
+    rawProjects
+      .filter((p: any) => visibleProjectIds.has(String(p._id)))
+      .map((p: any) => [String(p._id), { code: p.code || '', name: p.name || '' }]),
+  );
 
   const days: Record<string, number> = {};
   const items: ContribItem[] = [];
 
-  for (const t of yearTasks as any[]) {
+  for (const t of yearTasksVisible) {
     const proj = projMap.get(String(t.projectId)) || { code: '', name: '' };
 
     // The task itself, if completed in-year.
@@ -234,7 +262,7 @@ export async function buildContributions(userId: string, year: number): Promise<
 
   // Comments authored in-year — collaboration counts as effort. Each comment
   // adds W.comment to its day and appears in the activity feed.
-  for (const t of (commentTasks as any[])) {
+  for (const t of commentTasksVisible) {
     const proj = projMap.get(String(t.projectId)) || { code: '', name: '' };
     for (const c of (t.comments || [])) {
       if (String(c.userId) !== String(userOid)) continue;
@@ -292,6 +320,9 @@ export async function buildContributions(userId: string, year: number): Promise<
   const completedProjects = await Project.find({
     status: 'completed',
     $or: [{ ownerId: userOid }, { _id: { $in: doneProjectIds } }],
+    // Someone else's "projects completed" badge must never be inflated by a
+    // personal project — that count would itself be a leak of its existence.
+    ...(viewingSelf ? {} : NOT_PERSONAL),
   }).select('completedAt dueDate').lean();
   const projectsCompleted = completedProjects.length;
   const projectsOnTime = (completedProjects as any[]).filter(

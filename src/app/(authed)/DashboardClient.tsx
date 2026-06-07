@@ -742,6 +742,18 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
           return ['#94a3b8', 'To do'];
         })();
 
+        /* Workflow-state chip — a always-visible, tinted label of the task's
+           own status (To do / In progress / In review / Done), distinct from
+           the urgency badges (Overdue / Blocked / Unassigned). Makes each row's
+           state legible at a glance instead of relying on the small dot. */
+        const stateMeta = ((): { label: string; fg: string; bg: string } | null => {
+          if (isDone)                     return { label: 'Done',        fg: '#059669', bg: 'rgba(16,185,129,0.12)' };
+          if (t.status === 'in_progress') return { label: 'In progress', fg: '#1565C0', bg: 'rgba(21,101,192,0.12)' };
+          if (t.status === 'review')      return { label: 'In review',   fg: '#7c3aed', bg: 'rgba(124,58,237,0.12)' };
+          if (t.status === 'todo' || !t.status) return { label: 'To do', fg: '#64748b', bg: 'rgba(100,116,139,0.12)' };
+          return null;
+        })();
+
         // Human-friendly date copy: stays as a short month/day for far-out
         // dates, switches to "in Nd" within a week, "today", or "Nd over" so
         // urgency reads at a glance without a separate badge.
@@ -795,6 +807,16 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
                   >
                     {t.title}
                   </span>
+
+                  {/* Workflow-state chip — always shown so the status reads at a
+                      glance. Suppressed for blocked/overdue, which carry their
+                      own red exception badge below. */}
+                  {stateMeta && !isBlocked && !isOverdue && (
+                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                      style={{ color: stateMeta.fg, background: stateMeta.bg }}>
+                      {stateMeta.label}
+                    </span>
+                  )}
 
                   {/* Exception badges — only when action is needed */}
                   {isOverdue && (
@@ -1180,29 +1202,32 @@ function UpNextPanel({ tasks }: { tasks: TeamTask[] }) {
 
   const totalCount = overdue.length + due.length;
   const inner = (
-    <section className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
-      style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
-      {/* Header — shared geometry with My Tasks / Contributors. Hidden when
-          shown inside the full-screen overlay (which supplies its own title),
-          so "Up Next" isn't printed twice. */}
+    <section className="min-w-0">
+      {/* Section header — same geometry as "Your team's projects" on the left
+          column: floating label above the card (icon · uppercase title · count),
+          with the expand affordance on the right. Hidden inside the full-screen
+          overlay, which supplies its own title. */}
       {!expanded && (
-        <PanelHeader
-          icon={<TrendingUp size={13} />}
-          tint={PANEL_TINTS.blue}
-          title="Up Next"
-          count={totalCount}
-          trailing={
-            <button
-              type="button"
-              onClick={() => setExpanded(true)}
-              aria-label="Expand Up Next"
-              className="p-1 -mr-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
-            >
-              <Maximize2 size={12} />
-            </button>
-          }
-        />
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <TrendingUp size={14} className="text-slate-400 shrink-0" />
+            <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 truncate">
+              Up Next
+            </h2>
+            <span className="text-[10px] text-slate-300 font-semibold shrink-0">{totalCount}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            aria-label="Expand Up Next"
+            className="shrink-0 p-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
+          >
+            <Maximize2 size={13} />
+          </button>
+        </div>
       )}
+      <div className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+        style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
       <div className="overflow-y-auto" style={{ maxHeight: expanded ? 'calc(100vh - 220px)' : '60vh' }}>
         {/* Overdue group — sits at the top: nothing to filter, just the
             tasks that have slipped past their date. */}
@@ -1267,6 +1292,7 @@ function UpNextPanel({ tasks }: { tasks: TeamTask[] }) {
             hideHeader
           />
         </div>
+      </div>
       </div>
     </section>
   );

@@ -13,7 +13,7 @@ import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { useIsDark } from '@/lib/client/useIsDark';
 import { weightedProgress } from '@/lib/progress';
-import { GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight, Lock, Pencil, ShieldCheck, ScrollText, Eye, Sparkles, Copy, Check } from 'lucide-react';
+import { GripVertical, CheckCircle2, Plus, Trash2, AlertTriangle, Archive, X, ChevronLeft, ChevronRight, Lock, Pencil, ShieldCheck, ScrollText, Eye, Sparkles } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { chimeIfEnabled, playDropTick } from '@/lib/sound';
 import { Celebration } from '@/components/Celebration';
@@ -765,143 +765,6 @@ interface ProjectDetailClientProps {
   initialMe?: { id: string; name: string; email: string; role: string } | null;
 }
 
-/* ── AI status draft ──────────────────────────────────────────────────────
-   One-click, paste-ready status update for a QA lead. It synthesises the
-   project's EXISTING rollup (progress, blocked / overdue, what's next) into
-   prose — it augments explanatory text only and never computes severity or a
-   regulatory call (those stay rule-based per CLAUDE.md). The result is an
-   editable draft (human in the loop); when GEMINI_API_KEY isn't set it returns
-   a deterministic factual summary, honestly labelled. */
-function StatusDraftButton({ project, tasks }: { project: any; tasks: any[] }) {
-  const [open, setOpen]       = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [text, setText]       = useState('');
-  const [source, setSource]   = useState<'ai' | 'rule' | null>(null);
-  const [err, setErr]         = useState('');
-  const [copied, setCopied]   = useState(false);
-
-  const dueOf = (t: any) => t.ccTcd || t.dueDate || null;
-
-  async function draft() {
-    setOpen(true); setLoading(true); setErr(''); setText(''); setSource(null); setCopied(false);
-    const now = Date.now();
-    const done       = tasks.filter(t => t.status === 'done');
-    const inProgress = tasks.filter(t => t.status === 'in_progress');
-    const blocked    = tasks.filter(t => t.status === 'blocked');
-    const overdue    = tasks.filter(t => t.status !== 'done' && dueOf(t) && new Date(dueOf(t)).getTime() < now);
-    const upcoming   = tasks
-      .filter(t => t.status !== 'done' && dueOf(t) && new Date(dueOf(t)).getTime() >= now)
-      .sort((a, b) => new Date(dueOf(a)).getTime() - new Date(dueOf(b)).getTime())
-      .slice(0, 5)
-      .map(t => ({ title: t.title, due: dueOf(t) }));
-
-    try {
-      const res = await api<{ text: string; source: 'ai' | 'rule' }>('/ai/status-draft', {
-        method: 'POST',
-        body: {
-          projectName: project.name,
-          code: project.code || '',
-          lifecycle: project.lifecycle ?? null,
-          status: project.status ?? null,
-          dueDate: project.dueDate ?? null,
-          total: tasks.length,
-          done: done.length,
-          inProgress: inProgress.length,
-          blocked: blocked.length,
-          overdue: overdue.length,
-          blockedTitles: blocked.slice(0, 10).map(t => t.title),
-          overdueTitles: overdue.slice(0, 10).map(t => t.title),
-          upcoming,
-        },
-      });
-      setText(res.text);
-      setSource(res.source);
-    } catch (e: any) {
-      setErr(e?.message || 'Could not generate a draft. Try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function copy() {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
-  return (
-    <>
-      <button
-        onClick={draft}
-        disabled={tasks.length === 0}
-        title={tasks.length === 0 ? 'Add tasks first' : 'Draft a status update from this project'}
-        className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        <Sparkles size={13} className="text-blue-500" /> Draft status
-      </button>
-
-      {open && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/45 overlay-in" onClick={() => setOpen(false)}>
-          <div className="bg-white dark:bg-[#262624] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 w-full max-w-lg modal-in overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.07]">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg" style={{ background: 'rgba(21,101,192,0.10)', color: '#1565C0' }}>
-                <Sparkles size={13} />
-              </span>
-              <h3 className="text-sm font-bold text-slate-800 dark:text-white/90">Status draft</h3>
-              {source && (
-                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
-                  source === 'ai'
-                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
-                    : 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-white/45'
-                }`}>
-                  {source === 'ai' ? 'AI draft' : 'Summary · AI off'}
-                </span>
-              )}
-              <button onClick={() => setOpen(false)} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="p-5">
-              {loading ? (
-                <div className="space-y-2.5 py-2">
-                  <div className="skeleton h-3.5 w-full rounded" />
-                  <div className="skeleton h-3.5 w-11/12 rounded" />
-                  <div className="skeleton h-3.5 w-3/4 rounded" />
-                  <div className="text-[11px] text-slate-400 dark:text-white/35 pt-1">Summarising this project…</div>
-                </div>
-              ) : err ? (
-                <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">{err}</div>
-              ) : (
-                <>
-                  <textarea
-                    value={text}
-                    onChange={e => setText(e.target.value)}
-                    rows={7}
-                    className="w-full text-[13px] leading-relaxed text-slate-700 dark:text-white/80 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 resize-none"
-                  />
-                  <p className="text-[10.5px] text-slate-400 dark:text-white/30 mt-2 leading-snug">
-                    A draft for you to review and edit — not a record. It describes status only; it makes no regulatory or severity determination.
-                  </p>
-                  <div className="flex items-center justify-end gap-2 mt-3">
-                    <button onClick={() => draft()} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors">
-                      Regenerate
-                    </button>
-                    <button onClick={copy} className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-                      {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   const { initialProject = null, initialMe = null } = props;
   const { id } = useParams<{ id: string }>();
@@ -1466,7 +1329,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
               admin-only. */}
           <div className="flex flex-wrap items-center md:justify-end gap-2">
             <BirdEyeButton scopeKey={`project:${id}`} onClick={() => setShowBirdEye(true)} />
-            {!project.isPersonal && <StatusDraftButton project={project} tasks={tasks} />}
             <ExportMenu
               onExcel={project.isPersonal ? undefined : () => { window.location.href = `/api/projects/${project.id}/export`; }}
               onPdf={() => printProjectReport(project, phases, me?.name || me?.email || '')}

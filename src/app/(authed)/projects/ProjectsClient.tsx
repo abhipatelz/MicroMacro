@@ -183,10 +183,14 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
           const healthColor = HEALTH_COLORS[health];
           const healthLabel = health === 'critical' ? 'Critical' : health === 'at_risk' ? 'At risk' : 'Healthy';
           const statusInfo = STATUS_COLORS[p.status] || { dot: '#94a3b8', label: p.status };
-          const progressColor = pct >= 90 ? '#22c55e' : pct >= 60 ? '#1769C8' : pct >= 30 ? '#f59e0b' : '#94a3b8';
+          // App-theme progress: blue at the start, transitioning to green as it
+          // nears completion — never the dull grey it used to fall back to at
+          // low percentages. The % text reads green only once nearly done.
+          const progressColor = pct >= 90 ? '#22c55e' : '#1769C8';
           const dueIn = p.dueDate ? Math.round((new Date(p.dueDate).getTime() - Date.now()) / 86400000) : null;
           const dueTone = dueIn === null ? 'slate' : dueIn < 0 ? 'red' : dueIn <= 7 ? 'amber' : 'slate';
-          const progressGradient = `linear-gradient(90deg, ${progressColor} 0%, ${progressColor}cc 100%)`;
+          // Blue → green themed fill so the bar always carries the app accent.
+          const progressGradient = 'linear-gradient(90deg, #1769C8 0%, #22c55e 100%)';
           return (
             <Link
               href={`/projects/${p.id}`}

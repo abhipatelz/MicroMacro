@@ -4,6 +4,7 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { User } from '@/models/User';
 import { isLead, requireUser } from '@/lib/auth';
+import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { rateLimit } from '@/lib/rateLimit';
 import { handleError } from '@/lib/http';
 import ExcelJS from 'exceljs';
@@ -620,7 +621,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
     await connectDB();
 
-    const project = await Project.findById(params.id).lean();
+    // Scope to what this lead/admin can actually see — personal projects are
+    // owner-only and must be unreachable through export, exactly like a 404.
+    const scope = await getLeadScope(user.sub, user.role);
+    const project = await Project.findOne({ _id: params.id, ...projectsVisibleFilter(scope) }).lean();
     if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const [tasks, users] = await Promise.all([

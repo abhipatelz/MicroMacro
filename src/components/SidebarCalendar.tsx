@@ -44,7 +44,15 @@ function firstName(name: string | null | undefined): string {
 }
 
 // Per-range cache shared across mounts so the hover-expand sidebar is instant.
+// Module-level, so it survives unmounts — but that also means it survives a
+// login switch in the same tab. MUST be cleared on logout (see
+// clearSidebarCalendarCache) or the next signed-in user briefly sees the
+// previous user's calendar until their own fetch lands.
 const rangeCache = new Map<string, CalTask[]>();
+
+export function clearSidebarCalendarCache() {
+  rangeCache.clear();
+}
 
 export function SidebarCalendar({ dark }: { dark: boolean }) {
   const router = useRouter();
@@ -314,9 +322,6 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                   +{hoverList.length - 5} more
                 </div>
               )}
-            </div>
-            <div className={`mt-2 pt-1.5 border-t text-[9px] font-medium ${dark ? 'text-white/25 border-white/5' : 'text-slate-300 border-slate-100'}`}>
-              Click any task to open
             </div>
           </div>
         </div>,

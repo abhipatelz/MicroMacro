@@ -282,29 +282,6 @@ export const MindmapToTasksSchema = z.object({
 });
 export type MindmapToTasksInput = z.infer<typeof MindmapToTasksSchema>;
 
-// Input for the AI status-draft transform. Read-only (writes no record), but
-// validated + capped so a client can't push unbounded text at the LLM. Fields
-// are explicit — no passthrough — per the API-boundary rule.
-export const StatusDraftSchema = z.object({
-  projectName: z.string().min(1).max(200),
-  code:        z.string().max(64).default(''),
-  lifecycle:   z.string().max(64).nullish(),
-  status:      z.string().max(64).nullish(),
-  dueDate:     z.string().max(40).nullish(),
-  total:       z.number().int().min(0).max(100_000),
-  done:        z.number().int().min(0).max(100_000),
-  inProgress:  z.number().int().min(0).max(100_000),
-  blocked:     z.number().int().min(0).max(100_000),
-  overdue:     z.number().int().min(0).max(100_000),
-  blockedTitles: z.array(z.string().max(300)).max(10).default([]),
-  overdueTitles: z.array(z.string().max(300)).max(10).default([]),
-  upcoming: z.array(z.object({
-    title: z.string().max(300),
-    due:   z.string().max(40).nullable(),
-  })).max(10).default([]),
-});
-export type StatusDraftInputBody = z.infer<typeof StatusDraftSchema>;
-
 export const TaskUpdateSchema = z.object({
   title: z.string().min(1).max(300).optional(),
   description: z.string().max(10_000).optional(),

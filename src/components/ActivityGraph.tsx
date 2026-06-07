@@ -94,6 +94,14 @@ function activityKey(who: string, year: number) {
   return `${who}:${year}`;
 }
 
+// Wipe every cached activity payload — must run on logout/login switch so a
+// stale viewer's data (or a privacy-filtered view computed for a *different*
+// viewer) can never bleed into the next session sharing this browser tab.
+export function clearActivityGraphCache() {
+  activityGraphCache.clear();
+  activityGraphInflight.clear();
+}
+
 function loadActivity(who: string, year: number) {
   const key = activityKey(who, year);
   const cached = activityGraphCache.get(key);

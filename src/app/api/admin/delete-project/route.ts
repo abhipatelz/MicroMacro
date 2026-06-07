@@ -5,6 +5,7 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { User } from '@/models/User';
 import { logOperation } from '@/lib/audit';
+import { NOT_PERSONAL } from '@/lib/leadScope';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
@@ -41,9 +42,11 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
   }
 
-  // Find project by reference code
+  // Find project by reference code. Personal projects are excluded entirely —
+  // they are invisible to admins by design, so a lookup must behave exactly as
+  // if the project doesn't exist (same generic 404, no existence leak).
   const codeUpper = parsed.data.code.toUpperCase();
-  const project = await Project.findOne({ code: codeUpper }).lean();
+  const project = await Project.findOne({ $and: [{ code: codeUpper }, NOT_PERSONAL] }).lean();
   if (!project) {
     return NextResponse.json(
       { error: `No project found with reference code "${codeUpper}"` },

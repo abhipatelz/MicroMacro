@@ -135,7 +135,8 @@ export function comment(c: any) {
     id: id(c._id),
     userId: id(c.userId),
     body: c.body,
-    createdAt: date(c.createdAt)
+    createdAt: date(c.createdAt),
+    updatedAt: date(c.updatedAt),
   };
 }
 
