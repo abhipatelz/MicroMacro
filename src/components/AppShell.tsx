@@ -108,6 +108,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
     !user.pinPromptDismissedAt;
   const [needsPin, setNeedsPin] = useState(shouldOfferPin);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const lastActivityRef = useRef(Date.now());
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
@@ -164,7 +165,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
   const gPressedRef = useRef(false);
   const gTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { setOpen(false); setAccountMenuOpen(false); }, [pathname]);
+  useEffect(() => { setOpen(false); setAccountMenuOpen(false); setMobileMenuOpen(false); }, [pathname]);
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
@@ -696,7 +697,7 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
             <NotificationBell dark={dark} openUp={false} initialUnread={initialUnread} />
             <button
               type="button"
-              onClick={() => setAccountMenuOpen(v => !v)}
+              onClick={() => setMobileMenuOpen(v => !v)}
               className="relative rounded-full focus:outline-none"
               aria-label="Account menu"
               data-tour="account-menu"
@@ -776,9 +777,11 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
         </nav>
       </div>
 
-      {/* Mobile account menu — slides up from the avatar button in the top bar */}
-      {accountMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-[55]" onClick={() => setAccountMenuOpen(false)}>
+      {/* Mobile account menu — slides up from the avatar button in the top bar.
+          Uses its own mobileMenuOpen state so the desktop sidebar's mousedown
+          outside-click handler (accountMenuRef) never races with navigation. */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-[55]" onClick={() => setMobileMenuOpen(false)}>
           <div className="absolute inset-x-0 bottom-0 rounded-t-3xl shadow-2xl p-6 space-y-1"
             style={{
               background: dark ? '#262624' : '#ffffff',
@@ -786,7 +789,6 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
               boxShadow: dark ? '0 -20px 60px rgba(0,0,0,0.6)' : '0 -20px 60px rgba(15,23,42,0.15)',
             }}
             onClick={e => e.stopPropagation()}
-            onMouseDown={e => e.stopPropagation()}
           >
             {/* Drag handle indicator */}
             <div className="flex justify-center mb-4">
@@ -804,16 +806,16 @@ export default function AppShell({ user, initialDark, initialSidebarCollapsed = 
                 </div>
               </div>
             </div>
-            <Link href="/settings" onClick={() => setAccountMenuOpen(false)}
+            <Link href="/settings" onClick={() => setMobileMenuOpen(false)}
               className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}>
               <UserCircle size={18} className="text-slate-400" /> Profile &amp; settings
             </Link>
-            <button type="button" onClick={() => { toggleDark(); setAccountMenuOpen(false); }}
+            <button type="button" onClick={() => { toggleDark(); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}>
               {dark ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-slate-400" />}
               {dark ? 'Light mode' : 'Dark mode'}
             </button>
-            <button type="button" onClick={() => { setAccountMenuOpen(false); setConfirmLogout(true); }}
+            <button type="button" onClick={() => { setMobileMenuOpen(false); setConfirmLogout(true); }}
               className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-red-400 hover:bg-red-400/10' : 'text-red-600 hover:bg-red-50'}`}>
               <LogOut size={18} /> Sign out
             </button>
