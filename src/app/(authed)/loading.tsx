@@ -8,6 +8,29 @@ import { PragatiMark } from '@/components/PragatiMark';
 export default function Loading() {
   return (
     <div className="pb-12 max-w-[1440px]">
+      {/* Indeterminate brand sweep — a single moving gradient line at the very
+          top tells the user "we're in motion" the whole time the skeleton is
+          up. The skeleton alone reads as static after ~1s; the sweep keeps the
+          wait feeling alive without adding any JS. */}
+      <style>{`
+        @keyframes route-sweep {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(350%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .route-sweep { animation: none !important; }
+        }
+      `}</style>
+      <div className="fixed top-0 left-0 right-0 h-[3px] z-50 overflow-hidden pointer-events-none">
+        <div
+          className="route-sweep h-full w-1/3 rounded-full"
+          style={{
+            background: 'linear-gradient(90deg, transparent, #1769C8 30%, #43A047 70%, transparent)',
+            animation: 'route-sweep 1.2s ease-in-out infinite',
+          }}
+        />
+      </div>
+
       {/* Greeting row */}
       <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
         <div className="space-y-2">

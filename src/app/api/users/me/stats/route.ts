@@ -4,6 +4,7 @@ import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
 import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
+import { momentumStats } from '@/lib/momentum';
 
 export const runtime = 'nodejs';
 
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    const [totalDone, doneThisMonth, doneThisYear, openTasks, overdueTasks, gxpDone, projectIds] =
+    const [totalDone, doneThisMonth, doneThisYear, openTasks, overdueTasks, gxpDone, projectIds, momentum] =
       await Promise.all([
         Task.countDocuments({ assigneeId: uid, status: 'done' }),
         Task.countDocuments({ assigneeId: uid, status: 'done', completedAt: { $gte: startOfMonth } }),
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
         Task.countDocuments({ assigneeId: uid, status: { $ne: 'done' }, dueDate: { $lt: now } }),
         Task.countDocuments({ assigneeId: uid, status: 'done', gxpCritical: true }),
         Task.distinct('projectId', { assigneeId: uid }),
+        momentumStats(uid),
       ]);
 
     const projectCount = await Project.countDocuments({ _id: { $in: projectIds } });
@@ -39,6 +41,9 @@ export async function GET(req: NextRequest) {
       overdueTasks,
       gxpDone,
       projectCount,
+      streak: momentum.streak,
+      doneToday: momentum.doneToday,
+      doneThisWeek: momentum.doneThisWeek,
     });
   } catch (e) {
     return handleError(e);

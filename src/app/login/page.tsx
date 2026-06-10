@@ -18,75 +18,109 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-/* Rotating wisdom from Jensen Huang, CEO of NVIDIA. */
+/* Rotating wisdom — short aphorisms from Naval Ravikant, chosen for the
+   app's own themes: compounding progress, long-term work, focus, leverage.
+   Each is a single-sentence, widely-circulated line, quoted with attribution.
+
+   No-repeat rule: every quote has a stable id and a per-device "seen" ledger
+   lives in localStorage, so a returning user never sees the same line twice
+   until they've seen them all (the login page is pre-auth, so the device is
+   the closest thing to a user identity we have here). Once the whole set has
+   been seen, the ledger resets and a fresh cycle begins — with a finite set,
+   that's the only honest option. */
 const QUOTES = [
-  'You have to be the very best at what you do, because the world is so competitive.',
-  'The more you suffer, the more it shows you really care about what you are doing.',
-  'I want you to be in a state of urgency. Not panic — urgency.',
-  "Run. Don't walk.",
-  'The greatest opportunity in human history is right now. The next industrial revolution has begun.',
-  'Speed is a strategy. Doing things fast is not just efficiency — it is competitive advantage.',
-  'If you are not embarrassed by version one, you shipped too late.',
-  'We have to be the best. Not incrementally better — we have to be the best.',
-  'The most important thing a leader can do is set a high bar for quality.',
-  'Our goal is not to be a technology company. Our goal is to solve problems that matter.',
-  'Expectations lead to disappointment. Determination leads to results.',
-  'Every day you have to earn your place. Every single day.',
-  'The company that moves fastest wins. Always.',
-  "Do not celebrate yesterday's wins too long. Tomorrow's competition does not rest.",
-  "You have to be willing to do what others won't. That is the only way to get where others haven't been.",
-  'If I had not gotten comfortable with failure, I would never have achieved anything.',
-  'The ability to learn is the most important quality a leader can have.',
-  'Talent is everywhere. Opportunity is not. Close that gap.',
-  'Being brilliant is not enough. You have to do something with it.',
-  'Great execution beats great strategy every time.',
-  'You can either fear change or embrace it. One path leads to extinction, the other to leadership.',
-  'We do not just build products. We build trust. One delivery at a time.',
-  'The work is the message. Ship it right.',
-  'Done is not enough. Done well is the standard.',
-  'Your team is your most important product. Build them like it.',
-  'A roadmap without urgency is a wish list.',
-  'Software without discipline is chaos. Discipline without software is just slow chaos.',
-  'Every feature you ship is a promise. Honor it.',
-  'Complexity is the enemy of execution. Simplify relentlessly.',
-  'The best teams do not just meet expectations — they redefine them.',
-  'Accountability is not a punishment. It is a sign that your work matters.',
-  'The difference between good and great is attention to the things others ignore.',
-  'Move fast. Learn faster. Ship. Repeat.',
-  'Quality is not a phase. It is the whole process.',
-  'If your team does not know the goal, they cannot reach it. Clarity is leadership.',
-  'The race is not always to the swift, but to the ones who never stop.',
-  'Precision and speed are not opposites. The most precise teams move fastest.',
-  'Build for impact, not for applause.',
-  'Vision without execution is delusion.',
-  'The best time to fix a problem is before it becomes one.',
+  'Play long-term games with long-term people.',
+  'Impatience with actions, patience with results.',
+  'Escape competition through authenticity.',
+  'All the returns in life, whether in wealth, relationships, or knowledge, come from compound interest.',
+  'If you can’t decide, the answer is no.',
+  'Earn with your mind, not with your time.',
+  'Learn to sell. Learn to build. If you can do both, you will be unstoppable.',
+  'Code and media are permissionless leverage.',
+  'Inspiration is perishable — act on it immediately.',
+  'A busy calendar and a busy mind will destroy your ability to create anything great.',
+  'Specific knowledge is found by pursuing your genuine curiosity.',
+  'Reading is faster than listening. Doing is faster than watching.',
 ];
 
+const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v1';
+
+/** Indices not yet shown on this device; resets when the set is exhausted. */
+function unseenQuoteIndices(): number[] {
+  try {
+    const seen: number[] = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
+    const valid = new Set(seen.filter((n) => Number.isInteger(n) && n >= 0 && n < QUOTES.length));
+    const unseen = QUOTES.map((_, i) => i).filter((i) => !valid.has(i));
+    if (unseen.length > 0) return unseen;
+    localStorage.removeItem(QUOTES_SEEN_KEY);
+    return QUOTES.map((_, i) => i);
+  } catch {
+    return QUOTES.map((_, i) => i);
+  }
+}
+
+function markQuoteSeen(i: number) {
+  try {
+    const seen: number[] = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
+    if (!seen.includes(i)) localStorage.setItem(QUOTES_SEEN_KEY, JSON.stringify([...seen, i]));
+  } catch {
+    /* private mode — quotes simply rotate without the ledger */
+  }
+}
+
 function RotatingQuote() {
-  const [i, setI] = useState(0);
+  // The queue is built once on mount (shuffled unseen indices); we then walk
+  // it, marking each line seen as it appears. SSR renders nothing — the
+  // ledger only exists client-side, and a server-picked quote would flash.
+  const [queue, setQueue] = useState<number[]>([]);
+  const [pos, setPos] = useState(0);
   const [show, setShow] = useState(true);
+
   useEffect(() => {
+    const unseen = unseenQuoteIndices();
+    for (let i = unseen.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [unseen[i], unseen[j]] = [unseen[j], unseen[i]];
+    }
+    setQueue(unseen);
+    markQuoteSeen(unseen[0]);
+  }, []);
+
+  useEffect(() => {
+    if (queue.length < 2) return;
     const t = setInterval(() => {
       setShow(false);
       setTimeout(() => {
-        setI((n) => (n + 1) % QUOTES.length);
+        setPos((p) => {
+          const next = (p + 1) % queue.length;
+          markQuoteSeen(queue[next]);
+          return next;
+        });
         setShow(true);
       }, 400);
-    }, 6000);
+    }, 8000);
     return () => clearInterval(t);
-  }, []);
+  }, [queue]);
+
+  if (queue.length === 0) return <div style={{ minHeight: 34 }} />;
   return (
     <div
       style={{
-        fontSize: 12,
-        fontStyle: 'italic',
         transition: 'opacity 0.4s ease',
         opacity: show ? 1 : 0,
-        minHeight: 18,
+        minHeight: 34,
       }}
-      className="text-white/40 tracking-wide max-w-[300px] mx-auto leading-snug"
+      className="max-w-[320px] mx-auto"
     >
-      “{QUOTES[i]}”
+      <div style={{ fontSize: 12 }} className="text-white/45 italic tracking-wide leading-snug">
+        “{QUOTES[queue[pos]]}”
+      </div>
+      <div
+        style={{ fontSize: 10 }}
+        className="text-white/25 mt-1.5 font-semibold tracking-[0.18em] uppercase"
+      >
+        — Naval Ravikant
+      </div>
     </div>
   );
 }
@@ -170,6 +204,12 @@ export default function LoginPage() {
     font: 0,
   });
   const [pin, setPin] = useState('');
+  // Wrong-PIN shake + success takeover. `unlocked` swaps the PIN pad for a
+  // full-screen welcome veil that stays up while the dashboard route loads,
+  // so the post-PIN moment reads as one continuous transition instead of
+  // "boxes → blank → skeleton".
+  const [shake, setShake] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
   const pinInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -239,14 +279,19 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await api('/auth/unlock', { method: 'POST', body: { pin: pinValue } });
-      // `replace` triggers a soft client-side navigation; the dashboard route
-      // re-renders with the freshly-set auth cookie. We *don't* call
-      // `router.refresh()` here — it triggers a hard re-render of every
-      // server tree which made the post-PIN wait feel sluggish (1–2s of
-      // visual blank). The dashboard's loading skeleton covers the swap.
-      router.replace('/');
+      // Success: flash the boxes green, then raise the welcome veil and
+      // navigate underneath it. `replace` triggers a soft client-side
+      // navigation; the dashboard route re-renders with the freshly-set auth
+      // cookie. We *don't* call `router.refresh()` here — it triggers a hard
+      // re-render of every server tree which made the post-PIN wait feel
+      // sluggish (1–2s of visual blank). The veil (and then the dashboard's
+      // skeleton) covers the swap.
+      setUnlocked(true);
+      setTimeout(() => router.replace('/'), 450);
     } catch (e: any) {
       setPin('');
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
       if (e?.data?.needPassword || /password/i.test(e?.message || '')) {
         setErr(e.message || 'Please sign in with your password.');
         setMode('login');
@@ -334,6 +379,35 @@ export default function LoginPage() {
         @keyframes spin-ccw { to { transform: rotate(-360deg); } }
         .pin-orbit-a { animation: spin-cw 22s linear infinite; }
         .pin-orbit-b { animation: spin-ccw 16s linear infinite; }
+        /* Wrong-PIN feedback: one decisive horizontal shake of the box row —
+           the universal "nope" gesture — instead of only a red message below. */
+        @keyframes pin-shake {
+          0%, 100% { transform: translateX(0); }
+          20% { transform: translateX(-7px); }
+          40% { transform: translateX(6px); }
+          60% { transform: translateX(-4px); }
+          80% { transform: translateX(3px); }
+        }
+        .pin-shake { animation: pin-shake 0.45s ease-in-out; }
+        /* Correct-PIN feedback: dots pop green before the welcome veil rises. */
+        @keyframes pin-pop {
+          0% { transform: scale(1); }
+          45% { transform: scale(1.35); }
+          100% { transform: scale(1); }
+        }
+        .pin-pop { animation: pin-pop 0.3s ease-out; }
+        /* Post-unlock welcome veil — fades up over everything and holds while
+           the dashboard loads behind it. */
+        @keyframes veil-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .veil-in { animation: veil-in 0.35s ease-out both; }
+        @keyframes veil-bar {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(250%); }
+        }
+        .veil-bar { animation: veil-bar 1.1s ease-in-out infinite; }
         /* Aurora — three large, slow-drifting colour blobs behind the brand
            panel. Gives the login a living, premium backdrop without the busy
            orbiting dots. GPU-friendly (transform + opacity only). */
@@ -345,8 +419,9 @@ export default function LoginPage() {
         .aurora-3 { animation: aurora-3 24s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
           .logo-float, .pulse-ring, .pulse-ring-2, .pulse-ring-3, .shimmer-line::after,
-          .pin-orbit-a, .pin-orbit-b, .aurora-1, .aurora-2, .aurora-3 { animation: none !important; }
-          .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-in-soft, .form-swap { animation-duration: 0.01ms !important; }
+          .pin-orbit-a, .pin-orbit-b, .aurora-1, .aurora-2, .aurora-3,
+          .pin-shake, .pin-pop, .veil-bar { animation: none !important; }
+          .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-in-soft, .form-swap, .veil-in { animation-duration: 0.01ms !important; }
         }
       `}</style>
 
@@ -582,9 +657,10 @@ export default function LoginPage() {
                     </p>
                   </div>
 
-                  {/* 4-box PIN input — keyboard plus touch keypad, so it works on every device */}
+                  {/* 4-box PIN input — keyboard plus touch keypad, so it works on every device.
+                    The row shakes on a wrong PIN and the dots pop green on success. */}
                   <div
-                    className="relative flex justify-center gap-3 mb-4 cursor-text"
+                    className={`relative flex justify-center gap-3 mb-4 cursor-text ${shake ? 'pin-shake' : ''}`}
                     onClick={() => pinInputRef.current?.focus()}
                   >
                     {[0, 1, 2, 3].map((i) => (
@@ -592,13 +668,36 @@ export default function LoginPage() {
                         key={i}
                         className="w-[54px] h-[62px] rounded-2xl border-2 flex items-center justify-center transition-all duration-200"
                         style={{
-                          borderColor: pin.length === i ? '#1565C0' : pin.length > i ? '#93c5fd' : '#e2e8f0',
-                          background: pin.length > i ? '#eff6ff' : pin.length === i ? '#f0f9ff' : 'white',
-                          boxShadow: pin.length === i ? '0 0 0 3px rgba(21,101,192,0.13)' : 'none',
+                          borderColor: unlocked
+                            ? '#16a34a'
+                            : shake
+                              ? '#ef4444'
+                              : pin.length === i
+                                ? '#1565C0'
+                                : pin.length > i
+                                  ? '#93c5fd'
+                                  : '#e2e8f0',
+                          background: unlocked
+                            ? '#f0fdf4'
+                            : shake
+                              ? '#fef2f2'
+                              : pin.length > i
+                                ? '#eff6ff'
+                                : pin.length === i
+                                  ? '#f0f9ff'
+                                  : 'white',
+                          boxShadow:
+                            !unlocked && !shake && pin.length === i
+                              ? '0 0 0 3px rgba(21,101,192,0.13)'
+                              : 'none',
                           transform: pin.length > i ? 'scale(1.04)' : 'scale(1)',
                         }}
                       >
-                        {pin.length > i && <div className="w-3 h-3 rounded-full bg-blue-600" />}
+                        {pin.length > i && (
+                          <div
+                            className={`w-3 h-3 rounded-full ${unlocked ? 'bg-green-600 pin-pop' : 'bg-blue-600'}`}
+                          />
+                        )}
                       </div>
                     ))}
 
@@ -641,7 +740,7 @@ export default function LoginPage() {
                     </div>
                   )}
 
-                  {loading && (
+                  {loading && !unlocked && (
                     <div className="mt-2 fade-in-soft">
                       <BirdsEyeLoader
                         size="sm"
@@ -843,6 +942,55 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Post-unlock welcome veil ─────────────────────────────────────
+          Raised the instant the PIN verifies and held while the dashboard
+          route loads underneath, so unlocking reads as one continuous
+          motion: dots pop green → veil rises → workspace appears. */}
+      {unlocked && (
+        <div
+          className="fixed inset-0 z-[80] veil-in flex flex-col items-center justify-center"
+          style={{
+            background: 'linear-gradient(160deg, #050E1D 0%, #091828 40%, #0B1F3A 70%, #0C2347 100%)',
+          }}
+          aria-live="polite"
+        >
+          <div className="relative mb-6" style={{ width: 88, height: 88 }}>
+            <div
+              aria-hidden
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: 'radial-gradient(circle, rgba(66,165,245,0.30) 0%, transparent 68%)',
+                animation: 'glow-pulse 2.4s ease-in-out infinite',
+              }}
+            />
+            <div
+              className="absolute inset-[10px] rounded-[22px] flex items-center justify-center text-xl select-none"
+              style={{
+                background: deviceAvatar.bg || 'linear-gradient(135deg, #1565C0 0%, #1a237e 100%)',
+                color: deviceAvatar.bg ? avatarFg(deviceAvatar.bg) : '#ffffff',
+                fontFamily: (AVATAR_FONTS[deviceAvatar.font] || AVATAR_FONTS[0]).family,
+                fontWeight: (AVATAR_FONTS[deviceAvatar.font] || AVATAR_FONTS[0]).weight,
+                boxShadow: '0 14px 36px rgba(21,101,192,0.45)',
+              }}
+            >
+              {(deviceAvatar.letter || getInitials(deviceName)).slice(0, 2).toUpperCase()}
+            </div>
+          </div>
+          <div className="font-display text-2xl font-black text-white tracking-tight fade-up-1">
+            Welcome back{deviceName ? `, ${deviceName.split(/\s+/)[0]}` : ''}
+          </div>
+          <div className="text-[13px] text-white/50 mt-2 fade-up-2">
+            Taking you to your bird&apos;s-eye view…
+          </div>
+          <div className="mt-7 w-44 h-1 rounded-full overflow-hidden bg-white/10 fade-up-3">
+            <div
+              className="h-full w-1/2 rounded-full veil-bar"
+              style={{ background: 'linear-gradient(90deg, #1769C8, #43A047)' }}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

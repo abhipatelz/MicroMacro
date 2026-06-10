@@ -15,6 +15,7 @@ import {
   Brush,
   Eraser,
   Plus,
+  Search,
 } from 'lucide-react';
 import { api } from '@/lib/client/api';
 import { DatePicker } from '@/components/DatePicker';
@@ -146,11 +147,15 @@ interface Edge {
 // view clean — individual projects expand to show task detail on demand.
 const NODE_WIDTH = { root: 280, team: 218, project: 206, phase: 192, task: 202, count: 192 } as const;
 const NODE_HEIGHT = { root: 68, team: 54, project: 60, phase: 38, task: 46, count: 32 } as const;
-const LEVEL_GAP_Y = 68; // vertical distance between depth levels
-const SIBLING_GAP_X = 22; // horizontal distance between siblings of the same parent
-const SUBTREE_GAP_X = 40; // extra horizontal gap between sibling subtrees
-const TASK_STACK_GAP_Y = 9; // vertical spacing inside a project's task stack
-const PADDING = 48; // canvas padding around the whole tree
+// Air between things is what separates "aerial view" from "circuit diagram".
+// These gaps were widened after the dense first pass read as congested: the
+// auto-fit always frames the whole tree anyway, so extra whitespace costs a
+// little zoom, not screen space — and buys a lot of scannability.
+const LEVEL_GAP_Y = 88; // vertical distance between depth levels
+const SIBLING_GAP_X = 32; // horizontal distance between siblings of the same parent
+const SUBTREE_GAP_X = 58; // extra horizontal gap between sibling subtrees
+const TASK_STACK_GAP_Y = 12; // vertical spacing inside a project's task stack
+const PADDING = 64; // canvas padding around the whole tree
 
 function nodeKey(kind: string, id: string) {
   return `${kind}:${id}`;
@@ -838,16 +843,62 @@ export function BirdsEyeView({
   // Tracks whether the user has taken manual control of the zoom; until they
   // do, we keep auto-fitting on resize so the first paint always frames the tree.
   const userZoomed = useRef(false);
+  // Find-on-canvas: a query dims everything that doesn't match so the matches
+  // pop without re-laying-out the tree (positions stay stable — that's what
+  // keeps the view trustworthy as a spatial reference).
+  const [query, setQuery] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
+  // Status spotlight — clicking a legend chip dims tasks not in that status.
+  // null = no filter. Single-select; clicking the active chip clears it.
+  const [statusFocus, setStatusFocus] = useState<string | null>(null);
+  // Minimap viewport tracking — scroll/size of the canvas, sampled via rAF so
+  // panning never pays for a React render per scroll event.
+  const [viewportBox, setViewportBox] = useState({ sl: 0, st: 0, cw: 0, ch: 0 });
+  const viewportRaf = useRef(0);
+  const sampleViewport = useCallback(() => {
+    cancelAnimationFrame(viewportRaf.current);
+    viewportRaf.current = requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      setViewportBox({ sl: el.scrollLeft, st: el.scrollTop, cw: el.clientWidth, ch: el.clientHeight });
+    });
+  }, []);
 
   useEffect(() => {
     setMounted(true);
   }, []);
   useEffect(() => {
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') editing ? setEditing(null) : onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // Layered escape: close the popover, then the search, then the view.
+        if (editing) setEditing(null);
+        else if (document.activeElement === searchRef.current) {
+          setQuery('');
+          searchRef.current?.blur();
+        } else onClose();
+        return;
+      }
+      // Power-user keys — never steal keystrokes from a focused field.
+      const t = e.target as HTMLElement;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === '/') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      } else if (e.key === '+' || e.key === '=') zoomBy(0.1);
+      else if (e.key === '-') zoomBy(-0.1);
+      else if (e.key === '0' || e.key.toLowerCase() === 'f') resetView();
+      else if (e.key.toLowerCase() === 'b') setBrushOn((v) => !v);
+      else if (e.key.toLowerCase() === 't') {
+        userZoomed.current = false;
+        setCollapseTasks((v) => !v);
+      }
     };
-    window.addEventListener('keydown', onEsc);
-    return () => window.removeEventListener('keydown', onEsc);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // zoomBy/resetView are stable in behaviour (setState + refs); listing the
+    // states they close over would re-bind the listener every zoom tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose, editing]);
 
   // Persist overrides whenever they change.
@@ -895,6 +946,55 @@ export function BirdsEyeView({
 
   const nodeIndex = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
+  // ── Spotlight ────────────────────────────────────────────────────────────
+  // Search and the legend's status focus dim what doesn't match instead of
+  // removing it: positions never change, so the user's spatial memory of the
+  // tree survives the filter. `null` = no spotlight, everything full-strength.
+  const queryNorm = query.trim().toLowerCase();
+  const litIds = useMemo(() => {
+    if (!queryNorm && !statusFocus) return null;
+    const lit = new Set<string>();
+    for (const n of nodes) {
+      if (n.kind === 'root') {
+        lit.add(n.id);
+        continue;
+      }
+      const text = `${n.label} ${n.sub || ''}`.toLowerCase();
+      const queryOk = !queryNorm || text.includes(queryNorm);
+      // Status focus only judges task cards — teams/projects/phases stay lit
+      // as the scaffolding that gives the matching tasks their context.
+      const statusOk = !statusFocus || n.kind !== 'task' || (n.data as BirdsEyeTask).status === statusFocus;
+      if (queryOk && statusOk) lit.add(n.id);
+    }
+    return lit;
+  }, [nodes, queryNorm, statusFocus]);
+
+  const queryMatchCount = useMemo(() => {
+    if (!queryNorm) return 0;
+    let c = 0;
+    for (const n of nodes) {
+      if (n.kind === 'root') continue;
+      if (`${n.label} ${n.sub || ''}`.toLowerCase().includes(queryNorm)) c++;
+    }
+    return c;
+  }, [nodes, queryNorm]);
+
+  // Enter in the search box flies to the first match (top-most, then left-most).
+  const jumpToFirstMatch = useCallback(() => {
+    if (!queryNorm) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const first = [...nodes]
+      .filter((n) => n.kind !== 'root' && `${n.label} ${n.sub || ''}`.toLowerCase().includes(queryNorm))
+      .sort((a, b) => a.y - b.y || a.x - b.x)[0];
+    if (!first) return;
+    el.scrollTo({
+      left: (first.x + first.width / 2) * zoom - el.clientWidth / 2,
+      top: (first.y + first.height / 2) * zoom - el.clientHeight / 2,
+      behavior: 'smooth',
+    });
+  }, [nodes, queryNorm, zoom]);
+
   // Compute the zoom that frames the whole tree in the current viewport, then
   // centre it. Capped at 1× (we never blow content up past natural size on a
   // sparse tree) and floored so a huge tree stays legible.
@@ -934,6 +1034,12 @@ export function BirdsEyeView({
     ro.observe(el);
     return () => ro.disconnect();
   }, [mounted, fitToViewport]);
+
+  // Keep the minimap's viewport rectangle honest across zoom, layout and
+  // container-size changes (scrolling is handled by onScroll on the canvas).
+  useEffect(() => {
+    if (mounted) sampleViewport();
+  }, [mounted, zoom, width, height, sampleViewport]);
 
   const zoomBy = (delta: number) => {
     userZoomed.current = true;
@@ -1124,8 +1230,29 @@ export function BirdsEyeView({
   if (!mounted) return null;
   return createPortal(
     <div className="fixed inset-0 z-[60] bg-slate-900/70 backdrop-blur-sm overlay-in" onClick={onClose}>
+      {/* Opening choreography — the card swoops in while the tree itself
+          settles from a higher "altitude" (scaled up, slightly transparent)
+          down to its fitted size: the literal feeling of a bird's-eye view
+          opening up beneath you. GPU-only (transform + opacity). */}
+      <style>{`
+        @keyframes be-swoop {
+          from { opacity: 0; transform: translateY(18px) scale(0.975); }
+          to   { opacity: 1; transform: none; }
+        }
+        @keyframes be-aerial {
+          from { opacity: 0; transform: scale(1.32); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        .be-swoop  { animation: be-swoop 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .be-aerial { animation: be-aerial 0.7s 0.06s cubic-bezier(0.22, 1, 0.36, 1) both; transform-origin: 50% 16%; }
+        .be-node-g { transition: opacity 0.25s ease; }
+        @media (prefers-reduced-motion: reduce) {
+          .be-swoop, .be-aerial { animation-duration: 0.01ms !important; }
+          .be-node-g { transition: none !important; }
+        }
+      `}</style>
       <div
-        className="absolute inset-2 sm:inset-6 rounded-2xl bg-white shadow-2xl flex flex-col modal-in overflow-hidden"
+        className="absolute inset-2 sm:inset-6 rounded-2xl bg-white shadow-2xl flex flex-col be-swoop overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — full-width band above the canvas. Title block left, controls
@@ -1143,6 +1270,40 @@ export function BirdsEyeView({
             )}
           </div>
           <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:shrink-0">
+            {/* Find on canvas — dims everything that doesn't match; Enter flies
+                to the first hit. `/` focuses from anywhere in the view. */}
+            <div className="relative">
+              <Search
+                size={13}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') jumpToFirstMatch();
+                }}
+                placeholder="Find  ( / )"
+                aria-label="Find a team, project or task on the canvas"
+                className="w-[124px] sm:w-[150px] pl-8 pr-7 py-1.5 text-[12px] rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery('')}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
+                  title="Clear search"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            {queryNorm && (
+              <span className="text-[10px] font-bold text-slate-400 tabular-nums whitespace-nowrap">
+                {queryMatchCount} match{queryMatchCount === 1 ? '' : 'es'}
+              </span>
+            )}
+            <span className="w-px h-5 bg-slate-200 mx-0.5 hidden sm:block" />
             <button
               onClick={() => {
                 userZoomed.current = false;
@@ -1272,10 +1433,11 @@ export function BirdsEyeView({
           onPointerMove={onPointerMove}
           onPointerUp={endPointer}
           onPointerLeave={endPointer}
+          onScroll={sampleViewport}
         >
           <div className="inline-block min-w-full">
             <div className="flex justify-center">
-              <div style={{ width: width * zoom, height: height * zoom }}>
+              <div className="be-aerial" style={{ width: width * zoom, height: height * zoom }}>
                 <svg
                   ref={svgRef}
                   width={width}
@@ -1322,10 +1484,15 @@ export function BirdsEyeView({
                         b.kind === 'team' || b.kind === 'project' || b.kind === 'phase';
                       const toggleId = collapsibleChild ? b.id : a.id;
                       const d = edgePath(a, b);
+                      // Edges follow the spotlight: a connector into a dimmed
+                      // node fades with it so lit branches read as paths.
+                      const edgeDim = litIds && (!litIds.has(a.id) || !litIds.has(b.id));
                       return (
                         <g
                           key={i}
                           data-be-action="edge-toggle"
+                          className="be-node-g"
+                          opacity={edgeDim ? 0.18 : 1}
                           onClick={(ev) => {
                             ev.preventDefault();
                             ev.stopPropagation();
@@ -1556,8 +1723,12 @@ export function BirdsEyeView({
                         shape
                       );
 
+                      // Spotlight: anything outside the current search/status
+                      // focus fades back instead of disappearing — positions
+                      // hold steady so spatial memory survives the filter.
+                      const dimmed = litIds && !litIds.has(n.id);
                       return (
-                        <g key={n.id} {...dragProps}>
+                        <g key={n.id} {...dragProps} className="be-node-g" opacity={dimmed ? 0.13 : 1}>
                           {body}
                           {openBtn}
                           {collapseBtn}
@@ -1600,26 +1771,134 @@ export function BirdsEyeView({
           </div>
         </div>
 
-        {/* Footer legend */}
-        <div className="shrink-0 flex items-center gap-3 px-5 py-2 border-t border-slate-200 text-[10px] text-slate-500 flex-wrap bg-white">
+        {/* Minimap — the bird's-eye of the bird's-eye. A scaled silhouette of
+            the whole tree with the current viewport framed; click or drag
+            anywhere on it to fly there. Only shown when the tree actually
+            overflows the viewport — on a fully-visible tree it's just noise. */}
+        {(() => {
+          if (nodes.length < 9) return null;
+          const overflowing =
+            viewportBox.cw > 0 && (width * zoom > viewportBox.cw + 4 || height * zoom > viewportBox.ch + 4);
+          if (!overflowing) return null;
+          const scale = Math.min(176 / width, 132 / height);
+          const mmW = Math.max(60, Math.round(width * scale));
+          const mmH = Math.max(44, Math.round(height * scale));
+          const MM_KIND_FILL: Record<string, string> = {
+            root: '#1565C0',
+            team: '#a5b4fc',
+            phase: '#cbd5e1',
+            count: '#e2e8f0',
+          };
+          const flyTo = (e: React.PointerEvent<SVGSVGElement>) => {
+            const el = scrollRef.current;
+            const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
+            if (!el) return;
+            const cx = ((e.clientX - rect.left) / mmW) * width;
+            const cy = ((e.clientY - rect.top) / mmH) * height;
+            el.scrollLeft = cx * zoom - el.clientWidth / 2;
+            el.scrollTop = cy * zoom - el.clientHeight / 2;
+          };
+          return (
+            <div
+              className="hidden sm:block absolute right-4 bottom-12 z-10 rounded-xl border border-slate-200 bg-white/92 backdrop-blur shadow-lg overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg
+                width={mmW}
+                height={mmH}
+                viewBox={`0 0 ${width} ${height}`}
+                className="block cursor-pointer"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  flyTo(e);
+                }}
+                onPointerMove={(e) => {
+                  if (e.buttons === 1) flyTo(e);
+                }}
+              >
+                {nodes.map((n) => {
+                  const fill =
+                    n.kind === 'task'
+                      ? STATUS_STROKE[(n.data as BirdsEyeTask).status] || '#94a3b8'
+                      : n.kind === 'project'
+                        ? (n.data as BirdsEyeProject).health === 'critical'
+                          ? '#fca5a5'
+                          : (n.data as BirdsEyeProject).health === 'at_risk'
+                            ? '#fcd34d'
+                            : '#86efac'
+                        : MM_KIND_FILL[n.kind] || '#e2e8f0';
+                  return (
+                    <rect
+                      key={n.id}
+                      x={n.x}
+                      y={n.y}
+                      width={n.width}
+                      height={n.height}
+                      rx={6}
+                      fill={fill}
+                      opacity={n.kind === 'task' ? 0.55 : 0.9}
+                    />
+                  );
+                })}
+                {/* Current viewport */}
+                <rect
+                  x={viewportBox.sl / zoom}
+                  y={viewportBox.st / zoom}
+                  width={viewportBox.cw / zoom}
+                  height={viewportBox.ch / zoom}
+                  fill="rgba(21,101,192,0.08)"
+                  stroke="#1565C0"
+                  strokeWidth={Math.max(2, 2 / scale / 2)}
+                  rx={8}
+                />
+              </svg>
+            </div>
+          );
+        })()}
+
+        {/* Footer legend — every chip is also a spotlight: click a status to
+            dim every task that isn't in it, click again to clear. */}
+        <div className="shrink-0 flex items-center gap-2 px-5 py-2 border-t border-slate-200 text-[10px] text-slate-500 flex-wrap bg-white">
           <span className="font-bold uppercase tracking-widest text-slate-400">Legend</span>
           {[
-            { c: STATUS_FILL.done, s: STATUS_STROKE.done, l: 'On track / Done' },
-            { c: STATUS_FILL.review, s: STATUS_STROKE.review, l: 'At risk / Review' },
-            { c: STATUS_FILL.blocked, s: STATUS_STROKE.blocked, l: 'Critical / Blocked' },
-            { c: STATUS_FILL.in_progress, s: STATUS_STROKE.in_progress, l: 'In progress' },
-            { c: STATUS_FILL.todo, s: STATUS_STROKE.todo, l: 'To do' },
-          ].map((k) => (
-            <span key={k.l} className="inline-flex items-center gap-1.5">
+            { c: STATUS_FILL.done, s: STATUS_STROKE.done, l: 'On track / Done', k: 'done' },
+            { c: STATUS_FILL.review, s: STATUS_STROKE.review, l: 'At risk / Review', k: 'review' },
+            { c: STATUS_FILL.blocked, s: STATUS_STROKE.blocked, l: 'Critical / Blocked', k: 'blocked' },
+            { c: STATUS_FILL.in_progress, s: STATUS_STROKE.in_progress, l: 'In progress', k: 'in_progress' },
+            { c: STATUS_FILL.todo, s: STATUS_STROKE.todo, l: 'To do', k: 'todo' },
+          ].map((kk) => (
+            <button
+              key={kk.k}
+              type="button"
+              aria-pressed={statusFocus === kk.k}
+              onClick={() => setStatusFocus((cur) => (cur === kk.k ? null : kk.k))}
+              title={
+                statusFocus === kk.k
+                  ? 'Clear the status spotlight'
+                  : `Spotlight ${kk.l.toLowerCase()} tasks — everything else dims`
+              }
+              className={`inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-md transition-colors ${
+                statusFocus === kk.k
+                  ? 'bg-slate-100 ring-1 ring-slate-300 text-slate-800 font-bold'
+                  : statusFocus
+                    ? 'opacity-45 hover:opacity-100'
+                    : 'hover:bg-slate-50'
+              }`}
+            >
               <span
                 className="inline-block w-3 h-3 rounded"
-                style={{ background: k.c, border: `1.5px solid ${k.s}` }}
+                style={{ background: kk.c, border: `1.5px solid ${kk.s}` }}
               />
-              <span>{k.l}</span>
-            </span>
+              <span>{kk.l}</span>
+            </button>
           ))}
-          <span className="ml-auto text-slate-400 hidden sm:inline">
-            Click a card or its connector to expand/hide · drag to rearrange · ↗ to open · pencil to edit.
+          <span className="ml-auto text-slate-400 hidden lg:inline">
+            Click a card / connector to expand-hide · drag to rearrange · ↗ open · ✎ edit ·{' '}
+            <kbd className="font-sans font-bold">/</kbd> find · <kbd className="font-sans font-bold">+−</kbd>{' '}
+            zoom · <kbd className="font-sans font-bold">F</kbd> fit ·{' '}
+            <kbd className="font-sans font-bold">B</kbd> brush · <kbd className="font-sans font-bold">T</kbd>{' '}
+            tasks
           </span>
         </div>
 

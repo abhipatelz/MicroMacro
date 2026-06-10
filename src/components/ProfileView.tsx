@@ -4,7 +4,19 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Avatar } from '@/components/ui';
 import { ProfileHero } from '@/components/ProfileHero';
-import { Activity, Pencil, Github, Users, UserCheck } from 'lucide-react';
+import {
+  Activity,
+  Pencil,
+  Github,
+  Users,
+  UserCheck,
+  CheckCircle2,
+  CalendarRange,
+  FolderKanban,
+  Flame,
+  Link as LinkIcon,
+  Check,
+} from 'lucide-react';
 import { api } from '@/lib/client/api';
 
 // The contribution heatmap is a sizeable, below-the-fold client component —
@@ -42,6 +54,13 @@ export default function ProfileView({
     followingCount?: number;
     followerCount?: number;
     viewerIsFollowing?: boolean;
+    joinedAt?: string | null;
+    stats?: {
+      totalDone: number;
+      doneThisYear: number;
+      projectCount: number;
+      streak: number;
+    };
   };
   isSelf: boolean;
 }) {
@@ -78,6 +97,63 @@ export default function ProfileView({
 
   const firstName = profile.name.split(/\s+/)[0];
 
+  // Share affordance — the profile URL is the user's public face inside the
+  // workspace; copying it should be one click, not an address-bar ritual.
+  const [copied, setCopied] = useState(false);
+  function copyLink() {
+    try {
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard unavailable (http / permissions) — silently skip */
+    }
+  }
+
+  const joined =
+    profile.joinedAt &&
+    new Date(profile.joinedAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  // Impact row — server-rendered numbers so the first impression of a profile
+  // is what this person delivers, before the heatmap streams in below.
+  const stats = profile.stats;
+  const statTiles = stats
+    ? [
+        {
+          label: 'Delivered',
+          value: stats.totalDone,
+          sub: 'tasks all-time',
+          icon: CheckCircle2,
+          color: '#16a34a',
+          bg: '#f0fdf4',
+        },
+        {
+          label: 'This year',
+          value: stats.doneThisYear,
+          sub: new Date().getFullYear().toString(),
+          icon: CalendarRange,
+          color: '#1565C0',
+          bg: '#eff6ff',
+        },
+        {
+          label: 'Projects',
+          value: stats.projectCount,
+          sub: 'contributed to',
+          icon: FolderKanban,
+          color: '#7B1FA2',
+          bg: '#f3e5f5',
+        },
+        {
+          label: 'Streak',
+          value: stats.streak,
+          sub: stats.streak === 1 ? 'active day' : 'active days',
+          icon: Flame,
+          color: '#d97706',
+          bg: '#fffbeb',
+        },
+      ]
+    : [];
+
   return (
     <div className="max-w-5xl mx-auto pb-12 space-y-6">
       <ProfileHero
@@ -110,59 +186,97 @@ export default function ProfileView({
         }
       />
 
-      {/* ── Metadata strip (GitHub link + social counts) ───────────────── */}
-      {(!isSelf || profile.githubUrl) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-          {/* Social counts */}
-          <div className="flex items-center gap-4 text-sm text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <Users size={14} className="text-slate-400" />
-              <span>
-                <strong className="font-bold text-slate-700">{followerCount}</strong>{' '}
-                {followerCount === 1 ? 'follower' : 'followers'}
-              </span>
+      {/* ── Metadata strip (social counts + joined date + actions) ──────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+        {/* Social counts + tenure */}
+        <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
+          <span className="flex items-center gap-1.5">
+            <Users size={14} className="text-slate-400" />
+            <span>
+              <strong className="font-bold text-slate-700">{followerCount}</strong>{' '}
+              {followerCount === 1 ? 'follower' : 'followers'}
             </span>
-            <span className="text-slate-300">·</span>
-            <span className="flex items-center gap-1.5">
-              <UserCheck size={14} className="text-slate-400" />
-              <span>
-                follows <strong className="font-bold text-slate-700">{profile.followingCount ?? 0}</strong>
-              </span>
+          </span>
+          <span className="text-slate-300">·</span>
+          <span className="flex items-center gap-1.5">
+            <UserCheck size={14} className="text-slate-400" />
+            <span>
+              follows <strong className="font-bold text-slate-700">{profile.followingCount ?? 0}</strong>
             </span>
-          </div>
+          </span>
+          {joined && (
+            <>
+              <span className="text-slate-300">·</span>
+              <span className="text-slate-400">Joined {joined}</span>
+            </>
+          )}
+        </div>
 
-          {/* Right side: GitHub chip + Follow button */}
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {profile.githubUrl && (
-              <a
-                href={profile.githubUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 hover:border-slate-300"
-              >
-                <Github size={14} />
-                GitHub
-              </a>
-            )}
+        {/* Right side: GitHub chip + copy link + Follow button */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {profile.githubUrl && (
+            <a
+              href={profile.githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 hover:border-slate-300"
+            >
+              <Github size={14} />
+              GitHub
+            </a>
+          )}
 
-            {!isSelf && (
-              <button
-                onClick={toggleFollow}
-                disabled={busy}
-                onMouseEnter={() => setHoveringFollow(true)}
-                onMouseLeave={() => setHoveringFollow(false)}
-                className={
-                  following
-                    ? hoveringFollow
-                      ? 'border border-red-200 bg-red-50 text-red-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 px-4 py-1.5 rounded-full text-sm font-semibold transition disabled:opacity-60'
-                      : 'border border-green-200 text-green-700 bg-green-50 px-4 py-1.5 rounded-full text-sm font-semibold transition disabled:opacity-60'
-                    : 'border border-blue-200 text-blue-600 hover:bg-blue-50 px-4 py-1.5 rounded-full text-sm font-semibold transition disabled:opacity-60'
-                }
-              >
-                {following ? (hoveringFollow ? 'Unfollow' : 'Following ✓') : 'Follow'}
-              </button>
-            )}
-          </div>
+          <button
+            onClick={copyLink}
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 hover:border-slate-300"
+            title="Copy a link to this profile"
+          >
+            {copied ? <Check size={14} className="text-green-600" /> : <LinkIcon size={14} />}
+            {copied ? 'Copied' : 'Share'}
+          </button>
+
+          {!isSelf && (
+            <button
+              onClick={toggleFollow}
+              disabled={busy}
+              onMouseEnter={() => setHoveringFollow(true)}
+              onMouseLeave={() => setHoveringFollow(false)}
+              className={
+                following
+                  ? hoveringFollow
+                    ? 'border border-red-200 bg-red-50 text-red-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 px-4 py-1.5 rounded-full text-sm font-semibold transition disabled:opacity-60'
+                    : 'border border-green-200 text-green-700 bg-green-50 px-4 py-1.5 rounded-full text-sm font-semibold transition disabled:opacity-60'
+                  : 'border border-blue-200 text-blue-600 hover:bg-blue-50 px-4 py-1.5 rounded-full text-sm font-semibold transition disabled:opacity-60'
+              }
+            >
+              {following ? (hoveringFollow ? 'Unfollow' : 'Following ✓') : 'Follow'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Impact row — what this person delivers, at a glance ─────────── */}
+      {statTiles.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {statTiles.map((s) => (
+            <div key={s.label} className="card p-4">
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: s.bg, color: s.color }}
+                >
+                  <s.icon size={14} />
+                </span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  {s.label}
+                </span>
+              </div>
+              <div className="mt-2.5 text-2xl font-black text-slate-900 dark:text-white tabular-nums">
+                {s.value}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">{s.sub}</div>
+            </div>
+          ))}
         </div>
       )}
 
