@@ -35,6 +35,11 @@ const DigestSettingSchema = new Schema(
     introNote: { type: String, default: '', maxlength: 500 },
     // Light operational provenance (not a regulated e-signature).
     updatedByName: { type: String, default: '' },
+    // Stats from the most recent REAL (non-test) run — written by the
+    // scheduled/manual sender so the admin panel can show delivery health
+    // and free-tier cap headroom without a separate log query.
+    lastRunAt: { type: Date, default: null },
+    lastRunSummary: { type: Schema.Types.Mixed, default: null },
   },
   { timestamps: true },
 );

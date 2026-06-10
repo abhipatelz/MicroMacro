@@ -5,7 +5,7 @@ import { DigestSetting } from '@/models/DigestSetting';
 import { requireRole } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { logOperation } from '@/lib/audit';
-import { loadDigestSettings, digestTimeZone, appBaseUrl } from '@/lib/digest';
+import { loadDigestSettings, digestTimeZone, digestDailyCap, appBaseUrl } from '@/lib/digest';
 import { mailerConfigured, configuredSender } from '@/lib/mailer';
 
 export const runtime = 'nodejs';
@@ -25,6 +25,8 @@ function serialize(doc: any) {
     introNote: doc.introNote || '',
     updatedByName: doc.updatedByName || '',
     updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : null,
+    lastRunAt: doc.lastRunAt ? new Date(doc.lastRunAt).toISOString() : null,
+    lastRunSummary: doc.lastRunSummary || null,
   };
 }
 
@@ -36,6 +38,7 @@ function setupStatus() {
     cronSecretSet: !!process.env.CRON_SECRET,
     timeZone: digestTimeZone(),
     sendTimeLocal: '08:30',
+    dailyCap: digestDailyCap(),
   };
 }
 

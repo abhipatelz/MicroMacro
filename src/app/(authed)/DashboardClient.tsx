@@ -41,6 +41,7 @@ const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) 
 import type { BirdsEyeData } from '@/components/BirdsEyeView';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { FlowSignalStrip, type FlowSignalPayload } from '@/components/FlowSignalStrip';
+import { DailyBrief } from '@/components/DailyBrief';
 
 /* ── Types matching /api/lead-dashboard ──────────────────────────────────── */
 interface TeamTask {
@@ -361,6 +362,10 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               Renders nothing when there's nothing to surface — silence is
               the correct product state. */}
           <FlowSignalStrip data={dash.flowSignal} />
+
+          {/* ── Morning brief — role-aware daily rundown (renders nothing
+              when there is nothing material; dismissable per day). */}
+          <DailyBrief />
 
           {/* ── Summary strip ──────────────────────────────────────────── */}
           <div className="flex flex-wrap gap-2 mb-5">

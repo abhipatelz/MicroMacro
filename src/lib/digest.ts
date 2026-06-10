@@ -30,6 +30,16 @@ export function digestTimeZone(): string {
   return process.env.DIGEST_TZ?.trim() || DEFAULT_TZ;
 }
 
+/** The provider's free daily send allowance. Defaults to Brevo's free tier
+ *  (300/day); override with BREVO_DAILY_CAP when on a paid plan or a different
+ *  provider. The scheduled run never attempts more than this many sends, so
+ *  the digest can't silently eat into quota other emails may need — and the
+ *  admin panel can show exactly how close to the ceiling the workspace is. */
+export function digestDailyCap(): number {
+  const n = parseInt(process.env.BREVO_DAILY_CAP || '', 10);
+  return Number.isFinite(n) && n > 0 ? n : 300;
+}
+
 /** Absolute base URL for in-email links, or '' when none is configured (links
  *  are then omitted rather than rendered relative-and-broken). */
 export function appBaseUrl(): string {
@@ -350,7 +360,10 @@ export interface RunSummary {
   sent: number;
   skippedNoEmail: number;
   skippedNoTasks: number;
+  /** Recipients not attempted because the free daily send cap was reached. */
+  skippedCapReached: number;
   failed: number;
+  cap: number;
   mailerConfigured: boolean;
 }
 
@@ -377,7 +390,9 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
     sent: 0,
     skippedNoEmail: 0,
     skippedNoTasks: 0,
+    skippedCapReached: 0,
     failed: 0,
+    cap: digestDailyCap(),
     mailerConfigured: mailerConfigured(),
   };
 
@@ -462,6 +477,15 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       continue;
     }
 
+    // Free-tier guard: never attempt more sends than the provider's daily
+    // allowance. Whoever is left over is counted (and surfaced to the admin)
+    // rather than silently bounced by the provider. Test sends bypass — they
+    // are one email to the admin verifying delivery.
+    if (!forceSend && summary.sent >= summary.cap) {
+      summary.skippedCapReached += 1;
+      continue;
+    }
+
     const { subject, html, text } = renderDigestEmail({
       name: (r.user as any).name || '',
       sections,
@@ -475,6 +499,29 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
     const res = await sendEmail({ to: r.email, toName: (r.user as any).name, subject, html, text });
     if (res.ok) summary.sent += 1;
     else summary.failed += 1;
+  }
+
+  // Operational record of the last real run, surfaced in the admin panel so
+  // the operator can see delivery health (and cap headroom) at a glance.
+  // Test sends are excluded — they would overwrite the scheduled run's stats.
+  if (!opts.test) {
+    await DigestSetting.updateOne(
+      { _id: 'global' },
+      {
+        $set: {
+          lastRunAt: now,
+          lastRunSummary: {
+            considered: summary.considered,
+            sent: summary.sent,
+            failed: summary.failed,
+            skippedNoEmail: summary.skippedNoEmail,
+            skippedNoTasks: summary.skippedNoTasks,
+            skippedCapReached: summary.skippedCapReached,
+            cap: summary.cap,
+          },
+        },
+      },
+    ).catch(() => {});
   }
 
   return summary;

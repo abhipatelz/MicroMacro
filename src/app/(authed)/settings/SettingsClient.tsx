@@ -782,6 +782,18 @@ function AdminDigestSettings() {
               Sends daily at {status.sendTimeLocal} · {status.timeZone}
               {status.senderEmail ? ` · from ${status.senderEmail}` : ''}
             </div>
+            {cfg?.lastRunAt && (
+              <div className="text-[11px] text-slate-400 mt-1">
+                Last run {new Date(cfg.lastRunAt).toLocaleString()} · sent{' '}
+                <strong className="text-slate-600">
+                  {cfg.lastRunSummary?.sent ?? 0}/{cfg.lastRunSummary?.cap ?? status.dailyCap}
+                </strong>{' '}
+                free sends
+                {(cfg.lastRunSummary?.failed ?? 0) > 0 && ` · ${cfg.lastRunSummary.failed} failed`}
+                {(cfg.lastRunSummary?.skippedCapReached ?? 0) > 0 &&
+                  ` · ${cfg.lastRunSummary.skippedCapReached} skipped at the daily cap`}
+              </div>
+            )}
           </div>
         )}
 

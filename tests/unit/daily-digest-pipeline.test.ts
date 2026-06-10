@@ -103,6 +103,8 @@ const projects = [{ _id: PROJ, name: 'MES Upgrade' }];
 
 // The singleton settings doc, reset before each test (schema defaults).
 let settings: Record<string, any>;
+// $set payloads written back by the sender's last-run persistence.
+const lastRunWrites: Record<string, any>[] = [];
 
 /** Mongo-faithful evaluation of the filter shapes digest.ts issues. */
 function matches(doc: any, filter: Record<string, any>): boolean {
@@ -185,6 +187,11 @@ before(async () => {
   (Task as any).find = (f: any) => chain(() => tasks.filter((t) => matches(t, f)));
   (Project as any).find = (f: any) => chain(() => projects.filter((p) => matches(p, f)));
   (DigestSetting as any).findByIdAndUpdate = () => ({ lean: async () => settings });
+  // Last-run persistence — record what the sender writes back.
+  (DigestSetting as any).updateOne = (_f: any, update: any) => {
+    lastRunWrites.push(update?.$set || {});
+    return Promise.resolve({ acknowledged: true });
+  };
 });
 
 after(async () => {
@@ -193,6 +200,7 @@ after(async () => {
 
 beforeEach(() => {
   inbox.length = 0;
+  lastRunWrites.length = 0;
   settings = {
     _id: 'global',
     enabled: true,
@@ -272,6 +280,44 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     assert.equal(inbox[0].to, 'bola@example.com');
     assert.match(inbox[0].subject, /^\[Test\] Pragati — /);
     assert.match(inbox[0].html, /all clear|nothing due/i, 'bola has no tasks — empty-state body');
+  });
+
+  it('stops at the free daily cap and reports who was skipped', async () => {
+    // A second deliverable recipient + sendWhenEmpty so she reaches the send
+    // step despite having no tasks; with a cap of 1, asha sends, dora doesn't.
+    users.push({
+      _id: 'dddddddddddddddddddddd01',
+      name: 'Dora Capped',
+      email: 'dora@example.com',
+      active: true,
+      notifDailyDigest: true,
+    } as any);
+    settings.sendWhenEmpty = true;
+    process.env.BREVO_DAILY_CAP = '1';
+    try {
+      const summary = await digest.buildAndSendDailyDigests({ now });
+      assert.equal(summary.cap, 1);
+      assert.equal(summary.sent, 1);
+      assert.equal(summary.skippedCapReached, 1);
+      assert.equal(inbox.length, 1, 'only one email actually left');
+      // The run record persists the cap stats for the admin panel.
+      assert.equal(lastRunWrites.length, 1);
+      assert.equal(lastRunWrites[0].lastRunSummary.skippedCapReached, 1);
+      assert.equal(lastRunWrites[0].lastRunSummary.cap, 1);
+    } finally {
+      users.pop();
+      delete process.env.BREVO_DAILY_CAP;
+    }
+  });
+
+  it('records last-run stats for real runs but not for test sends', async () => {
+    await digest.buildAndSendDailyDigests({ now });
+    assert.equal(lastRunWrites.length, 1);
+    assert.equal(lastRunWrites[0].lastRunSummary.sent, 1);
+
+    lastRunWrites.length = 0;
+    await digest.buildAndSendDailyDigests({ now, test: true, onlyUserId: BOLA });
+    assert.equal(lastRunWrites.length, 0, 'a [Test] send must not overwrite the run record');
   });
 
   it('reports a failed send when the provider errors, without throwing', async () => {
