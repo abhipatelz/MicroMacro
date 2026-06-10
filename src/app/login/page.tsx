@@ -24,31 +24,6 @@ function getInitials(name: string) {
    in the operator's live feed (QUOTES_FEED_URL) so the library keeps growing
    without a redeploy. Daily-seeded start so the day has "a quote of the day". */
 
-const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v1';
-
-/** Indices not yet shown on this device; resets when the set is exhausted. */
-function unseenQuoteIndices(): number[] {
-  try {
-    const seen: number[] = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
-    const valid = new Set(seen.filter((n) => Number.isInteger(n) && n >= 0 && n < QUOTES.length));
-    const unseen = QUOTES.map((_, i) => i).filter((i) => !valid.has(i));
-    if (unseen.length > 0) return unseen;
-    localStorage.removeItem(QUOTES_SEEN_KEY);
-    return QUOTES.map((_, i) => i);
-  } catch {
-    return QUOTES.map((_, i) => i);
-  }
-}
-
-function markQuoteSeen(i: number) {
-  try {
-    const seen: number[] = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
-    if (!seen.includes(i)) localStorage.setItem(QUOTES_SEEN_KEY, JSON.stringify([...seen, i]));
-  } catch {
-    /* private mode — quotes simply rotate without the ledger */
-  }
-}
-
 function RotatingQuote() {
   const [quotes, setQuotes] = useState<Quote[]>(BUILTIN_QUOTES);
   const [i, setI] = useState(() => dailyQuoteOffset(BUILTIN_QUOTES.length));
@@ -67,7 +42,7 @@ function RotatingQuote() {
   }, []);
 
   useEffect(() => {
-    if (queue.length < 2) return;
+    if (quotes.length < 2) return;
     const t = setInterval(() => {
       setShow(false);
       setTimeout(() => {
