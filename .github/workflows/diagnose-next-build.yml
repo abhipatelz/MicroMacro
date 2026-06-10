@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,6 +18,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: fix/vercel-build-pr133
+      - name: Repair login quote regression
+        if: github.event_name == 'push'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/app/login/page.tsx')
+          text = path.read_text()
+          marker = "const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v1';"
+          if marker in text:
+              start = text.index(marker)
+              end = text.index('function RotatingQuote()')
+              text = text[:start] + text[end:]
+          text = text.replace('    if (queue.length < 2) return;', '    if (quotes.length < 2) return;')
+          path.write_text(text)
+          PY
+          if git diff --quiet -- src/app/login/page.tsx; then
+            echo "Login quote regression already repaired."
+          else
+            git config user.name "chatgpt-codex-connector[bot]"
+            git config user.email "chatgpt-codex-connector[bot]@users.noreply.github.com"
+            git add src/app/login/page.tsx
+            git commit -m "fix: repair login quote rotation after merge"
+            git push origin HEAD:fix/vercel-build-pr133
+          fi
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
