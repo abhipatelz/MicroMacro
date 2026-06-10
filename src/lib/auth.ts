@@ -218,6 +218,61 @@ export function getTokenFromRequest(req: NextRequest): string | null {
   return null;
 }
 
+/* ── Session micro-cache (scaling lever, default OFF) ─────────────────────
+   validateSession is the hottest DB path in the app: one User read per
+   authenticated request. At small scale that's free; at large scale it is
+   THE read amplifier. SESSION_CACHE_TTL_MS (capped at 60s) enables a small
+   per-instance cache of the session-relevant user fields.
+
+   Correctness rules, in order of importance:
+     • A cached doc may only ever produce a SUCCESSFUL validation. Any
+       failure against cached data (revoked sv, superseded sid, deactivated)
+       falls through to a fresh DB read before the request is rejected — so
+       the cache can never falsely log someone out (e.g. right after a fresh
+       login rotated their activeSessionId).
+     • The inverse staleness is the documented tradeoff: a force-logout /
+       deactivation can take up to TTL extra to bite on instances holding a
+       warm entry. bustSessionCache() removes the entry on the instance that
+       performed the mutation, so the common single-region case is instant.
+   With the env var unset, behaviour is byte-identical to the strict
+   read-every-request path ("denied on its very next request"). */
+const SESSION_FIELDS =
+  'role mustChangePassword sessionVersion activeSessionId name title email pinHash active loginCount pinPromptDismissedAt';
+const sessionCache: Map<string, { doc: any; at: number }> =
+  (global as any).__pragatiSessionCache ?? new Map();
+(global as any).__pragatiSessionCache = sessionCache;
+
+function sessionCacheTtlMs(): number {
+  const v = Number(process.env.SESSION_CACHE_TTL_MS || 0);
+  return Number.isFinite(v) && v > 0 ? Math.min(v, 60_000) : 0;
+}
+
+/** Drop a user's cached session doc so a mutation made on THIS instance
+ *  (force-logout, role change, deactivation) takes effect immediately here. */
+export function bustSessionCache(userId: string) {
+  sessionCache.delete(String(userId));
+}
+
+/** Validate the token payload against one user doc. Returns the enriched
+ *  payload, 'deactivated', or null (revoked / superseded / missing). */
+function checkSessionAgainst(payload: JwtPayload, u: any): JwtPayload | 'deactivated' | null {
+  if (!u) return null;
+  if (u.active === false) return 'deactivated';
+  if (typeof payload.sv === 'number' && (u.sessionVersion ?? 0) !== payload.sv) return null;
+  if (payload.sid && u.activeSessionId && u.activeSessionId !== payload.sid) return null;
+  return {
+    ...payload,
+    role: normalizeRole(u.role),
+    name: u.name ?? payload.name,
+    title: u.title ?? payload.title,
+    email: u.email ?? payload.email,
+    mustChangePassword: !!u.mustChangePassword,
+    hasPin: !!u.pinHash,
+    loginCount: typeof u.loginCount === 'number' ? u.loginCount : 0,
+    pinPromptDismissedAt: u.pinPromptDismissedAt ? new Date(u.pinPromptDismissedAt).toISOString() : null,
+  };
+}
+
 /**
  * Verify a JWT *and* confirm it still represents a live session by checking
  * the database. A token is rejected when:
@@ -233,32 +288,33 @@ export function getTokenFromRequest(req: NextRequest): string | null {
  * so a role change or forced reset takes effect without re-login.
  */
 export async function validateSession(payload: JwtPayload): Promise<JwtPayload | null> {
+  const ttl = sessionCacheTtlMs();
+
+  // Fast path: a fresh cached doc that VALIDATES is good enough. Anything
+  // less (stale, missing, or failing) drops to the authoritative read.
+  if (ttl > 0) {
+    const hit = sessionCache.get(payload.sub);
+    if (hit && Date.now() - hit.at < ttl) {
+      const res = checkSessionAgainst(payload, hit.doc);
+      if (res && res !== 'deactivated') return res;
+    }
+  }
+
   await connectDB();
-  const user = await User.findById(
-    payload.sub,
-    'role mustChangePassword sessionVersion activeSessionId name title email pinHash active loginCount pinPromptDismissedAt',
-  ).lean();
-  if (!user) return null;
+  const user = await User.findById(payload.sub, SESSION_FIELDS).lean();
+  if (ttl > 0 && user) {
+    // Crude memory bound: a serverless instance serves one workspace's
+    // actives; if the map somehow balloons, reset rather than grow forever.
+    if (sessionCache.size > 10_000) sessionCache.clear();
+    sessionCache.set(payload.sub, { doc: user, at: Date.now() });
+  }
 
-  const u = user as any;
-  // A deactivated account is denied on its very next request, so an admin
-  // turning someone off mid-session logs them out everywhere immediately
+  const res = checkSessionAgainst(payload, user as any);
+  // A deactivated account is denied on its very next authoritative read, so
+  // an admin turning someone off mid-session logs them out everywhere
   // (defence-in-depth alongside the sessionVersion bump on deactivation).
-  if (u.active === false) throw new Error('ACCOUNT_DEACTIVATED');
-  if (typeof payload.sv === 'number' && (u.sessionVersion ?? 0) !== payload.sv) return null;
-  if (payload.sid && u.activeSessionId && u.activeSessionId !== payload.sid) return null;
-
-  return {
-    ...payload,
-    role: normalizeRole(u.role),
-    name: u.name ?? payload.name,
-    title: u.title ?? payload.title,
-    email: u.email ?? payload.email,
-    mustChangePassword: !!u.mustChangePassword,
-    hasPin: !!u.pinHash,
-    loginCount: typeof u.loginCount === 'number' ? u.loginCount : 0,
-    pinPromptDismissedAt: u.pinPromptDismissedAt ? new Date(u.pinPromptDismissedAt).toISOString() : null,
-  };
+  if (res === 'deactivated') throw new Error('ACCOUNT_DEACTIVATED');
+  return res;
 }
 
 export async function getCurrentUserFromRequest(

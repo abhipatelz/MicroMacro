@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { requireRole } from '@/lib/auth';
+import { requireRole, bustSessionCache } from '@/lib/auth';
 import { rolesWith } from '@/lib/permissions';
 import { handleError } from '@/lib/http';
 import { logOperation } from '@/lib/audit';
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { new: true, projection: 'name' },
     ).lean();
     if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    bustSessionCache(params.id);
 
     await logOperation({
       action: 'user.force_logout',

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { Task } from '@/models/Task';
-import { requireRole, isAdmin, isLead } from '@/lib/auth';
+import { requireRole, isAdmin, isLead, bustSessionCache } from '@/lib/auth';
 import { u } from '@/lib/serialize';
 import { handleError, readBody } from '@/lib/http';
 import { logOperation } from '@/lib/audit';
@@ -206,6 +206,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const updated = await User.findByIdAndUpdate(params.id, mutation, { new: true }).lean();
     if (!updated) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    bustSessionCache(params.id);
 
     const action =
       lifecycleAction === 'deactivate'
