@@ -32,10 +32,11 @@ export async function GET(req: NextRequest) {
     const cronAuthed = !!secret && auth === `Bearer ${secret}`;
 
     // Anything that isn't a verified cron call must be an admin (also required
-    // for test mode, which emails the caller).
+    // for test mode, which emails the caller). Master-admin is a strict
+    // superset of admin everywhere in the app, so it is accepted here too.
     let adminId: string | null = null;
     if (!cronAuthed || isTest) {
-      const { user, error } = await requireRole(req, 'admin');
+      const { user, error } = await requireRole(req, 'admin', 'master_admin');
       if (error) return error;
       adminId = user.sub;
     }

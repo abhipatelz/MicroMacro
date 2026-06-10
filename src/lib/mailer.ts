@@ -33,6 +33,14 @@ export interface MailResult {
 }
 
 const SENDER_NAME_FALLBACK = 'Pragati';
+// Brevo's transactional endpoint. Overridable so integration tests and smoke
+// runs can point the mailer at a local mock and assert the exact payload that
+// would have gone out — production deployments never set this.
+const DEFAULT_API_URL = 'https://api.brevo.com/v3/smtp/email';
+
+function apiUrl(): string {
+  return process.env.BREVO_API_URL?.trim() || DEFAULT_API_URL;
+}
 
 /** True when a real Brevo sender is configured and email can actually go out. */
 export function mailerConfigured(): boolean {
@@ -56,7 +64,7 @@ export async function sendEmail(msg: MailMessage): Promise<MailResult> {
   }
 
   try {
-    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    const res = await fetch(apiUrl(), {
       method: 'POST',
       headers: {
         'api-key': apiKey,
