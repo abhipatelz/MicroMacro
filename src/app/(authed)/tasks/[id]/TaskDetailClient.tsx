@@ -30,6 +30,16 @@ const STATUS_META: Record<string, { label: string; dot: string; ring: string }> 
   blocked:     { label: 'Blocked',     dot: '#ef4444', ring: '#fecaca' },
   done:        { label: 'Done',        dot: '#22c55e', ring: '#bbf7d0' },
 };
+/** "1h 30m" / "45m" / "2h" — compact display for effort-log minutes. */
+function fmtMins(mins: number): string {
+  const m = Math.max(0, Math.round(mins || 0));
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  if (h === 0) return `${rem}m`;
+  if (rem === 0) return `${h}h`;
+  return `${h}h ${rem}m`;
+}
+
 const TASK_TYPES = ['task','review','approval','test','issue','corrective_action','finding','data_review'] as const;
 const TASK_TYPE_LABELS: Record<string, string> = {
   task: 'Task', review: 'Review', approval: 'Approval', test: 'Test',
@@ -61,6 +71,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentBody, setEditingCommentBody] = useState('');
   const [newSub, setNewSub] = useState('');
+  // Effort logging form — hours entered as a decimal (1.5 = 1h 30m), stored
+  // server-side as integer minutes.
+  const [effortHours, setEffortHours] = useState('');
+  const [effortNote, setEffortNote] = useState('');
+  const [loggingEffort, setLoggingEffort] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
   // Mini-celebration shown when the task moves to "done". A small bottom-right
@@ -240,6 +255,21 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
     }
   }
   async function signoff() { await api(`/tasks/${id}/signoff`, { method: 'POST' }); load(); }
+  async function logEffort() {
+    const hours = parseFloat(effortHours);
+    if (!hours || hours <= 0) { showToast('Enter the time spent (e.g. 1.5 for 1h 30m).', 'err'); return; }
+    const minutes = Math.round(hours * 60);
+    setLoggingEffort(true);
+    try {
+      await api(`/tasks/${id}/effort`, { method: 'POST', body: { minutes, note: effortNote.trim() || undefined } });
+      setEffortHours(''); setEffortNote('');
+      load();
+    } catch (e: any) {
+      showToast(e?.message || 'Failed to log effort', 'err');
+    } finally {
+      setLoggingEffort(false);
+    }
+  }
 
   const canSignoff = task.requiresQaSignoff && !task.qaSignoffAt && (me?.role === 'lead' || me?.role === 'admin');
   const hasReferenceData = task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
@@ -680,10 +710,126 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
           </div>
         </Card>
 
+        {/* ── Effort ─────────────────────────────────────────────────────
+           Estimate vs. logged time. The estimate is lead-set; logged time
+           is appended by the assignee (or a lead) via POST /effort, which
+           rolls actualHours up from the log server-side. */}
+        {(() => {
+          const effortMins  = task.effortMins || 0;
+          const entries     = [...(task.effortLog || [])].reverse(); // newest first
+          const estimated   = task.estimatedHours;
+          const pct         = estimated > 0 ? Math.min(100, (effortMins / 60 / estimated) * 100) : 0;
+          const overBudget  = estimated > 0 && effortMins / 60 > estimated;
+          const canLogEffort = isLead || isAssignee;
+          return (
+            <Card
+              title="Effort"
+              action={effortMins > 0 ? (
+                <span className="text-xs text-slate-400">{fmtMins(effortMins)} logged</span>
+              ) : undefined}
+            >
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="label">Estimated (h)</label>
+                    <input
+                      type="number" min={0} step={0.5}
+                      className="input text-sm disabled:bg-slate-50 disabled:text-slate-500"
+                      placeholder="—"
+                      value={task.estimatedHours ?? ''}
+                      disabled={!canEditAll}
+                      onChange={(e) => setTask({ ...task, estimatedHours: e.target.value === '' ? null : Number(e.target.value) })}
+                      onBlur={(e) => canEditAll && update({ estimatedHours: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Logged</label>
+                    <div className="input text-sm bg-slate-50 dark:bg-white/[0.04] text-slate-700 dark:text-white/75 font-semibold cursor-default select-none">
+                      {effortMins > 0 ? fmtMins(effortMins) : '—'}
+                    </div>
+                  </div>
+                </div>
+
+                {estimated > 0 && (
+                  <div>
+                    <div className="h-1.5 rounded-full bg-slate-100 dark:bg-white/[0.07] overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: overBudget ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#3b82f6' }}
+                      />
+                    </div>
+                    <div className={`mt-1 text-[11px] font-medium ${overBudget ? 'text-red-600' : 'text-slate-400'}`}>
+                      {overBudget
+                        ? `${fmtMins(effortMins - estimated * 60)} over the ${estimated}h estimate`
+                        : `${Math.round(pct)}% of ${estimated}h estimate`}
+                    </div>
+                  </div>
+                )}
+
+                {canLogEffort && (
+                  <div className="pt-1 border-t border-slate-100 dark:border-white/[0.06]">
+                    <label className="label">Log time</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number" min={0} step={0.25}
+                        className="input text-sm w-20 shrink-0"
+                        placeholder="1.5"
+                        value={effortHours}
+                        onChange={(e) => setEffortHours(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && logEffort()}
+                        aria-label="Hours spent"
+                      />
+                      <input
+                        className="input text-sm flex-1 min-w-0"
+                        placeholder="What did you work on?"
+                        maxLength={500}
+                        value={effortNote}
+                        onChange={(e) => setEffortNote(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && logEffort()}
+                        aria-label="Effort note"
+                      />
+                    </div>
+                    <button
+                      className="btn-primary w-full justify-center text-xs mt-2"
+                      onClick={logEffort}
+                      disabled={loggingEffort || !effortHours}
+                    >
+                      {loggingEffort ? 'Logging…' : 'Log effort'}
+                    </button>
+                  </div>
+                )}
+
+                {entries.length > 0 && (
+                  <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-white/[0.06]">
+                    {entries.slice(0, 8).map((e: any) => (
+                      <div key={e.id} className="flex items-start gap-2">
+                        <UserAvatar userId={e.userId} name={e.userName} size={22} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-1.5 text-xs">
+                            <span className="font-semibold text-slate-700 dark:text-white/80 truncate">{e.userName}</span>
+                            <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">{fmtMins(e.minutes)}</span>
+                            <span className="ml-auto text-slate-400 dark:text-white/35 shrink-0">{e.onDate ? formatDate(e.onDate) : formatDate(e.createdAt)}</span>
+                          </div>
+                          {e.note && <div className="text-[11px] text-slate-500 dark:text-white/45 truncate">{e.note}</div>}
+                        </div>
+                      </div>
+                    ))}
+                    {entries.length > 8 && (
+                      <div className="text-[11px] text-slate-400">+ {entries.length - 8} earlier entr{entries.length - 8 === 1 ? 'y' : 'ies'}</div>
+                    )}
+                  </div>
+                )}
+                {entries.length === 0 && !canLogEffort && (
+                  <div className="text-xs text-slate-400">No time logged yet.</div>
+                )}
+              </div>
+            </Card>
+          );
+        })()}
+
         {/* ── Reference details ─────────────────────────────────────────
            The change-control / document reference summary for this task.
-           Shown plainly (no effort-tracking here) so the page reads at a
-           glance. Only renders when the task actually carries reference data. */}
+           Only renders when the task actually carries reference data. */}
         {hasReferenceData && (
           <Card title="Reference details">
             <div className="space-y-2">

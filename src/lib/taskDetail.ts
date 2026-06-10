@@ -35,7 +35,11 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
       Project.findById((t as any).projectId).select('code name teamId').lean(),
       (t as any).assigneeId ? User.findById((t as any).assigneeId).lean() : Promise.resolve(null),
       (t as any).qaSignoffUserId ? User.findById((t as any).qaSignoffUserId).lean() : Promise.resolve(null),
-      User.find({ _id: { $in: ((t as any).comments || []).map((c: any) => c.userId) } }).lean(),
+      // One batched lookup covers both comment authors and effort-log entries.
+      User.find({ _id: { $in: [
+        ...((t as any).comments || []).map((c: any) => c.userId),
+        ...((t as any).effortLog || []).map((e: any) => e.userId),
+      ] } }).select('name').lean(),
       (t as any).flowPendingConfirmedByUserId
         ? User.findById((t as any).flowPendingConfirmedByUserId).select('name').lean()
         : Promise.resolve(null),
@@ -47,6 +51,16 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
       userName:  uMap.get(String(c.userId)) || 'User',
       body:      c.body,
       createdAt: toIso(c.createdAt),
+    }));
+    const effortLog = ((t as any).effortLog || []).map((e: any) => ({
+      id:        String(e._id),
+      userId:    String(e.userId),
+      userName:  uMap.get(String(e.userId)) || 'User',
+      minutes:   e.minutes,
+      note:      e.note || '',
+      onDate:    e.onDate || '',
+      source:    e.source || 'manual',
+      createdAt: toIso(e.createdAt),
     }));
 
     return {
@@ -60,6 +74,7 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
         flowPendingConfirmedByName: (flowConfirmer as any)?.name || null,
       }),
       comments,
+      effortLog,
     };
   } catch (e) {
     // Never crash the page — log and let the client refetch surface the real
