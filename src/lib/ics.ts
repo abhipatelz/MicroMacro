@@ -73,10 +73,12 @@ export function renderAgendaIcs(input: {
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${escapeIcsText(input.calendarName)}`,
-    'X-WR-CALDESC:Open tasks by due date — read-only feed from Pragati.',
-    // Hint clients to refresh a few times a day; a daily agenda needs no more.
-    'X-PUBLISHED-TTL:PT6H',
-    'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
+    'X-WR-CALDESC:Your Pragati tasks by due date — a live feed that updates itself.',
+    // Refresh hints: clients that honour these re-poll hourly, so a date
+    // change in Pragati lands in the subscriber's calendar within the hour.
+    // (Outlook/Google also poll on their own schedule regardless.)
+    'X-PUBLISHED-TTL:PT1H',
+    'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
   ];
 
   for (const t of input.tasks) {
@@ -87,6 +89,12 @@ export function renderAgendaIcs(input: {
       t.priority ? `Priority: ${t.priority}` : '',
       input.appUrl ? `${input.appUrl}/tasks/${t.id}` : '',
     ].filter(Boolean);
+    // Update semantics: the UID is stable per task, so a reschedule must bump
+    // SEQUENCE (RFC 5545 §3.8.7.4) for clients to replace the old occurrence
+    // instead of showing a duplicate. Minutes-since-epoch of the last mutation
+    // is monotonic per change and needs no stored counter.
+    const updated = t.updatedAt || now;
+    const seq = Math.max(0, Math.floor(+updated / 60000) - 28_000_000);
     lines.push(
       'BEGIN:VEVENT',
       `UID:task-${t.id}@pragati`,

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ModalPortal } from '@/components/ModalPortal';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { useLiveRefresh } from '@/lib/client/useLiveRefresh';
@@ -421,258 +422,262 @@ function TeamFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/45 overlay-in" onClick={onClose}>
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div
-          className="rounded-2xl shadow-2xl w-full max-w-xl modal-in overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/45 overlay-in" onClick={onClose}>
+        <div className="flex min-h-full items-center justify-center p-4">
           <div
-            className="relative px-5 py-5 text-white overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #0f4fb8 0%, #1769c8 45%, #2b8c47 100%)' }}
+            className="rounded-2xl shadow-2xl w-full max-w-xl modal-in overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
           >
             <div
-              aria-hidden
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage:
-                  'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
-                backgroundSize: '22px 22px',
-              }}
-            />
-            <div className="relative flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
-                  <UsersIcon size={18} />
+              className="relative px-5 py-5 text-white overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #0f4fb8 0%, #1769c8 45%, #2b8c47 100%)' }}
+            >
+              <div
+                aria-hidden
+                className="absolute inset-0 opacity-20"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
+                  backgroundSize: '22px 22px',
+                }}
+              />
+              <div className="relative flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
+                    <UsersIcon size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black leading-tight">
+                      {mode === 'create' ? 'Create a team' : 'Edit team'}
+                    </h2>
+                    <p className="text-xs text-white/70 mt-0.5">
+                      {mode === 'create'
+                        ? 'Name it, pick a function, add your people.'
+                        : 'Update team details and membership.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Team name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  className="input"
+                  placeholder="e.g. CSV Validation Squad"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoFocus
+                  maxLength={120}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Description
+                </label>
+                <textarea
+                  className="input"
+                  rows={2}
+                  placeholder="What does this team focus on?"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={2000}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Function
+                  </label>
+                  <Select
+                    value={func}
+                    onChange={setFunc}
+                    ariaLabel="Function"
+                    options={[
+                      { value: 'general', label: 'General' },
+                      { value: 'ctb', label: 'Change the Business' },
+                      { value: 'rtb', label: 'Run the Business' },
+                    ]}
+                  />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black leading-tight">
-                    {mode === 'create' ? 'Create a team' : 'Edit team'}
-                  </h2>
-                  <p className="text-xs text-white/70 mt-0.5">
-                    {mode === 'create'
-                      ? 'Name it, pick a function, add your people.'
-                      : 'Update team details and membership.'}
-                  </p>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Team owner
+                  </label>
+                  <Select
+                    value={leadId}
+                    onChange={setLeadId}
+                    ariaLabel="Team owner"
+                    placeholder="— No owner —"
+                    options={[
+                      { value: '', label: '— No owner —' },
+                      ...users.filter((u) => u.role === 'lead').map((u) => ({ value: u.id, label: u.name })),
+                    ]}
+                  />
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
 
-          <div className="bg-white p-5 space-y-4">
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                Team name <span className="text-red-500">*</span>
-              </label>
-              <input
-                className="input"
-                placeholder="e.g. CSV Validation Squad"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoFocus
-                maxLength={120}
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                Description
-              </label>
-              <textarea
-                className="input"
-                rows={2}
-                placeholder="What does this team focus on?"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={2000}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                  Function
-                </label>
-                <Select
-                  value={func}
-                  onChange={setFunc}
-                  ariaLabel="Function"
-                  options={[
-                    { value: 'general', label: 'General' },
-                    { value: 'ctb', label: 'Change the Business' },
-                    { value: 'rtb', label: 'Run the Business' },
-                  ]}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                  Team owner
-                </label>
-                <Select
-                  value={leadId}
-                  onChange={setLeadId}
-                  ariaLabel="Team owner"
-                  placeholder="— No owner —"
-                  options={[
-                    { value: '', label: '— No owner —' },
-                    ...users.filter((u) => u.role === 'lead').map((u) => ({ value: u.id, label: u.name })),
-                  ]}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Members{' '}
-                  <span className="text-slate-400 normal-case font-normal">
-                    ({memberIds.length} selected)
-                  </span>
-                </label>
-                {memberIds.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setMemberIds([])}
-                    className="text-[11px] text-slate-400 hover:text-slate-600"
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-              <div className="relative mb-2">
-                <Search size={13} className="absolute top-1/2 -translate-y-1/2 left-3 text-slate-400" />
-                <input
-                  className="input pl-9 text-sm"
-                  placeholder={`Search by name, title${groupBy ? `, ${groupBy}` : ''}…`}
-                  value={memberQuery}
-                  onChange={(e) => setMemberQuery(e.target.value)}
-                />
-              </div>
-              {/* Filter chips for the chosen group dimension — scales the picker
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Members{' '}
+                    <span className="text-slate-400 normal-case font-normal">
+                      ({memberIds.length} selected)
+                    </span>
+                  </label>
+                  {memberIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setMemberIds([])}
+                      className="text-[11px] text-slate-400 hover:text-slate-600"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                <div className="relative mb-2">
+                  <Search size={13} className="absolute top-1/2 -translate-y-1/2 left-3 text-slate-400" />
+                  <input
+                    className="input pl-9 text-sm"
+                    placeholder={`Search by name, title${groupBy ? `, ${groupBy}` : ''}…`}
+                    value={memberQuery}
+                    onChange={(e) => setMemberQuery(e.target.value)}
+                  />
+                </div>
+                {/* Filter chips for the chosen group dimension — scales the picker
                 gracefully as the workspace grows. Hidden when there's nothing
                 to slice (single-org or no facets set). */}
-              {facets.length > 1 && (
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => setGroupFilter('')}
-                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors ${
-                      groupFilter === ''
-                        ? 'bg-brand-600 text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    All {groupBy === 'organisation' ? 'orgs' : 'departments'}
-                  </button>
-                  {facets.map((f) => (
+                {facets.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
                     <button
-                      key={f}
                       type="button"
-                      onClick={() => setGroupFilter(f === groupFilter ? '' : f)}
+                      onClick={() => setGroupFilter('')}
                       className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors ${
-                        groupFilter === f
+                        groupFilter === ''
                           ? 'bg-brand-600 text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
-                      {f}
+                      All {groupBy === 'organisation' ? 'orgs' : 'departments'}
                     </button>
-                  ))}
-                </div>
-              )}
-              <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-lg">
-                {candidateUsers.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-slate-400">No people match.</div>
-                ) : (
-                  groups.map((g) => {
-                    const visible = g.users.filter((u) => u.id !== leadId);
-                    if (visible.length === 0) return null;
-                    return (
-                      <div key={g.label}>
-                        {/* Group header — only render when grouping is active and
+                    {facets.map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setGroupFilter(f === groupFilter ? '' : f)}
+                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors ${
+                          groupFilter === f
+                            ? 'bg-brand-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-lg">
+                  {candidateUsers.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-slate-400">No people match.</div>
+                  ) : (
+                    groups.map((g) => {
+                      const visible = g.users.filter((u) => u.id !== leadId);
+                      if (visible.length === 0) return null;
+                      return (
+                        <div key={g.label}>
+                          {/* Group header — only render when grouping is active and
                           there's more than one bucket worth showing. */}
-                        {groupBy && groups.length > 1 && (
-                          <div className="sticky top-0 z-[1] bg-slate-50 border-b border-slate-200 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
-                            <span className="truncate">{g.label}</span>
-                            <span className="text-slate-400 font-medium">{visible.length}</span>
-                          </div>
-                        )}
-                        <div className="divide-y divide-slate-100">
-                          {visible.map((u) => {
-                            const selected = memberIds.includes(u.id);
-                            return (
-                              <button
-                                key={u.id}
-                                type="button"
-                                onClick={() => toggleMember(u.id)}
-                                className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
-                                  selected ? 'bg-brand-50/60 hover:bg-brand-50' : 'hover:bg-slate-50'
-                                }`}
-                              >
-                                <UserAvatar userId={u.id} name={u.name} size={26} />
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium text-slate-800 truncate">{u.name}</div>
-                                  <div className="text-[11px] text-slate-400 truncate">
-                                    {[
-                                      u.role === 'lead'
-                                        ? 'Team Lead'
-                                        : u.role === 'admin'
-                                          ? 'Admin'
-                                          : 'Individual Contributor',
-                                      u.title,
-                                      u.department,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(' · ')}
-                                  </div>
-                                </div>
-                                <div
-                                  className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
-                                    selected ? 'bg-brand-600 text-white' : 'border border-slate-300'
+                          {groupBy && groups.length > 1 && (
+                            <div className="sticky top-0 z-[1] bg-slate-50 border-b border-slate-200 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
+                              <span className="truncate">{g.label}</span>
+                              <span className="text-slate-400 font-medium">{visible.length}</span>
+                            </div>
+                          )}
+                          <div className="divide-y divide-slate-100">
+                            {visible.map((u) => {
+                              const selected = memberIds.includes(u.id);
+                              return (
+                                <button
+                                  key={u.id}
+                                  type="button"
+                                  onClick={() => toggleMember(u.id)}
+                                  className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
+                                    selected ? 'bg-brand-50/60 hover:bg-brand-50' : 'hover:bg-slate-50'
                                   }`}
                                 >
-                                  {selected && <Check size={12} />}
-                                </div>
-                              </button>
-                            );
-                          })}
+                                  <UserAvatar userId={u.id} name={u.name} size={26} />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-medium text-slate-800 truncate">
+                                      {u.name}
+                                    </div>
+                                    <div className="text-[11px] text-slate-400 truncate">
+                                      {[
+                                        u.role === 'lead'
+                                          ? 'Team Lead'
+                                          : u.role === 'admin'
+                                            ? 'Admin'
+                                            : 'Individual Contributor',
+                                        u.title,
+                                        u.department,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                    </div>
+                                  </div>
+                                  <div
+                                    className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
+                                      selected ? 'bg-brand-600 text-white' : 'border border-slate-300'
+                                    }`}
+                                  >
+                                    {selected && <Check size={12} />}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })
+                  )}
+                </div>
+                {leadId && !memberIds.includes(leadId) && (
+                  <p className="text-[11px] text-slate-400 mt-1.5">
+                    The owner is automatically added as a team member when you save.
+                  </p>
                 )}
               </div>
-              {leadId && !memberIds.includes(leadId) && (
-                <p className="text-[11px] text-slate-400 mt-1.5">
-                  The owner is automatically added as a team member when you save.
-                </p>
+
+              {error && (
+                <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {error}
+                </div>
               )}
             </div>
 
-            {error && (
-              <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                {error}
-              </div>
-            )}
-          </div>
-
-          <div className="sticky bottom-0 bg-white border-t border-slate-100 px-5 py-3 flex justify-end gap-2">
-            <button onClick={onClose} className="btn-ghost" disabled={saving}>
-              Cancel
-            </button>
-            <button onClick={save} className="btn-primary" disabled={saving || !name.trim()}>
-              {saving ? 'Saving…' : mode === 'create' ? 'Create team' : 'Save changes'}
-            </button>
+            <div className="sticky bottom-0 bg-white border-t border-slate-100 px-5 py-3 flex justify-end gap-2">
+              <button onClick={onClose} className="btn-ghost" disabled={saving}>
+                Cancel
+              </button>
+              <button onClick={save} className="btn-primary" disabled={saving || !name.trim()}>
+                {saving ? 'Saving…' : mode === 'create' ? 'Create team' : 'Save changes'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -725,69 +730,71 @@ function DeleteTeamModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onClose}
       >
-        <div className="px-5 pt-5 pb-3 flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
-            <AlertTriangle size={18} className="text-red-600" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-black text-slate-900">Delete team?</h2>
-            <p className="text-sm text-slate-500 mt-1 leading-snug">
-              <span className="font-semibold text-slate-700">{team.name}</span> will be permanently removed.
-              Any projects linked to this team will be detached but their tasks and history will be kept
-              intact.
-            </p>
-          </div>
-        </div>
-
-        <div className="px-5 pb-5 space-y-3">
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-              Confirm with your password
-            </label>
-            <input
-              ref={inputRef}
-              type="password"
-              className="input"
-              placeholder="Your account password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError('');
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') confirm();
-              }}
-              autoComplete="current-password"
-            />
-          </div>
-          {error && (
-            <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {error}
+        <div
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-md modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-5 pt-5 pb-3 flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+              <AlertTriangle size={18} className="text-red-600" />
             </div>
-          )}
-        </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-black text-slate-900">Delete team?</h2>
+              <p className="text-sm text-slate-500 mt-1 leading-snug">
+                <span className="font-semibold text-slate-700">{team.name}</span> will be permanently removed.
+                Any projects linked to this team will be detached but their tasks and history will be kept
+                intact.
+              </p>
+            </div>
+          </div>
 
-        <div className="border-t border-slate-100 px-5 py-3 flex justify-end gap-2">
-          <button onClick={onClose} className="btn-ghost" disabled={busy}>
-            Cancel
-          </button>
-          <button
-            onClick={confirm}
-            disabled={busy || !password}
-            className="px-3 py-1.5 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {busy ? 'Deleting…' : 'Delete permanently'}
-          </button>
+          <div className="px-5 pb-5 space-y-3">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                Confirm with your password
+              </label>
+              <input
+                ref={inputRef}
+                type="password"
+                className="input"
+                placeholder="Your account password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') confirm();
+                }}
+                autoComplete="current-password"
+              />
+            </div>
+            {error && (
+              <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-slate-100 px-5 py-3 flex justify-end gap-2">
+            <button onClick={onClose} className="btn-ghost" disabled={busy}>
+              Cancel
+            </button>
+            <button
+              onClick={confirm}
+              disabled={busy || !password}
+              className="px-3 py-1.5 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {busy ? 'Deleting…' : 'Delete permanently'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

@@ -89,6 +89,9 @@ Full launch runbook (env vars, smoke test, uptime monitor, rollback): [`docs/LAU
 
 Performance budgets and profiling guide: [`docs/PERFORMANCE.md`](./docs/PERFORMANCE.md).
 
+How this scales — tenant-as-shard data model, the levers per growth tier, and the
+rules that keep per-request work O(viewer): [`docs/SCALING.md`](./docs/SCALING.md).
+
 ## Daily email digest
 
 An opt-in morning email of the tasks each user has due that day, sent at **08:30 IST**

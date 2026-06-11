@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { ModalPortal } from '@/components/ModalPortal';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { useIsLead, useCurrentUser } from '@/components/CurrentUserContext';
@@ -503,34 +504,39 @@ function WhiteboardFAB() {
 
       {/* Whiteboard drawer */}
       {open && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
-          <div className="relative ml-auto w-full max-w-4xl h-full bg-white dark:bg-[#1e1e1c] shadow-2xl flex flex-col fade-in-soft">
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex">
             <div
-              className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-white/[0.07] shrink-0"
-              style={{ background: 'linear-gradient(to right, rgba(21,101,192,0.06), transparent)' }}
-            >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center">
-                <WhiteboardIcon size={16} className="text-white" filled />
-              </div>
-              <div>
-                <div className="text-sm font-black text-slate-800 dark:text-white/90">Whiteboard</div>
-                <div className="text-[10px] text-slate-400 dark:text-white/30">
-                  Drag to draw · shapes · text · export PNG
-                </div>
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="ml-auto p-1.5 rounded-lg text-slate-400 dark:text-white/35 hover:text-slate-700 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+              className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+              onClick={() => setOpen(false)}
+            />
+            <div className="relative ml-auto w-full max-w-4xl h-full bg-white dark:bg-[#1e1e1c] shadow-2xl flex flex-col fade-in-soft">
+              <div
+                className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-white/[0.07] shrink-0"
+                style={{ background: 'linear-gradient(to right, rgba(21,101,192,0.06), transparent)' }}
               >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-hidden p-4">
-              <Whiteboard />
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center">
+                  <WhiteboardIcon size={16} className="text-white" filled />
+                </div>
+                <div>
+                  <div className="text-sm font-black text-slate-800 dark:text-white/90">Whiteboard</div>
+                  <div className="text-[10px] text-slate-400 dark:text-white/30">
+                    Drag to draw · shapes · text · export PNG
+                  </div>
+                </div>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="ml-auto p-1.5 rounded-lg text-slate-400 dark:text-white/35 hover:text-slate-700 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 overflow-hidden p-4">
+                <Whiteboard />
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </>
   );
@@ -647,7 +653,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
   return (
     <div className="max-w-6xl mx-auto pb-14">
       {/* ── Hero header ──────────────────────────────────────────────── */}
-      <div className="mb-7 pt-1">
+      <div className="mb-5 pt-1">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1.5">
@@ -697,7 +703,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
         {/* ── Left: capture + todo list ────────────────────────────── */}
         <div className="min-w-0">
           {/* ── Capture bar ────────────────────────────────────────── */}
-          <form onSubmit={add} className="mb-6">
+          <form onSubmit={add} className="mb-4">
             <div className="relative rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] px-3.5 py-3 shadow-sm hover:border-slate-300/80 focus-within:border-blue-500/60 dark:focus-within:border-blue-500/50 focus-within:shadow-[0_0_0_3px_rgba(21,101,192,0.10)] transition-all">
               <div className="flex items-center gap-3">
                 {/* Capture icon — a pen, matching the "empty your mind" prompt */}
@@ -1009,155 +1015,159 @@ function PromoteModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 overflow-y-auto overlay-in"
-      style={{ background: 'rgba(0,0,0,0.45)' }}
-      onClick={onClose}
-    >
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div
-          className="w-full max-w-sm modal-in rounded-2xl border p-6 shadow-2xl"
-          style={{ background: 'var(--bg-page) ' }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-2 mb-0.5">
-                <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-500/15 flex items-center justify-center">
-                  <ArrowRight size={13} className="text-blue-600 dark:text-blue-400" />
-                </div>
-                <span className="text-base font-bold text-slate-900 dark:text-white/90">Add to project</span>
-              </div>
-              <p className="text-xs text-slate-400 dark:text-white/35 ml-8">
-                Turn this thought into project work — or keep it private to you.
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-slate-300 dark:text-white/25 hover:text-slate-500 dark:hover:text-white/50 transition-colors p-0.5 rounded"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="rounded-lg border-l-4 border-blue-300 dark:border-blue-500/50 bg-blue-50/70 dark:bg-blue-500/[0.08] px-3 py-2.5 mb-4">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 dark:text-blue-400/70 mb-0.5">
-              Note
-            </div>
-            <p className="text-sm text-slate-700 dark:text-white/75 leading-relaxed">{note.text}</p>
-          </div>
-
-          <label className="label">Project</label>
-          <div className="mb-3">
-            <Select
-              value={projectId}
-              onChange={setProjectId}
-              ariaLabel="Project"
-              placeholder={projects.length === 0 ? 'No projects available' : 'Select a project'}
-              options={projects.map((p) => ({ value: p.id, label: p.name }))}
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => canCreateShared && setPrivateToMe((v) => !v)}
-            className={`w-full mb-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${privateToMe ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 dark:bg-white/[0.03]'}`}
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-50 overflow-y-auto overlay-in"
+        style={{ background: 'rgba(0,0,0,0.45)' }}
+        onClick={onClose}
+      >
+        <div className="flex min-h-full items-center justify-center p-4">
+          <div
+            className="w-full max-w-sm modal-in rounded-2xl border p-6 shadow-2xl"
+            style={{ background: 'var(--bg-page) ' }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Shield size={14} className={privateToMe ? 'text-emerald-600' : 'text-slate-400'} />
-                <div>
-                  <div className="text-xs font-black">Track this task as private</div>
-                  <div className="text-[10px] opacity-70 mt-0.5">
-                    {canCreateShared
-                      ? 'Visible only to you, while linked to the selected project.'
-                      : 'Contributor notes are tracked privately and stay visible only to you.'}
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-500/15 flex items-center justify-center">
+                    <ArrowRight size={13} className="text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <span className="text-base font-bold text-slate-900 dark:text-white/90">
+                    Add to project
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 dark:text-white/35 ml-8">
+                  Turn this thought into project work — or keep it private to you.
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-slate-300 dark:text-white/25 hover:text-slate-500 dark:hover:text-white/50 transition-colors p-0.5 rounded"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="rounded-lg border-l-4 border-blue-300 dark:border-blue-500/50 bg-blue-50/70 dark:bg-blue-500/[0.08] px-3 py-2.5 mb-4">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 dark:text-blue-400/70 mb-0.5">
+                Note
+              </div>
+              <p className="text-sm text-slate-700 dark:text-white/75 leading-relaxed">{note.text}</p>
+            </div>
+
+            <label className="label">Project</label>
+            <div className="mb-3">
+              <Select
+                value={projectId}
+                onChange={setProjectId}
+                ariaLabel="Project"
+                placeholder={projects.length === 0 ? 'No projects available' : 'Select a project'}
+                options={projects.map((p) => ({ value: p.id, label: p.name }))}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => canCreateShared && setPrivateToMe((v) => !v)}
+              className={`w-full mb-3 rounded-xl border px-3 py-2.5 text-left transition-colors ${privateToMe ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 dark:bg-white/[0.03]'}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Shield size={14} className={privateToMe ? 'text-emerald-600' : 'text-slate-400'} />
+                  <div>
+                    <div className="text-xs font-black">Track this task as private</div>
+                    <div className="text-[10px] opacity-70 mt-0.5">
+                      {canCreateShared
+                        ? 'Visible only to you, while linked to the selected project.'
+                        : 'Contributor notes are tracked privately and stay visible only to you.'}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <span
-                className={`w-9 h-5 rounded-full p-0.5 transition-colors ${privateToMe ? 'bg-emerald-500' : 'bg-slate-200'}`}
-              >
                 <span
-                  className={`block w-4 h-4 rounded-full bg-white transition-transform ${privateToMe ? 'translate-x-4' : ''}`}
+                  className={`w-9 h-5 rounded-full p-0.5 transition-colors ${privateToMe ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                >
+                  <span
+                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${privateToMe ? 'translate-x-4' : ''}`}
+                  />
+                </span>
+              </div>
+            </button>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="label">Phase</label>
+                <Select
+                  value={phaseId}
+                  onChange={setPhaseId}
+                  ariaLabel="Phase"
+                  disabled={loadingMeta || phases.length === 0}
+                  placeholder={phases.length === 0 ? 'No phases' : 'Unassigned'}
+                  options={[
+                    { value: '', label: phases.length === 0 ? 'No phases' : 'Unassigned' },
+                    ...phases.map((ph) => ({ value: ph.id, label: ph.name })),
+                  ]}
                 />
-              </span>
+              </div>
+              <div className={privateToMe ? 'hidden' : ''}>
+                <label className="label">Priority</label>
+                <Select
+                  value={priority}
+                  onChange={setPriority}
+                  ariaLabel="Priority"
+                  options={[
+                    { value: 'low', label: 'Low' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'high', label: 'High' },
+                    { value: 'critical', label: 'Critical' },
+                  ]}
+                />
+              </div>
             </div>
-          </button>
 
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="label">Phase</label>
-              <Select
-                value={phaseId}
-                onChange={setPhaseId}
-                ariaLabel="Phase"
-                disabled={loadingMeta || phases.length === 0}
-                placeholder={phases.length === 0 ? 'No phases' : 'Unassigned'}
-                options={[
-                  { value: '', label: phases.length === 0 ? 'No phases' : 'Unassigned' },
-                  ...phases.map((ph) => ({ value: ph.id, label: ph.name })),
-                ]}
-              />
+            <div className={`grid gap-3 mb-4 ${privateToMe ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              <div className={privateToMe ? 'hidden' : ''}>
+                <label className="label">Assign to</label>
+                <Select
+                  value={assigneeId}
+                  onChange={setAssignee}
+                  ariaLabel="Assign to"
+                  disabled={loadingMeta}
+                  placeholder="Unassigned"
+                  options={[
+                    { value: '', label: 'Unassigned' },
+                    ...members.map((u) => ({ value: u.id, label: u.name })),
+                  ]}
+                />
+              </div>
+              <div>
+                <label className="label">Due date</label>
+                <DatePicker value={due} onChange={(v) => setDue(v || '')} block />
+              </div>
             </div>
-            <div className={privateToMe ? 'hidden' : ''}>
-              <label className="label">Priority</label>
-              <Select
-                value={priority}
-                onChange={setPriority}
-                ariaLabel="Priority"
-                options={[
-                  { value: 'low', label: 'Low' },
-                  { value: 'medium', label: 'Medium' },
-                  { value: 'high', label: 'High' },
-                  { value: 'critical', label: 'Critical' },
-                ]}
-              />
-            </div>
-          </div>
 
-          <div className={`grid gap-3 mb-4 ${privateToMe ? 'grid-cols-1' : 'grid-cols-2'}`}>
-            <div className={privateToMe ? 'hidden' : ''}>
-              <label className="label">Assign to</label>
-              <Select
-                value={assigneeId}
-                onChange={setAssignee}
-                ariaLabel="Assign to"
-                disabled={loadingMeta}
-                placeholder="Unassigned"
-                options={[
-                  { value: '', label: 'Unassigned' },
-                  ...members.map((u) => ({ value: u.id, label: u.name })),
-                ]}
-              />
-            </div>
-            <div>
-              <label className="label">Due date</label>
-              <DatePicker value={due} onChange={(v) => setDue(v || '')} block />
-            </div>
-          </div>
+            {err && (
+              <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-3 py-2.5 mb-4">
+                {err}
+              </div>
+            )}
 
-          {err && (
-            <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-3 py-2.5 mb-4">
-              {err}
+            <div className="flex gap-2">
+              <button onClick={onClose} className="btn-secondary flex-1 justify-center text-sm">
+                Cancel
+              </button>
+              <button
+                onClick={go}
+                disabled={saving || !projectId}
+                className="btn-primary flex-1 justify-center text-sm"
+              >
+                {saving ? 'Creating…' : 'Create task'}
+              </button>
             </div>
-          )}
-
-          <div className="flex gap-2">
-            <button onClick={onClose} className="btn-secondary flex-1 justify-center text-sm">
-              Cancel
-            </button>
-            <button
-              onClick={go}
-              disabled={saving || !projectId}
-              className="btn-primary flex-1 justify-center text-sm"
-            >
-              {saving ? 'Creating…' : 'Create task'}
-            </button>
           </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -1183,43 +1193,41 @@ function TodayFromProjects() {
     ...(brief.my?.soon || []).map((t: any) => ({ ...t, tone: 'soon' })),
   ].slice(0, 5);
 
+  // Renders nothing when there is nothing due — an empty reminder card is
+  // noise on a page about focus.
+  if (rows.length === 0) return null;
+
   return (
-    <div className="mt-4">
-      <div className="flex items-center gap-2 mb-1.5">
+    <div className="mt-5 rounded-xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] px-3.5 py-2.5">
+      <div className="flex items-center gap-2 mb-1">
         <FolderKanban size={12} className="text-slate-400 dark:text-white/30 shrink-0" />
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">
           Today from your projects
         </span>
       </div>
-      {rows.length === 0 ? (
-        <p className="text-[12px] text-slate-400 dark:text-white/30">
-          Nothing due from your projects — the day is yours.
-        </p>
-      ) : (
-        rows.map((t: any) => (
-          <Link key={t.id} href={`/tasks/${t.id}`} className="flex items-center gap-2 py-1 group/tfp min-w-0">
-            <span
-              className={`shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${
-                t.tone === 'overdue'
-                  ? 'text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-500/10'
-                  : t.tone === 'today'
-                    ? 'text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/10'
-                    : 'text-slate-600 bg-slate-100 dark:text-white/50 dark:bg-white/[0.06]'
-              }`}
-            >
-              {t.label}
+      {rows.map((t: any) => (
+        <Link key={t.id} href={`/tasks/${t.id}`} className="flex items-center gap-2 py-1 group/tfp min-w-0">
+          <span
+            className={`shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${
+              t.tone === 'overdue'
+                ? 'text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-500/10'
+                : t.tone === 'today'
+                  ? 'text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/10'
+                  : 'text-slate-600 bg-slate-100 dark:text-white/50 dark:bg-white/[0.06]'
+            }`}
+          >
+            {t.label}
+          </span>
+          <span className="text-[12.5px] text-slate-700 dark:text-white/70 truncate group-hover/tfp:text-blue-700 dark:group-hover/tfp:text-blue-400 transition-colors">
+            {t.title}
+          </span>
+          {t.projectName && (
+            <span className="text-[10.5px] text-slate-400 dark:text-white/30 truncate shrink-0 max-w-[140px]">
+              · {t.projectName}
             </span>
-            <span className="text-[12.5px] text-slate-700 dark:text-white/70 truncate group-hover/tfp:text-blue-700 dark:group-hover/tfp:text-blue-400 transition-colors">
-              {t.title}
-            </span>
-            {t.projectName && (
-              <span className="text-[10.5px] text-slate-400 dark:text-white/30 truncate shrink-0 max-w-[140px]">
-                · {t.projectName}
-              </span>
-            )}
-          </Link>
-        ))
-      )}
+          )}
+        </Link>
+      ))}
     </div>
   );
 }

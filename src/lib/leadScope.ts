@@ -11,21 +11,31 @@ import { can } from '@/lib/permissions';
 // but their owner (enforced in projectsVisibleFilter), admin included.
 export interface LeadScope {
   userOid: mongoose.Types.ObjectId;
-  teamOids: mongoose.Types.ObjectId[]; // teams in scope (all teams for admin)
-  memberOids: mongoose.Types.ObjectId[]; // union of memberIds across those teams (incl. the user themselves)
+  /** Teams in scope. EMPTY when `unrestricted` — an admin's scope is "all",
+   *  expressed as a flag, never as an enumerated workspace-sized id list. */
+  teamOids: mongoose.Types.ObjectId[];
+  /** Union of memberIds across those teams (incl. the viewer). Same rule:
+   *  empty-except-self when `unrestricted`. */
+  memberOids: mongoose.Types.ObjectId[];
   unrestricted: boolean; // true for workspace.view_all roles (admin/master_admin)
 }
 
 export async function getLeadScope(userId: string, role?: string | null): Promise<LeadScope> {
   const userOid = new mongoose.Types.ObjectId(userId);
 
-  // Admins see the whole workspace; everyone else sees the teams they lead
-  // OR belong to as a member. Both paths fill teamOids/memberOids the same
-  // way so every downstream consumer (dashboards, pickers, scope guards)
-  // works unchanged.
+  // Admins see the whole workspace. Crucially, "the whole workspace" is a
+  // FLAG, not a list: enumerating every team/member here and spreading the
+  // result into $in clauses would make each admin request O(workspace) — the
+  // first thing to fall over as an org grows. Consumers must branch on
+  // `unrestricted` (drop the $in entirely) instead of trusting the arrays.
   const unrestricted = can(role, 'workspace.view_all');
+  if (unrestricted) {
+    return { userOid, teamOids: [], memberOids: [userOid], unrestricted: true };
+  }
+
+  // Everyone else sees the teams they lead OR belong to as a member.
   const teams = await Team.find(
-    unrestricted ? {} : { $or: [{ leadId: userOid }, { memberIds: userOid }] },
+    { $or: [{ leadId: userOid }, { memberIds: userOid }] },
     '_id memberIds',
   ).lean();
 
@@ -39,7 +49,7 @@ export async function getLeadScope(userId: string, role?: string | null): Promis
   }
   const memberOids = [...memberSet].map((id) => new mongoose.Types.ObjectId(id));
 
-  return { userOid, teamOids, memberOids, unrestricted };
+  return { userOid, teamOids, memberOids, unrestricted: false };
 }
 
 // Matches projects that are NOT someone's private personal to-do list.

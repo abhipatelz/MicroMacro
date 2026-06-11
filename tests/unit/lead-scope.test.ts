@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import mongoose from 'mongoose';
 
-import { projectsVisibleFilter, NOT_PERSONAL, type LeadScope } from '../../src/lib/leadScope';
+import { getLeadScope, projectsVisibleFilter, NOT_PERSONAL, type LeadScope } from '../../src/lib/leadScope';
 
 const oid = () => new mongoose.Types.ObjectId();
 
@@ -51,5 +51,25 @@ describe('projectsVisibleFilter', () => {
   it('NOT_PERSONAL excludes both the flag and legacy PRSN- codes', () => {
     assert.deepEqual(NOT_PERSONAL.isPersonal, { $ne: true });
     assert.ok(String(NOT_PERSONAL.code.$not).includes('PRSN-'));
+  });
+});
+
+describe('getLeadScope — unrestricted is a flag, never an enumeration', () => {
+  // The scaling invariant (docs/SCALING.md rule #1): an admin's all-seeing
+  // scope must not enumerate the workspace into id arrays that callers would
+  // spread into $in clauses. The unrestricted path returns before any DB
+  // query, which is also why this is testable without a database — if this
+  // test starts needing Mongo, the invariant has been broken.
+  it('returns empty id lists + the flag for admin/master_admin, with no DB call', async () => {
+    for (const role of ['admin', 'master_admin']) {
+      const scope = await getLeadScope(String(oid()), role);
+      assert.equal(scope.unrestricted, true, `${role} must be unrestricted`);
+      assert.equal(scope.teamOids.length, 0, `${role} must not enumerate teams`);
+      assert.deepEqual(
+        scope.memberOids.map(String),
+        [String(scope.userOid)],
+        `${role} memberOids must contain only the viewer`,
+      );
+    }
   });
 });

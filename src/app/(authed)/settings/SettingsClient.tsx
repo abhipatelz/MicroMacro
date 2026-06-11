@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { ModalPortal } from '@/components/ModalPortal';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/client/api';
@@ -709,8 +710,8 @@ function CalendarFeedSection() {
     <div id="calendar-feed" className="scroll-mt-6">
       <Section
         icon={CalendarDays}
-        title="Calendar feed"
-        subtitle="See your open tasks in Outlook / Google / Apple Calendar — read-only, updates itself."
+        title="Pragati calendar"
+        subtitle="Subscribe once and a calendar named Pragati appears in Outlook / Google / Apple — every dated task, present and future. Reschedule in Pragati and the calendar follows on its next refresh (clients poll a few times a day)."
       >
         {!state ? (
           <div className="text-xs text-slate-400 py-2">Loading…</div>
@@ -772,7 +773,8 @@ function CalendarFeedSection() {
         ) : (
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-sm text-slate-600 dark:text-white/60">
-              Generate a private link, subscribe once, and your due tasks appear in your calendar.
+              Generate your private link, add it to your calendar app once, and you're done — new tasks and
+              date changes flow in by themselves.
             </p>
             <button className="btn-primary text-sm" onClick={mint} disabled={busy}>
               {busy ? 'Generating…' : 'Generate link'}
@@ -1024,51 +1026,53 @@ function RecoveryKeyModal({ keyValue, onClose }: { keyValue: string; onClose: ()
     });
   }
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)' }}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <ShieldCheck size={20} className="text-amber-500 shrink-0" />
-            <h3 className="text-base font-black text-slate-900">Your recovery key</h3>
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)' }}
+      >
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <ShieldCheck size={20} className="text-amber-500 shrink-0" />
+              <h3 className="text-base font-black text-slate-900">Your recovery key</h3>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
-        <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 leading-snug">
-          <strong>Store this somewhere safe.</strong> It is shown only once and can&rsquo;t be retrieved
-          again. If you ever forget your password, type this key into the password field on the login screen
-          to sign in, then set a new password here.
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex-1 font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-slate-800 select-all tracking-wider break-all">
-            {keyValue}
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 leading-snug">
+            <strong>Store this somewhere safe.</strong> It is shown only once and can&rsquo;t be retrieved
+            again. If you ever forget your password, type this key into the password field on the login screen
+            to sign in, then set a new password here.
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 font-mono text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-slate-800 select-all tracking-wider break-all">
+              {keyValue}
+            </div>
+            <button
+              onClick={copy}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: copied ? '#dcfce7' : '#f1f5f9',
+                color: copied ? '#166534' : '#475569',
+                border: `1px solid ${copied ? '#bbf7d0' : '#e2e8f0'}`,
+              }}
+            >
+              {copied ? <Check size={13} /> : <Copy size={13} />}
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
           </div>
           <button
-            onClick={copy}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all"
-            style={{
-              background: copied ? '#dcfce7' : '#f1f5f9',
-              color: copied ? '#166534' : '#475569',
-              border: `1px solid ${copied ? '#bbf7d0' : '#e2e8f0'}`,
-            }}
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+            style={{ background: '#1565C0' }}
           >
-            {copied ? <Check size={13} /> : <Copy size={13} />}
-            {copied ? 'Copied!' : 'Copy'}
+            I&rsquo;ve saved it — close
           </button>
         </div>
-        <button
-          onClick={onClose}
-          className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all"
-          style={{ background: '#1565C0' }}
-        >
-          I&rsquo;ve saved it — close
-        </button>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

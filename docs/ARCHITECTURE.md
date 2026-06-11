@@ -1,7 +1,7 @@
 # Architecture
 
-A high-level map of Pragati for reviewers. For the immutable constraints behind
-these choices, see `CLAUDE.md`.
+A high-level map of Pragati for reviewers. For how this design scales (tenant
+sharding, growth tiers, the levers already built), see [`SCALING.md`](./SCALING.md).
 
 ## Stack
 

@@ -5,6 +5,7 @@ import { Team } from '@/models/Team';
 import { Project } from '@/models/Project';
 import { User } from '@/models/User';
 import { team as teamS } from '@/lib/serialize';
+import { can } from '@/lib/permissions';
 import TeamsClient from './TeamsClient';
 
 export default async function TeamsPage() {
@@ -13,9 +14,12 @@ export default async function TeamsPage() {
 
   await connectDB();
 
-  // Each user sees only the teams they lead or belong to (same access boundary
-  // as the API route). Admin users are workspace owners and also see their teams.
-  const filter = { $or: [{ leadId: jwt.sub }, { memberIds: jwt.sub }] };
+  // Same access boundary as GET /api/teams — keep these two in lockstep, or
+  // the server-rendered list visibly swaps after the client refetch. Leads
+  // and contributors see the teams they lead or belong to; admins see all.
+  const filter = can(jwt.role, 'workspace.view_all')
+    ? {}
+    : { $or: [{ leadId: jwt.sub }, { memberIds: jwt.sub }] };
 
   const teams = await Team.find(filter).sort({ name: 1 }).lean();
   const teamIds = teams.map((t: any) => t._id).filter(Boolean);

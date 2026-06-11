@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { ModalPortal } from '@/components/ModalPortal';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
@@ -605,45 +606,47 @@ function KanbanBoardMobile({
 
       {/* Move-to bottom sheet */}
       {moving && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
-          onClick={() => setMoving(null)}
-        >
+        <ModalPortal>
           <div
-            className="w-full max-w-md bg-white dark:bg-[#262624] rounded-t-2xl p-4 pb-6 modal-in"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+            onClick={() => setMoving(null)}
           >
-            <div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-white/15 mx-auto mb-3" />
-            <div className="text-sm font-bold text-slate-800 dark:text-white/90 mb-1 truncate">
-              Move "{moving.title}"
-            </div>
-            <div className="text-xs text-slate-400 mb-3">Choose a new status</div>
-            <div className="space-y-1.5">
-              {STATUSES.filter((s) => s !== moving.status).map((s) => {
-                const meta = STATUS_META[s];
-                return (
-                  <button
-                    key={s}
-                    onClick={() => move(s)}
-                    className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl border text-left hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-                    style={{ borderColor: meta.border }}
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: meta.color }} />
-                    <span className="text-sm font-semibold" style={{ color: meta.color }}>
-                      {meta.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => setMoving(null)}
-              className="w-full mt-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+            <div
+              className="w-full max-w-md bg-white dark:bg-[#262624] rounded-t-2xl p-4 pb-6 modal-in"
+              onClick={(e) => e.stopPropagation()}
             >
-              Cancel
-            </button>
+              <div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-white/15 mx-auto mb-3" />
+              <div className="text-sm font-bold text-slate-800 dark:text-white/90 mb-1 truncate">
+                Move "{moving.title}"
+              </div>
+              <div className="text-xs text-slate-400 mb-3">Choose a new status</div>
+              <div className="space-y-1.5">
+                {STATUSES.filter((s) => s !== moving.status).map((s) => {
+                  const meta = STATUS_META[s];
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => move(s)}
+                      className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl border text-left hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                      style={{ borderColor: meta.border }}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: meta.color }} />
+                      <span className="text-sm font-semibold" style={{ color: meta.color }}>
+                        {meta.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setMoving(null)}
+                className="w-full mt-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   );
@@ -829,36 +832,38 @@ function QuickAddTask({
 /* ── Project-complete block modal ─────────────────────────────────────────── */
 function BlockCompleteModal({ openCount, onClose }: { openCount: number; onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-sm modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onClose}
       >
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
-            <AlertTriangle size={18} className="text-amber-500" />
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-sm modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+              <AlertTriangle size={18} className="text-amber-500" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-800">Can't mark as completed</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                <strong className="text-slate-700">
+                  {openCount} {openCount === 1 ? 'task is' : 'tasks are'} still open.
+                </strong>
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-800">Can't mark as completed</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              <strong className="text-slate-700">
-                {openCount} {openCount === 1 ? 'task is' : 'tasks are'} still open.
-              </strong>
-            </p>
-          </div>
+          <p className="text-sm text-slate-600 mb-5 leading-relaxed">
+            All tasks must be marked <strong>Done</strong> before a project can be completed. Close out the
+            remaining tasks and try again.
+          </p>
+          <button onClick={onClose} className="btn-primary w-full justify-center text-sm">
+            Got it
+          </button>
         </div>
-        <p className="text-sm text-slate-600 mb-5 leading-relaxed">
-          All tasks must be marked <strong>Done</strong> before a project can be completed. Close out the
-          remaining tasks and try again.
-        </p>
-        <button onClick={onClose} className="btn-primary w-full justify-center text-sm">
-          Got it
-        </button>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -915,83 +920,86 @@ function StatusSignoffModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        role="dialog"
-        aria-modal
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onClose}
       >
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-            <ShieldCheck size={18} className="text-blue-600" />
+        <div
+          role="dialog"
+          aria-modal
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+              <ShieldCheck size={18} className="text-blue-600" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-slate-800">Sign off status change</h2>
+              <p className="text-xs text-slate-500 mt-0.5 leading-snug">
+                <span className="font-semibold text-slate-700">{projectName}</span>:{' '}
+                {prettyStatus(fromStatus)} →{' '}
+                <span className="font-semibold text-slate-700">{prettyStatus(toStatus)}</span>
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h2 className="text-base font-bold text-slate-800">Sign off status change</h2>
-            <p className="text-xs text-slate-500 mt-0.5 leading-snug">
-              <span className="font-semibold text-slate-700">{projectName}</span>: {prettyStatus(fromStatus)}{' '}
-              → <span className="font-semibold text-slate-700">{prettyStatus(toStatus)}</span>
+
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 mb-4">
+            <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-amber-800 leading-snug">
+              This is a controlled change. Your e-signature (password + reason) will be recorded in the audit
+              trail with your name and the time — it cannot be edited or removed afterwards.
             </p>
           </div>
-        </div>
 
-        <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 mb-4">
-          <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-amber-800 leading-snug">
-            This is a controlled change. Your e-signature (password + reason) will be recorded in the audit
-            trail with your name and the time — it cannot be edited or removed afterwards.
-          </p>
-        </div>
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            Reason for change
+          </label>
+          <textarea
+            className="input w-full mb-3 resize-none"
+            rows={2}
+            placeholder="e.g. All deliverables verified — moving to In progress"
+            value={remarks}
+            onChange={(e) => {
+              setRemarks(e.target.value);
+              setErr('');
+            }}
+          />
 
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-          Reason for change
-        </label>
-        <textarea
-          className="input w-full mb-3 resize-none"
-          rows={2}
-          placeholder="e.g. All deliverables verified — moving to In progress"
-          value={remarks}
-          onChange={(e) => {
-            setRemarks(e.target.value);
-            setErr('');
-          }}
-        />
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            Confirm with your password
+          </label>
+          <input
+            ref={inputRef}
+            type="password"
+            className="input w-full mb-1"
+            placeholder="Your password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setErr('');
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && confirm()}
+            autoComplete="current-password"
+          />
+          {err && <p className="text-xs text-red-600 mt-2">{err}</p>}
 
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-          Confirm with your password
-        </label>
-        <input
-          ref={inputRef}
-          type="password"
-          className="input w-full mb-1"
-          placeholder="Your password"
-          value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            setErr('');
-          }}
-          onKeyDown={(e) => e.key === 'Enter' && confirm()}
-          autoComplete="current-password"
-        />
-        {err && <p className="text-xs text-red-600 mt-2">{err}</p>}
-
-        <div className="flex gap-2 justify-end mt-4">
-          <button className="btn-ghost text-sm" onClick={onClose} disabled={loading}>
-            Cancel
-          </button>
-          <button
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            onClick={confirm}
-            disabled={loading || !password.trim() || !remarks.trim()}
-          >
-            {loading ? 'Signing…' : 'Sign & apply'}
-          </button>
+          <div className="flex gap-2 justify-end mt-4">
+            <button className="btn-ghost text-sm" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              onClick={confirm}
+              disabled={loading || !password.trim() || !remarks.trim()}
+            >
+              {loading ? 'Signing…' : 'Sign & apply'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -1049,58 +1057,60 @@ function DeleteProjectModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        role="dialog"
-        aria-modal
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onClose}
       >
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
-            <Trash2 size={18} className="text-red-600" />
+        <div
+          role="dialog"
+          aria-modal
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+              <Trash2 size={18} className="text-red-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-800">Delete project</h2>
+              <p className="text-xs text-slate-500 mt-0.5 leading-snug">
+                Permanently deletes <span className="font-semibold text-slate-700">{projectName}</span> and
+                all its tasks.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-800">Delete project</h2>
-            <p className="text-xs text-slate-500 mt-0.5 leading-snug">
-              Permanently deletes <span className="font-semibold text-slate-700">{projectName}</span> and all
-              its tasks.
-            </p>
+          <p className="text-xs text-slate-500 mb-3">Enter your password to confirm:</p>
+          <input
+            ref={inputRef}
+            type="password"
+            className="input w-full mb-1"
+            placeholder="Your password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setErr('');
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && confirm()}
+            autoComplete="current-password"
+          />
+          {err && <p className="text-xs text-red-600 mb-3">{err}</p>}
+          {!err && <div className="mb-3" />}
+          <div className="flex gap-2 justify-end">
+            <button className="btn-ghost text-sm" onClick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+              onClick={confirm}
+              disabled={loading || !password.trim()}
+            >
+              {loading ? 'Deleting…' : 'Delete permanently'}
+            </button>
           </div>
-        </div>
-        <p className="text-xs text-slate-500 mb-3">Enter your password to confirm:</p>
-        <input
-          ref={inputRef}
-          type="password"
-          className="input w-full mb-1"
-          placeholder="Your password"
-          value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            setErr('');
-          }}
-          onKeyDown={(e) => e.key === 'Enter' && confirm()}
-          autoComplete="current-password"
-        />
-        {err && <p className="text-xs text-red-600 mb-3">{err}</p>}
-        {!err && <div className="mb-3" />}
-        <div className="flex gap-2 justify-end">
-          <button className="btn-ghost text-sm" onClick={onClose} disabled={loading}>
-            Cancel
-          </button>
-          <button
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
-            onClick={confirm}
-            disabled={loading || !password.trim()}
-          >
-            {loading ? 'Deleting…' : 'Delete permanently'}
-          </button>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

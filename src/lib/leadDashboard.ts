@@ -106,7 +106,10 @@ async function computeLeadDashboardData(jwtUser: {
       .sort({ ccTcd: 1, dueDate: 1, createdAt: 1 })
       .limit(500)
       .lean(),
-    Team.find({ _id: { $in: scope.teamOids } }).lean(),
+    // Teams in scope. An unrestricted (admin) scope deliberately carries NO
+    // enumerated id lists — see getLeadScope — so it queries the collection
+    // directly instead of spreading a workspace-sized $in.
+    scope.unrestricted ? Team.find({}).lean() : Team.find({ _id: { $in: scope.teamOids } }).lean(),
     User.find({ _id: { $in: projects.map((p) => p.ownerId).filter(Boolean) } }, '_id name').lean(),
     Task.aggregate([
       { $match: { projectId: { $in: visibleProjectIds }, ...visibleTaskPrivacyFilter } },
@@ -139,7 +142,9 @@ async function computeLeadDashboardData(jwtUser: {
       {
         $match: {
           projectId: { $in: visibleProjectIds },
-          assigneeId: { $in: scope.memberOids },
+          // Unrestricted scope: every assignee inside visible projects, no
+          // enumerated member list. Restricted: only the viewer's members.
+          ...(scope.unrestricted ? { assigneeId: { $ne: null } } : { assigneeId: { $in: scope.memberOids } }),
           ...visibleTaskPrivacyFilter,
         },
       },
@@ -159,10 +164,17 @@ async function computeLeadDashboardData(jwtUser: {
       },
     ]),
     // Exclude the admin — they own the workspace, not assignable work, so
-    // they never belong in the contributor-workload list.
-    User.find({ _id: { $in: scope.memberOids }, role: { $ne: 'admin' } })
-      .select('_id name title')
-      .lean(),
+    // they never belong in the contributor-workload list. Unrestricted scope
+    // sees the whole roster (bounded — workload tiles past a few hundred
+    // people would be unreadable anyway); restricted sees their members.
+    scope.unrestricted
+      ? User.find({ role: { $ne: 'admin' } })
+          .select('_id name title')
+          .limit(500)
+          .lean()
+      : User.find({ _id: { $in: scope.memberOids }, role: { $ne: 'admin' } })
+          .select('_id name title')
+          .lean(),
   ]);
 
   // Delivery profiles + open load for the slip-risk early warning — computed
@@ -362,7 +374,9 @@ async function computeLeadDashboardData(jwtUser: {
   const cfg = getFlowConfig();
   let flowSignal: FlowSignalPayload | null = null;
   if (isUiEnabled(cfg)) {
-    const teamIdsForViewer = scope.teamOids.map((o) => String(o));
+    // Derive from the teams already loaded for this scope (works for both
+    // restricted and unrestricted viewers — no enumerated id list needed).
+    const teamIdsForViewer = teams.map((t) => String(t._id));
     if (isPilotTeamVisible(teamIdsForViewer, cfg)) {
       // Build a small id→name map from the data we already loaded; falling
       // back to the assignee map for "Confirmed today by X" copy when the
@@ -393,7 +407,7 @@ async function computeLeadDashboardData(jwtUser: {
     teamTasks,
     people,
     // Number of teams the viewer belongs to (or all teams, for admin).
-    teamCount: scope.teamOids.length,
+    teamCount: teams.length,
     flowSignal,
   };
 }

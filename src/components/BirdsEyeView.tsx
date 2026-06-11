@@ -146,7 +146,7 @@ interface Edge {
 // Top-down org-chart geometry. Nodes shrink at deeper levels so a wide tree
 // stays scannable from above. Sizes tuned to keep the default (tasks-collapsed)
 // view clean — individual projects expand to show task detail on demand.
-const NODE_WIDTH = { root: 280, team: 218, project: 206, phase: 192, task: 202, count: 192 } as const;
+const NODE_WIDTH = { root: 280, team: 218, project: 230, phase: 192, task: 202, count: 192 } as const;
 const NODE_HEIGHT = { root: 68, team: 54, project: 60, phase: 38, task: 46, count: 32 } as const;
 // Air between things is what separates "aerial view" from "circuit diagram".
 // These gaps were widened after the dense first pass read as congested: the
@@ -638,17 +638,26 @@ function NodeShape({ n }: { n: PositionedNode }) {
         <text x={n.x + 14} y={n.y + 22}>
           <MultiText x={n.x + 14} lines={lines} fontSize={13} lineHeight={15} fill="#0f172a" weight={700} />
         </text>
-        {n.sub && (
-          <text
-            x={n.x + 14}
-            y={n.y + n.height - 12}
-            fontSize={10}
-            fill="#475569"
-            fontFamily="ui-monospace,monospace"
-          >
-            {n.sub}
-          </text>
-        )}
+        {n.sub &&
+          (() => {
+            // The "+ add task" button occupies the bottom-right corner; clip
+            // the mono sub-line so a long reference code never runs beneath
+            // it (the full text stays available in the hover <title>).
+            const maxChars = Math.max(8, Math.floor((n.width - 14 - 30) / 6.1));
+            const subText =
+              n.sub.length > maxChars ? n.sub.slice(0, maxChars - 1).replace(/[\s·]+$/, '') + '…' : n.sub;
+            return (
+              <text
+                x={n.x + 14}
+                y={n.y + n.height - 12}
+                fontSize={10}
+                fill="#475569"
+                fontFamily="ui-monospace,monospace"
+              >
+                {subText}
+              </text>
+            );
+          })()}
       </g>
     );
   }

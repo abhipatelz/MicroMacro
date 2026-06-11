@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { requireRole, isAdmin } from '@/lib/auth';
+import { requireRole, isAdmin, bustSessionCache } from '@/lib/auth';
 import { rolesWith } from '@/lib/permissions';
 import { handleError, readBody } from '@/lib/http';
 import { logOperation } from '@/lib/audit';
@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
         { _id: target._id },
         { $set: { ...set, activeSessionId: null }, $inc: { sessionVersion: 1 } },
       );
+      bustSessionCache(id);
 
       await logOperation({
         action: body.action === 'deactivate' ? 'user.deactivate' : 'user.role',

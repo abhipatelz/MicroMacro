@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { ModalPortal } from '@/components/ModalPortal';
 import { api } from '@/lib/client/api';
 import { useIsLead } from '@/components/CurrentUserContext';
 import { X, Sparkles, Check, ListChecks } from 'lucide-react';
@@ -102,150 +103,152 @@ export function MindMapToTasksModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[60] overflow-y-auto overlay-in"
-      style={{ background: 'rgba(0,0,0,0.45)' }}
-      onClick={onClose}
-    >
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div
-          className="w-full max-w-md modal-in rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-2xl overflow-hidden"
-          style={{ background: 'var(--bg-page)' }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg, #1565C0, #22C55E)' }}
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-[60] overflow-y-auto overlay-in"
+        style={{ background: 'rgba(0,0,0,0.45)' }}
+        onClick={onClose}
+      >
+        <div className="flex min-h-full items-center justify-center p-4">
+          <div
+            className="w-full max-w-md modal-in rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-2xl overflow-hidden"
+            style={{ background: 'var(--bg-page)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #1565C0, #22C55E)' }}
+                >
+                  <ListChecks size={17} className="text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-base font-bold text-slate-800 dark:text-white/90 leading-tight">
+                    Turn notes into tasks
+                  </div>
+                  <div className="text-[11px] text-slate-400 dark:text-white/35">
+                    {loading
+                      ? 'Reading your mind map…'
+                      : source === 'ai'
+                        ? 'Refined from your notes'
+                        : 'Pulled straight from your notes'}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white/70 transition-colors shrink-0"
               >
-                <ListChecks size={17} className="text-white" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-base font-bold text-slate-800 dark:text-white/90 leading-tight">
-                  Turn notes into tasks
-                </div>
-                <div className="text-[11px] text-slate-400 dark:text-white/35">
-                  {loading
-                    ? 'Reading your mind map…'
-                    : source === 'ai'
-                      ? 'Refined from your notes'
-                      : 'Pulled straight from your notes'}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white/70 transition-colors shrink-0"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Body */}
-          {doneCount !== null ? (
-            <div className="px-5 py-8 text-center">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
-                <Check size={22} className="text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
-              </div>
-              <div className="text-sm font-bold text-slate-700 dark:text-white/85">
-                Added {doneCount} task{doneCount === 1 ? '' : 's'}
-              </div>
-              <div className="text-xs text-slate-400 dark:text-white/35 mt-1">
-                They’re on the project now — close to keep brainstorming.
-              </div>
-              <button onClick={onClose} className="btn-primary mt-5 text-sm">
-                Done
+                <X size={16} />
               </button>
             </div>
-          ) : (
-            <>
-              <div className="px-5 max-h-[46vh] overflow-y-auto">
-                {loading ? (
-                  <div className="space-y-2 py-2">
-                    {[0, 1, 2].map((i) => (
-                      <div key={i} className="h-9 skeleton rounded-lg" />
-                    ))}
-                  </div>
-                ) : tasks.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-slate-400 dark:text-white/35">
-                    Nothing to turn into tasks yet — add a few thoughts to the mind map first.
-                  </div>
-                ) : (
-                  <div className="space-y-1.5 py-1">
-                    {tasks.map((t, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => toggle(i)}
-                        className={`w-full flex items-start gap-2.5 rounded-lg px-3 py-2 text-left border transition-colors ${
-                          t.sel
-                            ? 'border-blue-200 dark:border-blue-500/30 bg-blue-50/50 dark:bg-blue-500/[0.07]'
-                            : 'border-slate-200 dark:border-white/[0.07] bg-transparent opacity-55'
-                        }`}
-                      >
-                        <span
-                          className={`mt-[1px] w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0 transition-colors ${
-                            t.sel ? 'border-blue-500 bg-blue-500' : 'border-slate-300 dark:border-white/20'
-                          }`}
-                        >
-                          {t.sel && <Check size={11} className="text-white" strokeWidth={3} />}
-                        </span>
-                        <span className="text-sm text-slate-700 dark:text-white/80 leading-snug">
-                          {t.title}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
 
-              {/* Footer */}
-              <div className="px-5 py-4 mt-1 border-t border-slate-100 dark:border-white/[0.06] space-y-3">
-                {err && <div className="text-xs text-red-500 dark:text-red-400">{err}</div>}
-                <div className="flex items-center gap-2">
-                  <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-white/35 shrink-0">
-                    Add to
-                  </label>
-                  <select
-                    value={projectId}
-                    onChange={(e) => setProjectId(e.target.value)}
-                    disabled={loading || !projects.length}
-                    className="flex-1 min-w-0 text-sm rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-2.5 py-1.5 text-slate-700 dark:text-white/85 outline-none focus:border-blue-400 disabled:opacity-50"
-                  >
-                    {projects.length === 0 && <option value="">No projects available</option>}
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+            {/* Body */}
+            {doneCount !== null ? (
+              <div className="px-5 py-8 text-center">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
+                  <Check size={22} className="text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
                 </div>
-                {isLead && (
-                  <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-white/50 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={privateToMe}
-                      onChange={(e) => setPrivateToMe(e.target.checked)}
-                      className="rounded border-slate-300 dark:border-white/20"
-                    />
-                    Keep these private to me (don’t show on the team board)
-                  </label>
-                )}
-                <button
-                  onClick={createAll}
-                  disabled={creating || loading || selectedCount === 0 || !projectId}
-                  className="btn-primary w-full justify-center text-sm disabled:opacity-50"
-                >
-                  <Sparkles size={14} />
-                  {creating ? 'Adding…' : `Add ${selectedCount} task${selectedCount === 1 ? '' : 's'}`}
+                <div className="text-sm font-bold text-slate-700 dark:text-white/85">
+                  Added {doneCount} task{doneCount === 1 ? '' : 's'}
+                </div>
+                <div className="text-xs text-slate-400 dark:text-white/35 mt-1">
+                  They’re on the project now — close to keep brainstorming.
+                </div>
+                <button onClick={onClose} className="btn-primary mt-5 text-sm">
+                  Done
                 </button>
               </div>
-            </>
-          )}
+            ) : (
+              <>
+                <div className="px-5 max-h-[46vh] overflow-y-auto">
+                  {loading ? (
+                    <div className="space-y-2 py-2">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="h-9 skeleton rounded-lg" />
+                      ))}
+                    </div>
+                  ) : tasks.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-slate-400 dark:text-white/35">
+                      Nothing to turn into tasks yet — add a few thoughts to the mind map first.
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 py-1">
+                      {tasks.map((t, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => toggle(i)}
+                          className={`w-full flex items-start gap-2.5 rounded-lg px-3 py-2 text-left border transition-colors ${
+                            t.sel
+                              ? 'border-blue-200 dark:border-blue-500/30 bg-blue-50/50 dark:bg-blue-500/[0.07]'
+                              : 'border-slate-200 dark:border-white/[0.07] bg-transparent opacity-55'
+                          }`}
+                        >
+                          <span
+                            className={`mt-[1px] w-[18px] h-[18px] rounded-[5px] border flex items-center justify-center shrink-0 transition-colors ${
+                              t.sel ? 'border-blue-500 bg-blue-500' : 'border-slate-300 dark:border-white/20'
+                            }`}
+                          >
+                            {t.sel && <Check size={11} className="text-white" strokeWidth={3} />}
+                          </span>
+                          <span className="text-sm text-slate-700 dark:text-white/80 leading-snug">
+                            {t.title}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-5 py-4 mt-1 border-t border-slate-100 dark:border-white/[0.06] space-y-3">
+                  {err && <div className="text-xs text-red-500 dark:text-red-400">{err}</div>}
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-white/35 shrink-0">
+                      Add to
+                    </label>
+                    <select
+                      value={projectId}
+                      onChange={(e) => setProjectId(e.target.value)}
+                      disabled={loading || !projects.length}
+                      className="flex-1 min-w-0 text-sm rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-2.5 py-1.5 text-slate-700 dark:text-white/85 outline-none focus:border-blue-400 disabled:opacity-50"
+                    >
+                      {projects.length === 0 && <option value="">No projects available</option>}
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {isLead && (
+                    <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-white/50 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={privateToMe}
+                        onChange={(e) => setPrivateToMe(e.target.checked)}
+                        className="rounded border-slate-300 dark:border-white/20"
+                      />
+                      Keep these private to me (don’t show on the team board)
+                    </label>
+                  )}
+                  <button
+                    onClick={createAll}
+                    disabled={creating || loading || selectedCount === 0 || !projectId}
+                    className="btn-primary w-full justify-center text-sm disabled:opacity-50"
+                  >
+                    <Sparkles size={14} />
+                    {creating ? 'Adding…' : `Add ${selectedCount} task${selectedCount === 1 ? '' : 's'}`}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

@@ -1,77 +1,134 @@
-# Scaling Pragati — from one workspace to "billions, if we must"
+# Scaling Pragati
 
-This is the engineering plan for growing Pragati by ~6 orders of magnitude
-without rewriting it. The honest framing first: **you do not build for a
-billion users on day one — you build so that nothing you ship today has to be
-thrown away on the way there.** This document maps each growth stage, what
-breaks at that stage, and the prepared seam that absorbs it.
+How this codebase grows from one workspace to, in the limit, billions of
+users — and, just as importantly, **in what order**. Every tier below is a
+set of levers, most of them already built and dormant. The guiding rule:
 
-## Guiding principles (already encoded in the codebase)
+> **The unit of scale is the workspace (tenant).** No query, cache key, or
+> permission check ever spans tenants. That single invariant is what makes
+> horizontal growth a routing problem instead of a rewrite.
 
-1. **Own the objects, rent the channels.** The Daily Brief is a JSON object we
-   compute; dashboards, Web Push, email, and the ICS feed are dumb renderers.
-   Channels that cost money (email) are capped and optional; channels we own
-   (in-app, push, pull-based ICS) carry unlimited scale at zero marginal cost.
-2. **Tenant = workspace = natural shard key.** Pharma QA workspaces never need
-   cross-tenant joins. The dormant `Tenant` model + `PRAGATI_MULTI_TENANT`
-   runtime is the horizontal-scaling answer: a tenant maps to a database, and
-   databases map to clusters. Sharding by tenant is a routing decision, not a
-   data-model migration.
-3. **Read-through cache over read replicas first.** The optional Upstash Redis
-   layer (already wired, inert without env vars) absorbs the hot aggregations
-   (dashboard, project list, people) long before replica lag becomes a topic.
-4. **Everything heavy runs on a beat, not on a request.** The digest/brief/push
-   fan-out is a once-daily batch behind a cron with a hard send cap. Batch work
-   scales by partitioning the user list, never by holding a request open.
-5. **Stateless app tier.** Auth is a signed JWT in a cookie + a single
-   indexed session lookup; any number of serverless instances can serve any
-   request. There is no sticky state to migrate, ever.
+## Why this shape scales
 
-## Stage map
+```mermaid
+flowchart LR
+  subgraph Stateless["Stateless app tier (scales horizontally, no affinity)"]
+    A1[Next.js instance]
+    A2[Next.js instance]
+    A3[…N instances]
+  end
+  R[("Tenant registry\n(slug → cluster/db)")]
+  subgraph Shards["Data tier — tenant = shard"]
+    D1[("workspace A db")]
+    D2[("workspace B db")]
+    D3[("…per-tenant dbs\nacross many clusters")]
+  end
+  C[("Redis (optional)\nrollup cache · rate limits")]
+  A1 & A2 & A3 -->|resolveTenant| R
+  A1 & A2 & A3 --> D1 & D2 & D3
+  A1 & A2 & A3 -.-> C
+```
 
-| Stage | Users | What strains | The prepared answer |
+Three properties carry all the weight:
+
+1. **The app tier is stateless.** Sessions live in a signed httpOnly JWT;
+   per-instance state (rate-limit buckets, session micro-cache) is an
+   optimization, never a correctness requirement. Any number of instances
+   can serve any request — on Vercel today, on containers/K8s tomorrow,
+   with zero code change.
+2. **The data tier shards naturally by tenant.** `src/models/Tenant.ts` +
+   `src/lib/tenants.ts` already model a registry (slug, custom domain,
+   `connectionUri`, `dbName`, quotas) and per-request tenant resolution,
+   dormant behind `PRAGATI_MULTI_TENANT`. A tenant's whole world fits in
+   one database, so cross-shard queries never exist by construction.
+   "Billions of users" decomposes into "millions of tenants × hundreds of
+   users", each shard boring and small.
+3. **Visibility is a flag, not a list.** `getLeadScope` expresses an
+   admin's all-seeing scope as `unrestricted: true` — never as an
+   enumerated array of every team/member id spread into `$in` clauses.
+   Restricted scopes enumerate only the viewer's own teams (small by
+   definition). Per-request work stays O(viewer), not O(workspace).
+
+## What breaks first, and the lever that fixes it
+
+| Pressure point | Breaks at (order of magnitude) | Lever | Status |
 | --- | --- | --- | --- |
-| 1 (now) | 10–500 | Nothing. | Single Atlas cluster (`bom1` co-located), compound indexes on every hot path, free-tier email under `BREVO_DAILY_CAP`. |
-| 2 | 500–5k | Hot dashboard aggregations; email cap. | Turn on Upstash read-through cache (env vars only). Push + ICS become the default channels; email overflow is by design. Daily cron fans out in batches (`limit(1000)` recipient pages → paginate). |
-| 3 | 5k–100k | Single DB write volume; cron duration. | Activate multi-tenant runtime: database-per-tenant on shared clusters (the `Tenant` model already carries `dbName`). Split the daily cron by tenant (one invocation per tenant via a fan-out queue — Vercel Queues / QStash / a `tenants` cursor). Move audit log writes to fire-and-forget batched inserts. |
-| 4 | 100k–10M | Cluster count; cross-tenant ops; search. | Tenant→cluster routing table (consistent hashing over cluster pool). Read models: nightly-built rollups (per-team throughput, activity heatmaps) instead of on-request aggregation. Add a search service (Atlas Search per cluster) — still no cross-tenant joins needed. |
-| 5 | 10M–1B+ | Everything centralized. | Regional cells: a cell = app deployment + cluster pool + cache + cron runner serving a set of tenants, fronted by a tenant→cell directory (the only global component, cached aggressively at the edge). Cells share zero state; global growth = stamping cells. The audit trail ships to per-tenant append-only cold storage (S3/Blob) with the last 90 days hot. |
+| Session check: 1 User read per authed request | ~10⁶ requests/day on a small cluster | `SESSION_CACHE_TTL_MS` per-instance micro-cache (≤60s, failure-safe — see below) | **Built, default off** |
+| Hot rollups (dashboard, projects, people) recomputed per request | ~10³ concurrent users | Upstash Redis read-through (`src/lib/cache.ts`) — activates with 2 env vars, no-op without | **Built, env-gated** |
+| Rate-limit state per instance | many instances / multi-region | swap `src/lib/rateLimit.ts` internals for Upstash Ratelimit — same signature, call sites untouched | Documented seam |
+| One DB for all tenants | ~10²–10³ orgs | `PRAGATI_MULTI_TENANT=true` + registry rows; each org → own db/cluster | **Modeled, dormant** |
+| Digest cron fans out in one invocation | ~10⁴ recipients | batch by tenant; each tenant's digest is an independent job (the send path is already testable/pure) | Documented seam |
+| Unbounded collections (audit log, done tasks) | years of history | TTL/archive tiering: audit → cold storage after N months; `completedAt` queries already window to ≤120 days | Indexes shipped; archival documented |
+| Dashboard task load per workspace | ~10⁴ open tasks in ONE workspace | already capped (`.limit(500)`), people panel capped at 500; pagination is the next step | Caps shipped |
 
-## Why this works without a rewrite
+## The tiers
 
-- **No cross-tenant queries exist today.** Every query is already scoped by
-  `leadScope`/tenant. That is THE property that makes cell-based sharding a
-  deployment exercise instead of a re-architecture.
-- **Mongoose stays.** Database-per-tenant means each connection pool talks to
-  one small database; the 25-connection pool config already anticipates
-  serverless fan-out. Connection routing slots into `connectDB()` (one file).
-- **The brief/digest pipeline is already partition-friendly:** pure builders
-  keyed by user, batch caps, per-run summaries persisted for observability,
-  and providers behind seams (`MAIL_PROVIDER`, `BREVO_API_URL`) so any tenant
-  can bring their own relay at Stage 3+.
-- **Web Push has no scale ceiling for us:** browser vendors run the delivery
-  infrastructure; our cost is one signed HTTP POST per subscription per day,
-  parallelisable and free.
+### Tier 0 — today (≤ ~1k users, one workspace, $0)
+Vercel serverless (pinned co-located with Atlas), Atlas free/M10, pooled
+cached connections (`maxPoolSize: 25`, fail-fast timeouts), per-request
+session reads, in-memory rate limits. Nothing to do.
 
-## Cheap hardening already in place (this repo)
+### Tier 1 — busy workspace (≤ ~50k users, still $0–low)
+Flip three env switches, deploy nothing new:
+- `UPSTASH_REDIS_REST_URL/TOKEN` → rollup cache on (read-through, silent
+  fallback to DB on any cache failure).
+- `SESSION_CACHE_TTL_MS=15000` → session reads drop by ~the cache hit rate.
+  Tradeoff, by design: a force-logout/deactivation can take up to 15 extra
+  seconds to bite on instances holding a warm entry (the mutating instance
+  busts its own cache immediately). The cache can never falsely log a user
+  out: any failed validation against cached data re-checks the DB before
+  rejecting.
+- Atlas tier up; indexes are already compound-matched to the hot
+  aggregations (see `src/models/Task.ts`).
 
-- Compound indexes on every hot read path (projects, tasks, users, audit).
-- Fail-fast connection settings + cached connection promise reset on failure.
-- Daily-send cap + per-run delivery stats surfaced to the admin.
-- Capability-token ICS feed (no session work on calendar pollers) with
-  client-side poll throttling hints (`X-PUBLISHED-TTL`, `Cache-Control`).
-- Dead push subscriptions pruned at send time (no unbounded growth).
-- Rate-limit-friendly: heavy fan-out only on the authenticated cron path,
-  fail-closed without `CRON_SECRET`.
+### Tier 2 — many organisations (≤ ~5M users)
+- `PRAGATI_MULTI_TENANT=true`; seed the Tenant registry. Each org gets its
+  own database (same cluster at first, then spread across clusters by
+  moving the `connectionUri` per tenant — a data migration per tenant, no
+  schema change, no downtime for other tenants).
+- Rate limits + caches move to Redis (per-tenant key prefixes are already
+  the convention: `pragati:` namespace).
+- The master-admin role activates for provisioning; per-tenant quotas
+  (`userQuota`, `projectQuota`) enforce blast radius.
 
-## What we deliberately do NOT do yet
+### Tier 3 — the "must scale to billions" posture
+At this tier the architecture stays, the packaging changes:
+- **Registry becomes the shard map.** Millions of tenant rows, cached
+  aggressively (tenants change rarely), routing each request to one of
+  many Mongo clusters/regions. Tenants are placeable near their users.
+- **Service seams follow the existing lib boundaries.** Auth
+  (`lib/auth`), audit (`lib/audit`), digest workers, and exports are
+  already behind narrow interfaces; they extract into separate deployables
+  without touching route handlers.
+- **Derived views stop being computed on read.** The dashboard builders
+  (`lib/leadDashboard`, `lib/projectList`) become incrementally-maintained
+  materialized views (update on write, read precomputed) — the read-through
+  cache is the stepping stone to that.
+- **Append-only data tiers out.** Audit logs and completed-task history
+  move to cold storage after a retention window; the live db holds the
+  working set.
+- What stays untouched: the permission matrix, the visibility flag rule,
+  the JWT session model, every route handler's shape.
 
-- No queues, no Kafka, no microservices, no read replicas at Stage 1–2. Every
-  one of those adds operational surface that a free-forever product cannot
-  afford until the stage demands it.
-- No LLM in any scoring/selection path (architectural invariant) — which also
-  means the cost curve of the intelligence layer is flat.
+## Rules that keep us scalable (enforced in review)
 
-The rule for future contributors: **before adding infrastructure, check which
-stage we are actually at.** Each stage above is a one-way door we only walk
-through when the metrics say so.
+1. Never spread a workspace-sized id list into a query — branch on
+   `scope.unrestricted` instead (`lib/leadScope.ts` documents this).
+2. Every list endpoint has a cap or a cursor. No `find({})` without
+   `.limit()` on a growing collection.
+3. New query shapes ship with their compound index in the model file,
+   commented with the caller they serve.
+4. Caches are read-through, namespaced, and safe to lose; the DB is always
+   authoritative. Nothing security-relevant is ever *only* in a cache.
+5. Per-tenant everything: keys, quotas, connections. If a feature needs a
+   cross-tenant query, the design is wrong.
+
+## Honest limits
+
+- One *single* workspace with hundreds of thousands of members would need
+  pagination work (People directory, dashboard people panel) beyond the
+  current caps — the architecture assumes orgs decompose into teams.
+- The bird's-eye SVG renders every visible node; trees beyond ~1–2k nodes
+  need virtualization (collapse-by-default already mitigates).
+- MongoDB free-tier connection limits bound Tier 0 concurrency (~25
+  pooled connections per instance is tuned for this).

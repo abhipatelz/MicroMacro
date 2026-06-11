@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { ModalPortal } from '@/components/ModalPortal';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { useIsLead } from '@/components/CurrentUserContext';
@@ -182,54 +183,56 @@ function SaveTemplateDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-800">
-            {editingTemplate ? 'Edit template' : 'Save as template'}
-          </h2>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-700 transition-colors">
-            <X size={16} />
-          </button>
-        </div>
-        <p className="text-xs text-slate-500">
-          {editingTemplate
-            ? `Update the name, description, and stages — saving applies the current ${phases.length} stage${phases.length === 1 ? '' : 's'} to this template for everyone.`
-            : `Save the current ${phases.length} stage${phases.length === 1 ? '' : 's'} as a reusable workspace template. Everyone on the team can use it.`}
-        </p>
-        <div>
-          <label className="label">Template name *</label>
-          <input
-            className="input"
-            placeholder="e.g. Standard CSV Validation"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoFocus
-          />
-        </div>
-        <div>
-          <label className="label">
-            Description <span className="normal-case font-normal text-slate-300">(optional)</span>
-          </label>
-          <textarea
-            className="textarea"
-            rows={2}
-            placeholder="What is this template for?"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        {err && <p className="text-xs text-red-600">{err}</p>}
-        <div className="flex items-center gap-3 pt-1">
-          <button onClick={save} disabled={saving} className="btn-primary">
-            {saving ? 'Saving…' : editingTemplate ? 'Save changes' : 'Save template'}
-          </button>
-          <button onClick={onClose} className="btn-secondary">
-            Cancel
-          </button>
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-slate-800">
+              {editingTemplate ? 'Edit template' : 'Save as template'}
+            </h2>
+            <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-700 transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+          <p className="text-xs text-slate-500">
+            {editingTemplate
+              ? `Update the name, description, and stages — saving applies the current ${phases.length} stage${phases.length === 1 ? '' : 's'} to this template for everyone.`
+              : `Save the current ${phases.length} stage${phases.length === 1 ? '' : 's'} as a reusable workspace template. Everyone on the team can use it.`}
+          </p>
+          <div>
+            <label className="label">Template name *</label>
+            <input
+              className="input"
+              placeholder="e.g. Standard CSV Validation"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="label">
+              Description <span className="normal-case font-normal text-slate-300">(optional)</span>
+            </label>
+            <textarea
+              className="textarea"
+              rows={2}
+              placeholder="What is this template for?"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          {err && <p className="text-xs text-red-600">{err}</p>}
+          <div className="flex items-center gap-3 pt-1">
+            <button onClick={save} disabled={saving} className="btn-primary">
+              {saving ? 'Saving…' : editingTemplate ? 'Save changes' : 'Save template'}
+            </button>
+            <button onClick={onClose} className="btn-secondary">
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

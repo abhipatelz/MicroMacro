@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { ModalPortal } from '@/components/ModalPortal';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
@@ -38,30 +39,32 @@ import {
    project data is exposed). ─────────────────────────────────────────────── */
 function ActivityModal({ user, onClose }: { user: any; onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[820px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onClose}
       >
-        <div className="flex items-start gap-3 mb-5">
-          <UserAvatar userId={user.id} name={user.name} size={44} />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-black text-slate-900 truncate">{user.name}</h3>
-              <RoleBadge role={user.role} />
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[820px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start gap-3 mb-5">
+            <UserAvatar userId={user.id} name={user.name} size={44} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-black text-slate-900 truncate">{user.name}</h3>
+                <RoleBadge role={user.role} />
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5">Performance overview</div>
             </div>
-            <div className="text-xs text-slate-400 mt-0.5">Performance overview</div>
+            <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-2 mt-0.5">
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-2 mt-0.5">
-            <X size={18} />
-          </button>
+          <ActivityGraph userId={user.id} name={user.name} />
         </div>
-        <ActivityGraph userId={user.id} name={user.name} />
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -109,54 +112,58 @@ function CredentialsModal({
   onClose: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onClose}
       >
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <div className="text-base font-bold text-slate-900">Account created</div>
-            <div className="text-sm text-slate-400 mt-0.5">Share these credentials with {name}.</div>
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <div className="text-base font-bold text-slate-900">Account created</div>
+              <div className="text-sm text-slate-400 mt-0.5">Share these credentials with {name}.</div>
+            </div>
+            <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5">
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5">
-            <X size={18} />
+
+          <div className="space-y-3 mb-5">
+            <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                Username
+              </div>
+              <div className="flex items-center">
+                <span className="text-sm font-mono font-semibold text-slate-800 flex-1">{email}</span>
+                <CopyBtn text={email} />
+              </div>
+            </div>
+            <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mb-1">
+                Temporary password
+              </div>
+              <div className="flex items-center">
+                <span className="text-sm font-mono font-semibold text-blue-800 flex-1 tracking-wide">
+                  {tempPassword}
+                </span>
+                <CopyBtn text={tempPassword} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800 leading-snug mb-5">
+            This password is shown only once. {name} will be prompted to set their own on first login.
+          </div>
+
+          <button onClick={onClose} className="btn-primary w-full justify-center">
+            Done
           </button>
         </div>
-
-        <div className="space-y-3 mb-5">
-          <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Username</div>
-            <div className="flex items-center">
-              <span className="text-sm font-mono font-semibold text-slate-800 flex-1">{email}</span>
-              <CopyBtn text={email} />
-            </div>
-          </div>
-          <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mb-1">
-              Temporary password
-            </div>
-            <div className="flex items-center">
-              <span className="text-sm font-mono font-semibold text-blue-800 flex-1 tracking-wide">
-                {tempPassword}
-              </span>
-              <CopyBtn text={tempPassword} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800 leading-snug mb-5">
-          This password is shown only once. {name} will be prompted to set their own on first login.
-        </div>
-
-        <button onClick={onClose} className="btn-primary w-full justify-center">
-          Done
-        </button>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -208,116 +215,119 @@ function AddMemberModal({ onClose, onCreated }: { onClose: () => void; onCreated
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onClose}
       >
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <div className="text-base font-bold text-slate-900">Add team member</div>
-            <div className="text-sm text-slate-400 mt-0.5">
-              Enter their company username and employee ID. They'll appear in your assignee lists and team
-              board straight away.
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <div className="text-base font-bold text-slate-900">Add team member</div>
+              <div className="text-sm text-slate-400 mt-0.5">
+                Enter their company username and employee ID. They'll appear in your assignee lists and team
+                board straight away.
+              </div>
             </div>
+            <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5">
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5">
-            <X size={18} />
-          </button>
-        </div>
 
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="label">Corporate username</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono pointer-events-none">
-                @
-              </span>
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <label className="label">Corporate username</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-mono pointer-events-none">
+                  @
+                </span>
+                <input
+                  className="input pl-7 font-mono text-sm"
+                  placeholder="priya.sharma"
+                  required
+                  minLength={3}
+                  maxLength={30}
+                  pattern="[a-z][a-z0-9_.]{1,28}[a-z0-9_]"
+                  autoCapitalize="none"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={username}
+                  onChange={(e) => onUsernameChange(e.target.value)}
+                />
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1 leading-snug">
+                The part of their work email before the
+                <span className="font-mono px-1">@</span>— e.g.{' '}
+                <span className="font-mono">priya.sharma</span> for{' '}
+                <span className="font-mono">priya.sharma@company.com</span>.
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Employee ID</label>
               <input
-                className="input pl-7 font-mono text-sm"
-                placeholder="priya.sharma"
+                className="input font-mono text-sm"
+                placeholder="e.g. 100245"
                 required
-                minLength={3}
-                maxLength={30}
-                pattern="[a-z][a-z0-9_.]{1,28}[a-z0-9_]"
+                maxLength={40}
+                autoComplete="off"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="label">Work email</label>
+              <input
+                className="input text-sm"
+                type="email"
+                placeholder="priya.sharma@company.com"
+                required
+                maxLength={200}
                 autoCapitalize="none"
                 autoComplete="off"
                 spellCheck={false}
-                value={username}
-                onChange={(e) => onUsernameChange(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <div className="text-[11px] text-slate-400 mt-1 leading-snug">
+                Where their daily “tasks due today” email is sent. They can turn that email on or off in their
+                profile.
+              </div>
+            </div>
+
+            <div>
+              <label className="label">
+                Display name <span className="text-slate-300 font-normal normal-case">(auto-filled)</span>
+              </label>
+              <input
+                className="input"
+                placeholder="Priya Sharma"
+                required
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setNameEdited(true);
+                }}
               />
             </div>
-            <div className="text-[11px] text-slate-400 mt-1 leading-snug">
-              The part of their work email before the
-              <span className="font-mono px-1">@</span>— e.g. <span className="font-mono">priya.sharma</span>{' '}
-              for <span className="font-mono">priya.sharma@company.com</span>.
-            </div>
-          </div>
 
-          <div>
-            <label className="label">Employee ID</label>
-            <input
-              className="input font-mono text-sm"
-              placeholder="e.g. 100245"
-              required
-              maxLength={40}
-              autoComplete="off"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-            />
-          </div>
+            {err && (
+              <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                {err}
+              </div>
+            )}
 
-          <div>
-            <label className="label">Work email</label>
-            <input
-              className="input text-sm"
-              type="email"
-              placeholder="priya.sharma@company.com"
-              required
-              maxLength={200}
-              autoCapitalize="none"
-              autoComplete="off"
-              spellCheck={false}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <div className="text-[11px] text-slate-400 mt-1 leading-snug">
-              Where their daily “tasks due today” email is sent. They can turn that email on or off in their
-              profile.
-            </div>
-          </div>
-
-          <div>
-            <label className="label">
-              Display name <span className="text-slate-300 font-normal normal-case">(auto-filled)</span>
-            </label>
-            <input
-              className="input"
-              placeholder="Priya Sharma"
-              required
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setNameEdited(true);
-              }}
-            />
-          </div>
-
-          {err && (
-            <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
-              {err}
-            </div>
-          )}
-
-          <button type="submit" disabled={saving} className="btn-primary w-full justify-center">
-            {saving ? 'Adding…' : 'Add member'}
-          </button>
-        </form>
+            <button type="submit" disabled={saving} className="btn-primary w-full justify-center">
+              {saving ? 'Adding…' : 'Add member'}
+            </button>
+          </form>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -396,98 +406,101 @@ function ImportMembersModal({ onClose, onDone }: { onClose: () => void; onDone: 
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onClose}
       >
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="text-base font-bold text-slate-900">Import contributors</div>
-            <div className="text-sm text-slate-400 mt-0.5">
-              One person per line: <span className="font-mono">username, employee ID, name, email</span> (name
-              &amp; email optional). Up to 100 at a time.
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <div className="text-base font-bold text-slate-900">Import contributors</div>
+              <div className="text-sm text-slate-400 mt-0.5">
+                One person per line: <span className="font-mono">username, employee ID, name, email</span>{' '}
+                (name &amp; email optional). Up to 100 at a time.
+              </div>
             </div>
+            <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5">
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5">
-            <X size={18} />
-          </button>
+
+          {result ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                <strong>{result.createdCount}</strong> contributor{result.createdCount === 1 ? '' : 's'}{' '}
+                added.
+                {result.skippedCount > 0 && <> {result.skippedCount} skipped.</>}
+              </div>
+              {result.skipped.length > 0 && (
+                <div className="text-xs text-slate-500 max-h-40 overflow-auto border border-slate-100 rounded-lg p-3">
+                  {result.skipped.map((s) => (
+                    <div key={s.username}>
+                      <span className="font-mono">@{s.username}</span> — {s.reason}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button onClick={onClose} className="btn-primary w-full justify-center">
+                Done
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <textarea
+                className="textarea text-sm font-mono min-h-[180px]"
+                placeholder={
+                  'priya.sharma, 100245, Priya Sharma, priya.sharma@company.com\narjun.mehta, 100312\nneha.r, 100410, Neha Rao, neha.rao@company.com'
+                }
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setErr('');
+                }}
+                spellCheck={false}
+                autoCapitalize="none"
+              />
+
+              {rows.length > 0 && (
+                <div className="text-xs text-slate-500">
+                  <span className="font-semibold text-emerald-600">{validRows.length} ready</span>
+                  {badRows.length > 0 && (
+                    <span className="text-rose-600 font-semibold"> · {badRows.length} need fixing</span>
+                  )}
+                  {badRows.slice(0, 4).map((r, i) => (
+                    <div key={i} className="text-rose-500 mt-0.5">
+                      line “{r.username || '(empty)'}” — {r.bad}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {err && (
+                <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                  {err}
+                </div>
+              )}
+
+              <button
+                onClick={submit}
+                disabled={saving || validRows.length === 0}
+                className="btn-primary w-full justify-center"
+              >
+                {saving
+                  ? 'Importing…'
+                  : `Import ${validRows.length || ''} contributor${validRows.length === 1 ? '' : 's'}`}
+              </button>
+              <p className="text-[11px] text-slate-400 text-center">
+                Each gets the standard default password (first name @ employee ID). Nothing is emailed.
+              </p>
+            </div>
+          )}
         </div>
-
-        {result ? (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-              <strong>{result.createdCount}</strong> contributor{result.createdCount === 1 ? '' : 's'} added.
-              {result.skippedCount > 0 && <> {result.skippedCount} skipped.</>}
-            </div>
-            {result.skipped.length > 0 && (
-              <div className="text-xs text-slate-500 max-h-40 overflow-auto border border-slate-100 rounded-lg p-3">
-                {result.skipped.map((s) => (
-                  <div key={s.username}>
-                    <span className="font-mono">@{s.username}</span> — {s.reason}
-                  </div>
-                ))}
-              </div>
-            )}
-            <button onClick={onClose} className="btn-primary w-full justify-center">
-              Done
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <textarea
-              className="textarea text-sm font-mono min-h-[180px]"
-              placeholder={
-                'priya.sharma, 100245, Priya Sharma, priya.sharma@company.com\narjun.mehta, 100312\nneha.r, 100410, Neha Rao, neha.rao@company.com'
-              }
-              value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                setErr('');
-              }}
-              spellCheck={false}
-              autoCapitalize="none"
-            />
-
-            {rows.length > 0 && (
-              <div className="text-xs text-slate-500">
-                <span className="font-semibold text-emerald-600">{validRows.length} ready</span>
-                {badRows.length > 0 && (
-                  <span className="text-rose-600 font-semibold"> · {badRows.length} need fixing</span>
-                )}
-                {badRows.slice(0, 4).map((r, i) => (
-                  <div key={i} className="text-rose-500 mt-0.5">
-                    line “{r.username || '(empty)'}” — {r.bad}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {err && (
-              <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
-                {err}
-              </div>
-            )}
-
-            <button
-              onClick={submit}
-              disabled={saving || validRows.length === 0}
-              className="btn-primary w-full justify-center"
-            >
-              {saving
-                ? 'Importing…'
-                : `Import ${validRows.length || ''} contributor${validRows.length === 1 ? '' : 's'}`}
-            </button>
-            <p className="text-[11px] text-slate-400 text-center">
-              Each gets the standard default password (first name @ employee ID). Nothing is emailed.
-            </p>
-          </div>
-        )}
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -521,96 +534,98 @@ function RoleConfirmDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onCancel}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onCancel}
       >
-        <div className="flex flex-col gap-4">
-          <div className="flex items-start gap-3">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${promote ? 'bg-blue-50' : 'bg-amber-50'}`}
-            >
-              {promote ? (
-                <Shield size={18} className="text-blue-600" />
-              ) : (
-                <AlertTriangle size={18} className="text-amber-500" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <div className="text-base font-black text-slate-900 tracking-tight">
-                {promote ? `Promote ${user.name} to Team Lead?` : `Make ${user.name} a Contributor?`}
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start gap-3">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${promote ? 'bg-blue-50' : 'bg-amber-50'}`}
+              >
+                {promote ? (
+                  <Shield size={18} className="text-blue-600" />
+                ) : (
+                  <AlertTriangle size={18} className="text-amber-500" />
+                )}
               </div>
-              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                {promote
-                  ? 'Team Leads can create and run teams, allocate projects, and assign tasks. Only promote trusted members.'
-                  : 'They will go back to contributor access — read their team board and update their own tasks. Their work stays intact.'}
-              </p>
+              <div className="min-w-0">
+                <div className="text-base font-black text-slate-900 tracking-tight">
+                  {promote ? `Promote ${user.name} to Team Lead?` : `Make ${user.name} a Contributor?`}
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                  {promote
+                    ? 'Team Leads can create and run teams, allocate projects, and assign tasks. Only promote trusted members.'
+                    : 'They will go back to contributor access — read their team board and update their own tasks. Their work stays intact.'}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Sign-off — 21 CFR Part 11 §11.200. The admin's password +
+            {/* Sign-off — 21 CFR Part 11 §11.200. The admin's password +
               justification become part of the immutable audit row. */}
-          <div className="space-y-2.5">
-            <div>
-              <label className="label">Your password</label>
-              <input
-                type="password"
-                className="input"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Confirm with your password"
-                autoFocus
-              />
+            <div className="space-y-2.5">
+              <div>
+                <label className="label">Your password</label>
+                <input
+                  type="password"
+                  className="input"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Confirm with your password"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="label">Reason</label>
+                <textarea
+                  className="textarea"
+                  rows={2}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder={
+                    promote ? 'e.g. Moving to lead role per HR plan' : 'e.g. Stepping down from lead duties'
+                  }
+                />
+              </div>
             </div>
-            <div>
-              <label className="label">Reason</label>
-              <textarea
-                className="textarea"
-                rows={2}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={
-                  promote ? 'e.g. Moving to lead role per HR plan' : 'e.g. Stepping down from lead duties'
+
+            {err && (
+              <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-2.5 py-2">
+                {err}
+              </div>
+            )}
+
+            <div className="flex gap-2 w-full pt-1">
+              <button onClick={onCancel} className="btn-secondary flex-1 justify-center">
+                Cancel
+              </button>
+              <button
+                onClick={submit}
+                disabled={saving}
+                className={`flex-1 justify-center btn ${promote ? 'btn-primary' : ''}`}
+                style={
+                  !promote
+                    ? {
+                        background: 'linear-gradient(135deg,#b45309,#d97706)',
+                        color: '#fff',
+                        boxShadow: '0 1px 3px rgba(180,83,9,0.3)',
+                      }
+                    : {}
                 }
-              />
+              >
+                {saving ? '…' : promote ? 'Sign & promote' : 'Sign & make contributor'}
+              </button>
             </div>
-          </div>
-
-          {err && (
-            <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-2.5 py-2">
-              {err}
-            </div>
-          )}
-
-          <div className="flex gap-2 w-full pt-1">
-            <button onClick={onCancel} className="btn-secondary flex-1 justify-center">
-              Cancel
-            </button>
-            <button
-              onClick={submit}
-              disabled={saving}
-              className={`flex-1 justify-center btn ${promote ? 'btn-primary' : ''}`}
-              style={
-                !promote
-                  ? {
-                      background: 'linear-gradient(135deg,#b45309,#d97706)',
-                      color: '#fff',
-                      boxShadow: '0 1px 3px rgba(180,83,9,0.3)',
-                    }
-                  : {}
-              }
-            >
-              {saving ? '…' : promote ? 'Sign & promote' : 'Sign & make contributor'}
-            </button>
           </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -670,183 +685,185 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onClose}
       >
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <div className="text-base font-bold text-slate-900">Edit profile</div>
-            <div className="text-sm text-slate-400 mt-0.5 font-mono">@{handleOf(user)}</div>
-          </div>
-          <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5">
-            <X size={18} />
-          </button>
-        </div>
-        <form onSubmit={submit} className="space-y-4">
-          {/* ── Identity (audited) ─────────────────────────────────────── */}
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-              Identity
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <div className="text-base font-bold text-slate-900">Edit profile</div>
+              <div className="text-sm text-slate-400 mt-0.5 font-mono">@{handleOf(user)}</div>
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="label">Full name</label>
-                <input
-                  className="input"
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
+            <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5">
+              <X size={18} />
+            </button>
+          </div>
+          <form onSubmit={submit} className="space-y-4">
+            {/* ── Identity (audited) ─────────────────────────────────────── */}
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                Identity
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
-                  <label className="label">Username</label>
+                  <label className="label">Full name</label>
                   <input
-                    className="input font-mono text-sm"
-                    pattern="[a-z0-9._-]+"
-                    value={form.username}
-                    placeholder="e.g. priya.s"
-                    onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })}
+                    className="input"
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Username</label>
+                    <input
+                      className="input font-mono text-sm"
+                      pattern="[a-z0-9._-]+"
+                      value={form.username}
+                      placeholder="e.g. priya.s"
+                      onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Employee ID</label>
+                    <input
+                      className="input font-mono text-sm"
+                      value={form.employeeId}
+                      placeholder="e.g. EMP-1024"
+                      onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div>
-                  <label className="label">Employee ID</label>
+                  <label className="label">Email</label>
                   <input
-                    className="input font-mono text-sm"
-                    value={form.employeeId}
-                    placeholder="e.g. EMP-1024"
-                    onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
+                    type="email"
+                    className="input"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
                   />
                 </div>
-              </div>
-              <div>
-                <label className="label">Email</label>
-                <input
-                  type="email"
-                  className="input"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 leading-snug">
-                Identity changes (name, username, email, employee ID) are signed and audited. The user will be
-                signed out across devices on save.
-              </p>
-            </div>
-          </div>
-
-          {/* ── Personal details (not audited as identity) ─────────────── */}
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-              Personal details
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="label">Notification email</label>
-                <input
-                  type="email"
-                  className="input"
-                  placeholder="priya.sharma@company.com"
-                  value={form.notifyEmail}
-                  onChange={(e) => setForm({ ...form, notifyEmail: e.target.value })}
-                />
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                  Real address for the daily “tasks due today” email. Leave blank to disable email for this
-                  person.
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 leading-snug">
+                  Identity changes (name, username, email, employee ID) are signed and audited. The user will
+                  be signed out across devices on save.
                 </p>
               </div>
-              <div>
-                <label className="label">Job title</label>
-                <input
-                  className="input"
-                  placeholder="e.g. QA Validation Engineer"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                />
+            </div>
+
+            {/* ── Personal details (not audited as identity) ─────────────── */}
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                Personal details
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
-                  <label className="label">Organisation</label>
+                  <label className="label">Notification email</label>
+                  <input
+                    type="email"
+                    className="input"
+                    placeholder="priya.sharma@company.com"
+                    value={form.notifyEmail}
+                    onChange={(e) => setForm({ ...form, notifyEmail: e.target.value })}
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                    Real address for the daily “tasks due today” email. Leave blank to disable email for this
+                    person.
+                  </p>
+                </div>
+                <div>
+                  <label className="label">Job title</label>
                   <input
                     className="input"
-                    placeholder="e.g. Pharma Division"
-                    value={form.organisation}
-                    onChange={(e) => setForm({ ...form, organisation: e.target.value })}
+                    placeholder="e.g. QA Validation Engineer"
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Organisation</label>
+                    <input
+                      className="input"
+                      placeholder="e.g. Pharma Division"
+                      value={form.organisation}
+                      onChange={(e) => setForm({ ...form, organisation: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Department</label>
+                    <input
+                      className="input"
+                      placeholder="e.g. Quality Assurance"
+                      value={form.department}
+                      onChange={(e) => setForm({ ...form, department: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="label">Location / site</label>
+                  <input
+                    className="input"
+                    placeholder="e.g. Pune Plant 2"
+                    value={form.location}
+                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ── E-signature (only when identity changed) ──────────────── */}
+            {identityChanged && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3 space-y-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700">
+                  Sign-off required
+                </div>
+                <div>
+                  <label className="label">Your password</label>
+                  <input
+                    type="password"
+                    className="input"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Confirm with your password"
                   />
                 </div>
                 <div>
-                  <label className="label">Department</label>
-                  <input
-                    className="input"
-                    placeholder="e.g. Quality Assurance"
-                    value={form.department}
-                    onChange={(e) => setForm({ ...form, department: e.target.value })}
+                  <label className="label">Reason</label>
+                  <textarea
+                    className="textarea"
+                    rows={2}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="e.g. Username corrected per HR ticket #4321"
                   />
                 </div>
               </div>
-              <div>
-                <label className="label">Location / site</label>
-                <input
-                  className="input"
-                  placeholder="e.g. Pune Plant 2"
-                  value={form.location}
-                  onChange={(e) => setForm({ ...form, location: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
+            )}
 
-          {/* ── E-signature (only when identity changed) ──────────────── */}
-          {identityChanged && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3 space-y-2.5">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700">
-                Sign-off required
+            {err && (
+              <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                {err}
               </div>
-              <div>
-                <label className="label">Your password</label>
-                <input
-                  type="password"
-                  className="input"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Confirm with your password"
-                />
-              </div>
-              <div>
-                <label className="label">Reason</label>
-                <textarea
-                  className="textarea"
-                  rows={2}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="e.g. Username corrected per HR ticket #4321"
-                />
-              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={onClose} className="btn-secondary flex-1 justify-center">
+                Cancel
+              </button>
+              <button type="submit" disabled={saving} className="btn-primary flex-1 justify-center">
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
             </div>
-          )}
-
-          {err && (
-            <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
-              {err}
-            </div>
-          )}
-          <div className="flex gap-2 pt-1">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1 justify-center">
-              Cancel
-            </button>
-            <button type="submit" disabled={saving} className="btn-primary flex-1 justify-center">
-              {saving ? 'Saving…' : 'Save changes'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -863,44 +880,46 @@ function RemoveConfirmDialog({
   saving: boolean;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onCancel}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onCancel}
       >
-        <div className="flex flex-col items-center text-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
-            <Trash2 size={22} className="text-red-600" />
-          </div>
-          <div>
-            <div className="text-base font-black text-slate-900">Remove {user.name}?</div>
-            <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-              Their account will be deleted and they will lose access immediately. All tasks assigned to them
-              will be unassigned. This cannot be undone.
-            </p>
-          </div>
-          <div className="flex gap-2 w-full">
-            <button onClick={onCancel} className="btn-secondary flex-1 justify-center">
-              Cancel
-            </button>
-            <button
-              onClick={onConfirm}
-              disabled={saving}
-              className="flex-1 justify-center btn text-white"
-              style={{
-                background: 'linear-gradient(135deg,#dc2626,#ef4444)',
-                boxShadow: '0 1px 3px rgba(220,38,38,0.3)',
-              }}
-            >
-              {saving ? 'Removing…' : 'Remove member'}
-            </button>
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+              <Trash2 size={22} className="text-red-600" />
+            </div>
+            <div>
+              <div className="text-base font-black text-slate-900">Remove {user.name}?</div>
+              <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+                Their account will be deleted and they will lose access immediately. All tasks assigned to
+                them will be unassigned. This cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-2 w-full">
+              <button onClick={onCancel} className="btn-secondary flex-1 justify-center">
+                Cancel
+              </button>
+              <button
+                onClick={onConfirm}
+                disabled={saving}
+                className="flex-1 justify-center btn text-white"
+                style={{
+                  background: 'linear-gradient(135deg,#dc2626,#ef4444)',
+                  boxShadow: '0 1px 3px rgba(220,38,38,0.3)',
+                }}
+              >
+                {saving ? 'Removing…' : 'Remove member'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -924,76 +943,78 @@ function DeactivateDialog({
   const [reason, setReason] = useState('');
   const [password, setPassword] = useState('');
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onCancel}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onCancel}
       >
-        <div className="flex flex-col gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-              <UserX size={18} className="text-amber-600" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-base font-black text-slate-900 tracking-tight">
-                Deactivate {user.name}?
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal-sm max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                <UserX size={18} className="text-amber-600" />
               </div>
-              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                They lose access immediately and disappear from assignee lists, but the account and all their
-                task history are preserved. You can reactivate it later. This is the recommended alternative
-                to permanent removal.
-              </p>
+              <div className="min-w-0">
+                <div className="text-base font-black text-slate-900 tracking-tight">
+                  Deactivate {user.name}?
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                  They lose access immediately and disappear from assignee lists, but the account and all
+                  their task history are preserved. You can reactivate it later. This is the recommended
+                  alternative to permanent removal.
+                </p>
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="label">
-              Reason <span className="text-slate-300 font-normal normal-case">(audit trail)</span>
-            </label>
-            <textarea
-              className="textarea text-sm"
-              rows={2}
-              placeholder="e.g. Left the organisation · role transfer · extended leave"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-1.5">
-              Sign-off
+            <div>
+              <label className="label">
+                Reason <span className="text-slate-300 font-normal normal-case">(audit trail)</span>
+              </label>
+              <textarea
+                className="textarea text-sm"
+                rows={2}
+                placeholder="e.g. Left the organisation · role transfer · extended leave"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                autoFocus
+              />
             </div>
-            <label className="label">Your password</label>
-            <input
-              type="password"
-              className="input"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Confirm with your password"
-            />
-          </div>
-          <div className="flex gap-2 w-full">
-            <button onClick={onCancel} className="btn-secondary flex-1 justify-center">
-              Cancel
-            </button>
-            <button
-              onClick={() => onConfirm({ reason: reason.trim(), password })}
-              disabled={saving || !reason.trim() || !password}
-              className="flex-1 justify-center btn text-white"
-              style={{
-                background: 'linear-gradient(135deg,#b45309,#d97706)',
-                boxShadow: '0 1px 3px rgba(180,83,9,0.3)',
-              }}
-            >
-              {saving ? 'Deactivating…' : 'Sign & deactivate'}
-            </button>
+            <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-1.5">
+                Sign-off
+              </div>
+              <label className="label">Your password</label>
+              <input
+                type="password"
+                className="input"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Confirm with your password"
+              />
+            </div>
+            <div className="flex gap-2 w-full">
+              <button onClick={onCancel} className="btn-secondary flex-1 justify-center">
+                Cancel
+              </button>
+              <button
+                onClick={() => onConfirm({ reason: reason.trim(), password })}
+                disabled={saving || !reason.trim() || !password}
+                className="flex-1 justify-center btn text-white"
+                style={{
+                  background: 'linear-gradient(135deg,#b45309,#d97706)',
+                  boxShadow: '0 1px 3px rgba(180,83,9,0.3)',
+                }}
+              >
+                {saving ? 'Deactivating…' : 'Sign & deactivate'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -1041,67 +1062,69 @@ function BulkActionDialog({
   const [password, setPassword] = useState('');
   const m = BULK_META[action];
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-      onClick={onCancel}
-    >
+    <ModalPortal>
       <div
-        className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onCancel}
       >
-        <div className="flex flex-col gap-4">
-          <div>
-            <div className="text-base font-black text-slate-900 tracking-tight">
-              {m.verb} {count} {count === 1 ? 'person' : 'people'}?
+        <div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-modal max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col gap-4">
+            <div>
+              <div className="text-base font-black text-slate-900 tracking-tight">
+                {m.verb} {count} {count === 1 ? 'person' : 'people'}?
+              </div>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">{m.note}</p>
             </div>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">{m.note}</p>
-          </div>
-          <div>
-            <label className="label">
-              Reason{' '}
-              <span className="text-slate-300 font-normal normal-case">
-                (audit trail · applied to each record)
-              </span>
-            </label>
-            <textarea
-              className="textarea text-sm"
-              rows={2}
-              placeholder="e.g. Quarterly access review · team restructure · offboarding cohort"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-1.5">
-              Sign-off
+            <div>
+              <label className="label">
+                Reason{' '}
+                <span className="text-slate-300 font-normal normal-case">
+                  (audit trail · applied to each record)
+                </span>
+              </label>
+              <textarea
+                className="textarea text-sm"
+                rows={2}
+                placeholder="e.g. Quarterly access review · team restructure · offboarding cohort"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                autoFocus
+              />
             </div>
-            <label className="label">Your password</label>
-            <input
-              type="password"
-              className="input"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Confirm with your password"
-            />
-          </div>
-          <div className="flex gap-2 w-full">
-            <button onClick={onCancel} className="btn-secondary flex-1 justify-center">
-              Cancel
-            </button>
-            <button
-              onClick={() => onConfirm({ password, reason: reason.trim() })}
-              disabled={saving || reason.trim().length < 4 || !password}
-              className="flex-1 justify-center btn text-white"
-              style={{ background: m.bg }}
-            >
-              {saving ? 'Applying…' : `Sign & apply`}
-            </button>
+            <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-1.5">
+                Sign-off
+              </div>
+              <label className="label">Your password</label>
+              <input
+                type="password"
+                className="input"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Confirm with your password"
+              />
+            </div>
+            <div className="flex gap-2 w-full">
+              <button onClick={onCancel} className="btn-secondary flex-1 justify-center">
+                Cancel
+              </button>
+              <button
+                onClick={() => onConfirm({ password, reason: reason.trim() })}
+                disabled={saving || reason.trim().length < 4 || !password}
+                className="flex-1 justify-center btn text-white"
+                style={{ background: m.bg }}
+              >
+                {saving ? 'Applying…' : `Sign & apply`}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

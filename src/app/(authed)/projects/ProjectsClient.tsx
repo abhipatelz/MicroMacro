@@ -200,7 +200,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
       {!loaded && (
         <div
           className="grid gap-5"
-          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))' }}
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}
           aria-busy="true"
           aria-live="polite"
         >
@@ -229,7 +229,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
 
       {/* Grid */}
       {loaded && (
-        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))' }}>
+        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
           {projects.map((p) => {
             const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
             const overdueRatio = p.taskCount ? (p.tasksOverdue || 0) / p.taskCount : 0;
@@ -253,15 +253,11 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                 href={`/projects/${p.id}`}
                 key={p.id}
                 className="card-hover block group overflow-hidden hover:-translate-y-0.5 transition-transform"
-                style={{ minHeight: 240 }}
               >
-                {/* Top accent — soft gradient strip in the health colour */}
-                <div
-                  className="h-1.5"
-                  style={{ background: `linear-gradient(90deg, ${progressColor}, ${healthColor})` }}
-                />
+                {/* Top accent — slim strip in the health colour */}
+                <div className="h-1" style={{ background: healthColor }} />
 
-                <div className="p-5 flex flex-col h-full">
+                <div className="p-4 flex flex-col h-full">
                   {/* Header row: code + health + status */}
                   <div className="flex items-center gap-2 mb-3 flex-wrap">
                     {p.isPersonal ? (
@@ -305,23 +301,19 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                   </div>
 
                   {/* Project name */}
-                  <h3 className="font-black text-[16px] text-slate-900 dark:text-white/90 line-clamp-2 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors leading-snug mb-1.5">
+                  <h3 className="font-bold text-[14.5px] text-slate-900 dark:text-white/90 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors leading-snug mb-1">
                     {p.name}
                   </h3>
 
                   {/* Description */}
-                  {p.description ? (
-                    <p className="text-[12.5px] text-slate-500 dark:text-white/40 line-clamp-2 leading-relaxed mb-3">
+                  {p.description && (
+                    <p className="text-[12px] text-slate-500 dark:text-white/40 line-clamp-1 leading-relaxed mb-2">
                       {p.description}
-                    </p>
-                  ) : (
-                    <p className="text-[12.5px] italic text-slate-300 dark:text-white/20 mb-3">
-                      No description.
                     </p>
                   )}
 
                   {/* Lifecycle + team tags */}
-                  <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
                     <LifecycleTag lifecycle={p.lifecycle} />
                     {p.teamName && (
                       <span
@@ -333,33 +325,29 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                     )}
                   </div>
 
-                  {/* Progress — gradient fill with a soft inner highlight */}
-                  <div className="space-y-1.5 mb-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/40">
-                        Progress
-                      </span>
-                      <span className="text-[13px] font-black tabular-nums" style={{ color: progressColor }}>
-                        {pct}%
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-white/[0.06]">
+                  {/* Progress — slim bar + % on one line; no label block. */}
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="h-1.5 flex-1 rounded-full overflow-hidden bg-slate-100 dark:bg-white/[0.06]">
                       <div
                         className="relative h-full rounded-full overflow-hidden transition-all duration-700"
                         style={{
                           width: `${Math.max(pct, p.taskCount ? 2 : 0)}%`,
                           background: progressGradient,
-                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35)',
                         }}
                       >
-                        {/* App-theme travelling sheen — same cue as the dashboard bars. */}
                         {pct > 0 && <span aria-hidden className="progress-bar-sheen" />}
                       </div>
                     </div>
+                    <span
+                      className="text-[12px] font-black tabular-nums shrink-0"
+                      style={{ color: progressColor }}
+                    >
+                      {pct}%
+                    </span>
                   </div>
 
                   {/* Footer */}
-                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
+                  <div className="mt-auto pt-2.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-[11px] min-w-0">
                       <span className="font-semibold text-slate-500 dark:text-white/40 shrink-0">
                         <span className="text-slate-800 dark:text-white/82 font-black">{p.tasksDone}</span>

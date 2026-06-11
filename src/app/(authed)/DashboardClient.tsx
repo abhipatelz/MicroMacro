@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
+import { ModalPortal } from '@/components/ModalPortal';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLiveRefresh } from '@/lib/client/useLiveRefresh';
@@ -43,7 +44,9 @@ const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) 
 import type { BirdsEyeData } from '@/components/BirdsEyeView';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { FlowSignalStrip, type FlowSignalPayload } from '@/components/FlowSignalStrip';
-import { DailyBrief } from '@/components/DailyBrief';
+// The Morning Brief stays available through its other channels (push, email,
+// calendar feed) — the dashboard card was removed by owner decision: the
+// Up Next panel and the summary chips already answer "what's on today" here.
 
 /* ── Types matching /api/lead-dashboard ──────────────────────────────────── */
 interface TeamTask {
@@ -280,6 +283,10 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   // Bird's-eye view — the lead's whole workspace as a packed tree. Opened
   // from the small compass icon in the greeting row.
   const [birdsEyeOpen, setBirdsEyeOpen] = useState(false);
+  // Up Next's expand state is lifted here so the shared two-column header bar
+  // (below) can own the expand control — keeping both column titles on one
+  // inline header row instead of two floating labels.
+  const [upNextExpanded, setUpNextExpanded] = useState(false);
 
   // First-run: a lead/admin whose workspace has no projects yet. Show a
   // guided setup path instead of a wall of empty panels — this is the
@@ -374,10 +381,6 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               the correct product state. */}
           <FlowSignalStrip data={dash.flowSignal} />
 
-          {/* ── Morning brief — role-aware daily rundown (renders nothing
-              when there is nothing material; dismissable per day). */}
-          <DailyBrief />
-
           {/* ── Summary strip ──────────────────────────────────────────── */}
           <div className="flex flex-wrap gap-2 mb-5">
             <SummaryChip
@@ -423,25 +426,69 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
 
       {/* ── Main layout: Projects (left) · Due Center (right, same row) ───── */}
       {!isFirstRun && (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
-          {/* Left column — Projects */}
-          <ProjectsColumn projects={ongoingProjects} tasksByProject={tasksByProject} />
-
-          {/* Right column — Due Center + "My tasks" (for leads: also Contributors).
-             On desktop, pad the rail so the Up Next card starts on the same
-             horizontal line as the project cards (the inline composition shown
-             in the production screenshot). It still flows with the page — no
-             sticky/own-scroll — so taller contributor lists never clip. */}
-          <div className="space-y-4 pr-1 min-w-0">
-            <UpNextPanel tasks={visibleTasks} />
-            <MyTasksPanel tasks={visibleTasks} myId={myId} />
-            {/* Leads see workload across their ICs. Contributors don't need a
-               per-project rollup of their own work here — "My tasks" above
-               already covers that, and the expanded project rows on the left
-               show the whole pipeline. */}
-            {isLead && <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />}
+        <>
+          {/* Shared header band — one inline row across both columns on desktop,
+              so the two section titles read as a single header line instead of
+              two floating labels. On mobile each column keeps its own header
+              (the band is hidden) since the columns stack vertically. */}
+          <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_340px] gap-5 mb-3 items-center">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <FolderKanban size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
+                <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
+                  Your team’s projects
+                </h2>
+                <span className="text-[10px] text-slate-300 dark:text-white/20 font-semibold shrink-0 tabular-nums">
+                  {ongoingProjects.length}
+                </span>
+              </div>
+              <Link
+                href="/projects"
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 shrink-0 whitespace-nowrap transition-colors"
+              >
+                All projects →
+              </Link>
+            </div>
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <TrendingUp size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
+                <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
+                  Up Next
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUpNextExpanded(true)}
+                aria-label="Expand Up Next"
+                className="shrink-0 p-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
+              >
+                <Maximize2 size={13} />
+              </button>
+            </div>
           </div>
-        </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+            {/* Left column — Projects */}
+            <ProjectsColumn
+              projects={ongoingProjects}
+              tasksByProject={tasksByProject}
+              suppressHeaderDesktop
+            />
+
+            {/* Right column — Due Center + "My tasks" (for leads: also Contributors). */}
+            <div className="space-y-4 pr-1 min-w-0">
+              <UpNextPanel
+                tasks={visibleTasks}
+                expanded={upNextExpanded}
+                onExpandedChange={setUpNextExpanded}
+                suppressHeaderDesktop
+              />
+              <MyTasksPanel tasks={visibleTasks} myId={myId} />
+              {/* Leads see workload across their ICs. */}
+              {isLead && <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Onboarding tour is mounted centrally in AppShell so every role
@@ -465,28 +512,30 @@ function FullScreenOverlay({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-center p-3 sm:p-8 overflow-auto"
-      onClick={onClose}
-    >
+    <ModalPortal>
       <div
-        className="bg-white dark:bg-[#262624] rounded-2xl w-full max-w-4xl my-2 shadow-2xl dark:border dark:border-white/[0.08]"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-center p-3 sm:p-8 overflow-auto"
+        onClick={onClose}
       >
-        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.07] sticky top-0 bg-white dark:bg-[#262624] rounded-t-2xl z-10">
-          {icon}
-          <h3 className="text-sm font-bold text-slate-800 dark:text-white/85">{title}</h3>
-          <button
-            onClick={onClose}
-            title="Close"
-            className="ml-auto p-1.5 rounded-lg text-slate-400 dark:text-white/35 hover:text-slate-700 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-          >
-            <X size={16} />
-          </button>
+        <div
+          className="bg-white dark:bg-[#262624] rounded-2xl w-full max-w-4xl my-2 shadow-2xl dark:border dark:border-white/[0.08]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.07] sticky top-0 bg-white dark:bg-[#262624] rounded-t-2xl z-10">
+            {icon}
+            <h3 className="text-sm font-bold text-slate-800 dark:text-white/85">{title}</h3>
+            <button
+              onClick={onClose}
+              title="Close"
+              className="ml-auto p-1.5 rounded-lg text-slate-400 dark:text-white/35 hover:text-slate-700 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="p-2 sm:p-3">{children}</div>
         </div>
-        <div className="p-2 sm:p-3">{children}</div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -832,9 +881,11 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
 function ProjectsColumn({
   projects,
   tasksByProject,
+  suppressHeaderDesktop,
 }: {
   projects: DashProject[];
   tasksByProject: Map<string, TeamTask[]>;
+  suppressHeaderDesktop?: boolean;
 }) {
   const isLead = useIsLead();
   const [showExpandNudge, setShowExpandNudge] = useState(true);
@@ -845,7 +896,9 @@ function ProjectsColumn({
   }, []);
   return (
     <section className="min-w-0">
-      <div className="flex items-center justify-between gap-2 mb-3">
+      <div
+        className={`flex items-center justify-between gap-2 mb-3 ${suppressHeaderDesktop ? 'lg:hidden' : ''}`}
+      >
         <div className="flex items-center gap-2 min-w-0">
           <FolderKanban size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
           <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
@@ -1439,10 +1492,20 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
 /*  reads as immediately purposeful — a lead glancing at the dashboard knows    */
 /*  what they're being asked to look at.                                        */
 /* ────────────────────────────────────────────────────────────────────────── */
-function UpNextPanel({ tasks }: { tasks: TeamTask[] }) {
+function UpNextPanel({
+  tasks,
+  expanded,
+  onExpandedChange,
+  suppressHeaderDesktop,
+}: {
+  tasks: TeamTask[];
+  expanded: boolean;
+  onExpandedChange: (v: boolean) => void;
+  suppressHeaderDesktop?: boolean;
+}) {
   const [filter, setFilter] = useState<ActionFilter>('week');
   const [untilDate, setUntilDate] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const setExpanded = onExpandedChange;
 
   const now = new Date();
   const startOfToday = new Date(now);
@@ -1503,7 +1566,9 @@ function UpNextPanel({ tasks }: { tasks: TeamTask[] }) {
           with the expand affordance on the right. Hidden inside the full-screen
           overlay, which supplies its own title. */}
       {!expanded && (
-        <div className="flex items-center justify-between gap-2 mb-3">
+        <div
+          className={`flex items-center justify-between gap-2 mb-3 ${suppressHeaderDesktop ? 'lg:hidden' : ''}`}
+        >
           <div className="flex items-center gap-2 min-w-0">
             <TrendingUp size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
             <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
@@ -1840,30 +1905,32 @@ function ContributorsPanel({
       )}
 
       {activityPerson && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-          onClick={() => setActivityPerson(null)}
-        >
+        <ModalPortal>
           <div
-            className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[820px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+            onClick={() => setActivityPerson(null)}
           >
-            <div className="flex items-start gap-3 mb-5">
-              <UserAvatar userId={activityPerson.id} name={activityPerson.name} size={44} />
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-black text-slate-900 truncate">{activityPerson.name}</h3>
-                <div className="text-xs text-slate-400 mt-0.5">Performance overview</div>
+            <div
+              className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[820px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-3 mb-5">
+                <UserAvatar userId={activityPerson.id} name={activityPerson.name} size={44} />
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-black text-slate-900 truncate">{activityPerson.name}</h3>
+                  <div className="text-xs text-slate-400 mt-0.5">Performance overview</div>
+                </div>
+                <button
+                  onClick={() => setActivityPerson(null)}
+                  className="text-slate-300 hover:text-slate-500 ml-2 mt-0.5"
+                >
+                  <X size={18} />
+                </button>
               </div>
-              <button
-                onClick={() => setActivityPerson(null)}
-                className="text-slate-300 hover:text-slate-500 ml-2 mt-0.5"
-              >
-                <X size={18} />
-              </button>
+              <ActivityGraph userId={activityPerson.id} name={activityPerson.name} />
             </div>
-            <ActivityGraph userId={activityPerson.id} name={activityPerson.name} />
           </div>
-        </div>
+        </ModalPortal>
       )}
     </section>
   );
