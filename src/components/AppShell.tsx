@@ -9,7 +9,6 @@ import { CurrentUserProvider } from './CurrentUserContext';
 import { AvatarRegistryProvider } from './AvatarRegistry';
 import { NotificationBell } from './NotificationBell';
 import { SidebarCalendar, clearSidebarCalendarCache } from './SidebarCalendar';
-import { MomentumStrip, clearMomentumCache } from './MomentumStrip';
 import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
 
@@ -20,7 +19,6 @@ import { api } from '@/lib/client/api';
 function clearSessionScopedCaches() {
   clearSidebarCalendarCache();
   clearActivityGraphCache();
-  clearMomentumCache();
 }
 
 // Force-password modal — only ships when a user has mustChangePassword set.
@@ -641,10 +639,6 @@ export default function AppShell({
             the collapsed icon rail; sits just above "My Day" so My Day stays
             pinned closest to the footer. */}
         {!showCollapsed && <SidebarCalendar dark={dark} />}
-
-        {/* Momentum — streak + this week's completions, visible on every page
-            so progress is always one glance away. */}
-        {!showCollapsed && <MomentumStrip dark={dark} username={user.username} />}
 
         {/* My Day — pinned just above the footer so it's always reachable */}
         <div
