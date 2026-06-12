@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole, requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
-import { buildAndSendDailyDigests } from '@/lib/digest';
+import { buildAndSendDailyDigests, hourInTz, digestTimeZone } from '@/lib/digest';
 import { sendDailyBriefPushes } from '@/lib/push';
 
 export const runtime = 'nodejs';
@@ -52,12 +52,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ mode: 'test', ...summary }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
-    const summary = await buildAndSendDailyDigests({});
+    // A scheduled (cron-secret) tick honours each user's chosen send hour and
+    // is idempotent per day — so it's safe to fire hourly (Vercel cron and/or
+    // the free GitHub Action). A manual admin run (?force or just authed,
+    // no secret) serves everyone now, ignoring the hour. `?force=1` lets an
+    // admin override the hour filter on a secret-authed call too.
+    const force = req.nextUrl.searchParams.get('force') === '1';
+    const scheduledHour = cronAuthed && !force ? hourInTz(new Date(), digestTimeZone()) : undefined;
+
+    const summary = await buildAndSendDailyDigests({ scheduledHour });
     // Same beat, second channel: the zero-cost Web Push fan-out. Failures
     // here must never fail the email run — push is best-effort by design.
     const push = await sendDailyBriefPushes().catch(() => ({ users: 0, delivered: 0 }));
     return NextResponse.json(
-      { mode: cronAuthed ? 'cron' : 'manual', ...summary, push },
+      { mode: cronAuthed ? 'cron' : 'manual', scheduledHour: scheduledHour ?? null, ...summary, push },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (e) {

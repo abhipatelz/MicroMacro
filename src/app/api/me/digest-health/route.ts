@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
-import { loadDigestSettings } from '@/lib/digest';
+import { loadDigestSettings, digestTimeZone, defaultDigestHour } from '@/lib/digest';
 import { mailerConfigured } from '@/lib/mailer';
 
 export const runtime = 'nodejs';
@@ -23,12 +23,27 @@ export async function GET(req: NextRequest) {
     if (error) return error;
     await connectDB();
     const settings = await loadDigestSettings();
+    const tz = digestTimeZone();
+    // A short human label for the workspace timezone (e.g. "GMT+5:30"), so the
+    // hour picker can say which clock the chosen hour is in.
+    let tzLabel = tz;
+    try {
+      tzLabel =
+        new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
+          .formatToParts(new Date())
+          .find((p) => p.type === 'timeZoneName')?.value || tz;
+    } catch {
+      /* keep the IANA name */
+    }
     return NextResponse.json(
       {
         mailerConfigured: mailerConfigured(),
         cronSecretSet: !!process.env.CRON_SECRET,
         workspaceEnabled: (settings as any).enabled !== false,
         lastRunAt: (settings as any).lastRunAt ? new Date((settings as any).lastRunAt).toISOString() : null,
+        timeZone: tz,
+        timeZoneLabel: tzLabel,
+        defaultHour: defaultDigestHour(),
       },
       { headers: { 'Cache-Control': 'no-store' } },
     );

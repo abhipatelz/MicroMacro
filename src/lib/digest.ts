@@ -40,6 +40,48 @@ export function digestDailyCap(): number {
   return Number.isFinite(n) && n > 0 ? n : 300;
 }
 
+/** The hour (0–23, workspace timezone) a user gets their digest when they
+ *  haven't picked one. 8 = 8 AM, matching the historical 08:30 default.
+ *  Override with DIGEST_DEFAULT_HOUR. */
+export function defaultDigestHour(): number {
+  const n = parseInt(process.env.DIGEST_DEFAULT_HOUR || '', 10);
+  return Number.isFinite(n) && n >= 0 && n <= 23 ? n : 8;
+}
+
+/** The wall-clock hour (0–23) in `tz` for instant `now`. Used to match each
+ *  user's chosen send hour against an hourly cron tick. Pure. */
+export function hourInTz(now: Date, tz: string): number {
+  const h = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', hour12: false }).format(now);
+  const n = parseInt(h, 10);
+  return n === 24 ? 0 : n; // 'en-US' renders midnight as 24
+}
+
+/** Local calendar day key (YYYY-MM-DD) in `tz` — the idempotency key that
+ *  guarantees at-most-once delivery per user per local day, no matter how
+ *  many times (or from how many triggers) the endpoint is hit. Pure. */
+export function localDateKey(now: Date, tz: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+  return parts; // en-CA already yields YYYY-MM-DD
+}
+
+/** Does this user's chosen send hour fall in the current cron tick? When
+ *  `scheduledHour` is undefined (a manual/force run) every hour matches —
+ *  the admin is sending the whole batch now. Pure. */
+export function digestHourMatches(
+  userHour: number | null | undefined,
+  scheduledHour: number | undefined,
+  fallbackHour: number,
+): boolean {
+  if (scheduledHour === undefined) return true;
+  const h = typeof userHour === 'number' && userHour >= 0 && userHour <= 23 ? userHour : fallbackHour;
+  return h === scheduledHour;
+}
+
 /** Absolute base URL for in-email links, or '' when none is configured (links
  *  are then omitted rather than rendered relative-and-broken). */
 export function appBaseUrl(): string {
@@ -349,6 +391,10 @@ export interface RunOptions {
    *  empty-skip, so an admin can verify delivery end to end. */
   test?: boolean;
   onlyUserId?: string;
+  /** Scheduled (hourly) run: only send to users whose chosen send hour equals
+   *  this (workspace-tz) hour, and stamp each as sent-today so re-ticks never
+   *  double-send. Omit for a manual "send now" run, which serves everyone. */
+  scheduledHour?: number;
 }
 
 export interface RunSummary {
@@ -360,6 +406,10 @@ export interface RunSummary {
   sent: number;
   skippedNoEmail: number;
   skippedNoTasks: number;
+  /** Recipients whose chosen send hour isn't this tick (hourly scheduled run). */
+  skippedWrongHour: number;
+  /** Recipients already sent their digest earlier today (idempotency). */
+  skippedAlreadySent: number;
   /** Recipients not attempted because the free daily send cap was reached. */
   skippedCapReached: number;
   failed: number;
@@ -393,11 +443,16 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
     sent: 0,
     skippedNoEmail: 0,
     skippedNoTasks: 0,
+    skippedWrongHour: 0,
+    skippedAlreadySent: 0,
     skippedCapReached: 0,
     failed: 0,
     cap: digestDailyCap(),
     mailerConfigured: mailerConfigured(),
   };
+
+  const todayKey = localDateKey(now, tz);
+  const fallbackHour = defaultDigestHour();
 
   // Master switch — scheduled runs go quiet when disabled; a test still sends.
   if (!settings.enabled && !opts.test) {
@@ -408,12 +463,26 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
     ? { _id: new mongoose.Types.ObjectId(opts.onlyUserId) }
     : { active: { $ne: false }, notifDailyDigest: true };
 
-  const users = await User.find(recipientFilter).select('_id name email notifyEmail').limit(1000).lean();
+  const users = await User.find(recipientFilter)
+    .select('_id name email notifyEmail digestHour lastDigestSentOn')
+    .limit(1000)
+    .lean();
 
   const recipients = users
     .map((u) => ({ user: u, email: resolveDigestEmail(u as any) }))
     .filter((r) => {
       summary.considered += 1;
+      // Per-user send time: on an hourly scheduled run, only this hour's users.
+      if (!opts.test && !digestHourMatches((r.user as any).digestHour, opts.scheduledHour, fallbackHour)) {
+        summary.skippedWrongHour += 1;
+        return false;
+      }
+      // Idempotency: never send the same user twice in one local day, however
+      // many triggers fire (Vercel cron + GitHub Action + a manual run).
+      if (!opts.test && (r.user as any).lastDigestSentOn === todayKey) {
+        summary.skippedAlreadySent += 1;
+        return false;
+      }
       if (!r.email) {
         summary.skippedNoEmail += 1;
         return false;
@@ -500,8 +569,14 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
     });
 
     const res = await sendEmail({ to: r.email, toName: (r.user as any).name, subject, html, text });
-    if (res.ok) summary.sent += 1;
-    else {
+    if (res.ok) {
+      summary.sent += 1;
+      // Stamp sent-today so no other trigger re-sends this user. Test sends
+      // don't stamp — they must never suppress the real daily delivery.
+      if (!opts.test) {
+        await User.updateOne({ _id: r.user._id }, { $set: { lastDigestSentOn: todayKey } }).catch(() => {});
+      }
+    } else {
       summary.failed += 1;
       if (!summary.lastError) {
         summary.lastError = [res.error, res.detail].filter(Boolean).join(' — ') || 'send failed';

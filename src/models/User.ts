@@ -147,6 +147,15 @@ const UserSchema = new Schema(
     // so no one is emailed until they enable it in their profile — a personal
     // notification preference (like soundDropEnabled), not a controlled record.
     notifDailyDigest: { type: Boolean, default: false },
+    // Hour of day (0–23, workspace timezone) the user wants their digest.
+    // null = use the workspace default (DIGEST_DEFAULT_HOUR, 8 AM). Honoured by
+    // hourly scheduled runs; minute granularity is intentionally not offered
+    // (a daily summary doesn't need it, and it keeps the trigger cadence sane).
+    digestHour: { type: Number, default: null, min: 0, max: 23 },
+    // Idempotency stamp: the local-day key (YYYY-MM-DD) of the user's last
+    // successful digest. Guarantees at-most-once delivery per day regardless of
+    // how many triggers fire. Cleared implicitly by the date rolling over.
+    lastDigestSentOn: { type: String, default: '' },
     // Capability token for the personal read-only calendar feed
     // (/api/calendar/<token>/agenda.ics). Calendar clients can't send auth
     // cookies, so the URL itself is the secret — random, per-user, rotatable

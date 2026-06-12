@@ -27,6 +27,8 @@ const EditableBody = z.object({
   notifProjectUpdate: z.boolean().optional(),
   // Opt-in for the daily 08:30 task-due email.
   notifDailyDigest: z.boolean().optional(),
+  // Preferred digest hour (0–23, workspace tz). null clears it → default hour.
+  digestHour: z.number().int().min(0).max(23).nullable().optional(),
   // The address where the daily digest is sent. Users can set this themselves
   // so they can choose a delivery address (work vs personal inbox) without
   // asking an admin. Admins can still override it via the People page.
@@ -101,6 +103,7 @@ export async function PATCH(req: NextRequest) {
     if (d.notifTaskOverdue !== undefined) user.notifTaskOverdue = d.notifTaskOverdue as any;
     if (d.notifProjectUpdate !== undefined) user.notifProjectUpdate = d.notifProjectUpdate as any;
     if (d.notifDailyDigest !== undefined) (user as any).notifDailyDigest = d.notifDailyDigest;
+    if (d.digestHour !== undefined) (user as any).digestHour = d.digestHour;
     if (d.notifyEmail !== undefined) (user as any).notifyEmail = d.notifyEmail.trim();
     if (d.avatarLetter !== undefined) (user as any).avatarLetter = d.avatarLetter.toUpperCase();
     if (d.avatarBg !== undefined) (user as any).avatarBg = d.avatarBg;

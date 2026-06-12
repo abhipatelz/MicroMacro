@@ -1,0 +1,46 @@
+name: Daily-digest hourly trigger
+
+# The per-user digest send-time feature needs the digest endpoint to be hit
+# every hour: on each tick the server sends only to the users whose chosen
+# hour it is, and is idempotent per day, so hitting it hourly is safe.
+#
+# Vercel Hobby crons run at most once a day, so this free GitHub Action is the
+# hourly trigger. It just curls the endpoint with the shared secret — no build,
+# no minutes-hungry job.
+#
+# Setup (one time):
+#   Repo → Settings → Secrets and variables → Actions → New repository secret
+#     PRAGATI_DIGEST_URL = https://<your-app>/api/cron/daily-digest
+#     CRON_SECRET        = the same value set in Vercel
+# Then enable Actions for the repo. Done.
+
+on:
+  schedule:
+    - cron: '0 * * * *' # top of every hour (UTC)
+  workflow_dispatch: {} # manual "Run workflow" button for testing
+
+concurrency:
+  group: digest-hourly
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger the digest
+        env:
+          URL: ${{ secrets.PRAGATI_DIGEST_URL }}
+          SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$SECRET" ]; then
+            echo "PRAGATI_DIGEST_URL or CRON_SECRET secret not set — skipping."
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/out.json -w '%{http_code}' \
+            -H "Authorization: Bearer $SECRET" "$URL")
+          echo "HTTP $code"
+          cat /tmp/out.json || true
+          # Surface a failing status so the run is visibly red, but never block
+          # other ticks (each hour is an independent attempt).
+          test "$code" = "200"

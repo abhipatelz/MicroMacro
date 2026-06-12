@@ -77,6 +77,7 @@ export function u(user: any) {
     // here, so no broader leak than today's directory payload.
     notifyEmail: user.notifyEmail || '',
     notifDailyDigest: !!user.notifDailyDigest,
+    digestHour: typeof user.digestHour === 'number' ? user.digestHour : null,
   };
 }
 

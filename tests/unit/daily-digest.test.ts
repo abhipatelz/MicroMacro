@@ -152,3 +152,37 @@ describe('renderDigestEmail', () => {
     assert.match(out.html, /all clear/i);
   });
 });
+
+import { hourInTz, localDateKey, digestHourMatches, defaultDigestHour } from '../../src/lib/digest';
+
+describe('per-user digest scheduling', () => {
+  it('hourInTz returns the wall-clock hour in the zone', () => {
+    // 2026-06-08T03:00:00Z = 08:30 IST → hour 8.
+    assert.equal(hourInTz(new Date('2026-06-08T03:00:00Z'), IST), 8);
+    // 18:30Z = 00:00 IST next day → hour 0 (not 24).
+    assert.equal(hourInTz(new Date('2026-06-08T18:30:00Z'), IST), 0);
+  });
+
+  it('localDateKey is the YYYY-MM-DD local day in the zone', () => {
+    // 18:30Z on the 8th is already the 9th in IST.
+    assert.equal(localDateKey(new Date('2026-06-08T18:30:00Z'), IST), '2026-06-09');
+    assert.equal(localDateKey(new Date('2026-06-08T17:00:00Z'), IST), '2026-06-08');
+  });
+
+  it('digestHourMatches honours the chosen hour, default, and force', () => {
+    // Chosen hour matches the tick.
+    assert.equal(digestHourMatches(7, 7, 8), true);
+    assert.equal(digestHourMatches(7, 8, 8), false);
+    // No chosen hour → falls back to the default hour.
+    assert.equal(digestHourMatches(null, 8, 8), true);
+    assert.equal(digestHourMatches(undefined, 9, 8), false);
+    // Out-of-range chosen hour falls back to default.
+    assert.equal(digestHourMatches(99, 8, 8), true);
+    // scheduledHour undefined → a manual/force run, every hour matches.
+    assert.equal(digestHourMatches(3, undefined, 8), true);
+  });
+
+  it('defaultDigestHour is 8 unless overridden', () => {
+    assert.equal(defaultDigestHour(), 8);
+  });
+});

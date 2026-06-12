@@ -487,6 +487,13 @@ function ChecklistItem({ ok, label, hint }: { ok: boolean; label: string; hint?:
 /* ── Daily task email — personal opt-in (all users) ─────────────────────────
    The destination address can now be self-managed; the user also controls
    whether the 08:30 digest is sent. */
+/** "8 AM" / "1 PM" / "12 AM" for an hour 0–23. */
+function hourLabel(h: number): string {
+  const period = h < 12 ? 'AM' : 'PM';
+  const display = h % 12 === 0 ? 12 : h % 12;
+  return `${display} ${period}`;
+}
+
 function DailyDigestToggle({ initialUser }: { initialUser: any }) {
   const loginEmail = initialUser.email || '';
   const [notifyEmail, setNotifyEmail] = useState<string>(initialUser.notifyEmail || '');
@@ -503,9 +510,27 @@ function DailyDigestToggle({ initialUser }: { initialUser: any }) {
   // Delivery health — lets the toggle be honest when the deployment can't
   // actually send (no mail provider / no cron secret) instead of silently
   // accepting an opt-in that will never produce an email.
-  const [health, setHealth] = useState<{ mailerConfigured: boolean; cronSecretSet: boolean } | null>(null);
+  const [health, setHealth] = useState<{
+    mailerConfigured: boolean;
+    cronSecretSet: boolean;
+    timeZoneLabel?: string;
+    defaultHour?: number;
+  } | null>(null);
   const [testing, setTesting] = useState(false);
   const [testMsg, setTestMsg] = useState('');
+  // Preferred send hour (0–23, workspace tz). null = workspace default hour.
+  const [digestHour, setDigestHour] = useState<number | null>(
+    typeof (initialUser as any).digestHour === 'number' ? (initialUser as any).digestHour : null,
+  );
+
+  async function saveHour(next: number | null) {
+    setDigestHour(next);
+    try {
+      await api('/users/me', { method: 'PATCH', body: { digestHour: next } });
+    } catch {
+      /* keep optimistic value; a refresh will reconcile */
+    }
+  }
 
   useEffect(() => {
     api('/me/digest-health')
@@ -573,10 +598,27 @@ function DailyDigestToggle({ initialUser }: { initialUser: any }) {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 text-sm text-slate-600 dark:text-white/60 leading-relaxed flex-1">
-            <p>
-              Sent every day at <strong>8:30 AM (IST)</strong> with the tasks assigned to you that are due
-              that day.
-            </p>
+            <p>A morning email with the tasks assigned to you that are due that day.</p>
+            {enabled && (
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <span className="text-[12px] text-slate-500 dark:text-white/50">Send it at</span>
+                <select
+                  value={digestHour === null ? '' : String(digestHour)}
+                  onChange={(e) => saveHour(e.target.value === '' ? null : Number(e.target.value))}
+                  className="text-[12px] rounded-lg border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                >
+                  <option value="">Default ({hourLabel(health?.defaultHour ?? 8)})</option>
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <option key={h} value={String(h)}>
+                      {hourLabel(h)}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[11px] text-slate-400 dark:text-white/35">
+                  {health?.timeZoneLabel ? `(${health.timeZoneLabel})` : ''}
+                </span>
+              </div>
+            )}
             {health && (!health.mailerConfigured || !health.cronSecretSet) && (
               <p className="mt-1.5 text-[11.5px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg px-2.5 py-1.5">
                 Heads up: email delivery isn’t fully configured on this deployment yet
