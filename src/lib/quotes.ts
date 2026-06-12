@@ -1,79 +1,188 @@
 /**
- * Login-screen wisdom — curated, attributed, and app-relevant.
+ * Login-screen wisdom — drawn from a fixed canon of books on building and
+ * leading: High Output Management, Only the Paranoid Survive, The Hard Thing
+ * About Hard Things, The Innovator's Dilemma, Outliers, The Singularity Is
+ * Near, Snow Crash, and Positioning — plus Jensen Huang's own lines.
  *
- * Every quote is from one of seven builders (Jobs, Naval, Bezos, Musk,
- * Franklin, Jensen Huang, Ellison) and earns its slot only if it speaks to
- * what Pragati is for: clarity, ownership, focus, shipping, and seeing the
- * whole board. The library is BUILT-IN (works offline, forever) and can be
- * refreshed "life long" without a redeploy by hosting a JSON array of
- * {text, author} anywhere public (a GitHub raw URL works) and setting
- * QUOTES_FEED_URL — /api/quotes serves the feed with this list as fallback.
+ * Display rule: NO attribution is ever rendered. The words stand alone.
+ * (`author` is kept on the type for internal curation and feed validation
+ * only — the login page never shows it.)
+ *
+ * No-repeat rule: the login page rotates through a per-device shuffled queue
+ * and never repeats a quote until the whole library is exhausted. At one
+ * quote per 8 seconds across 40+ quotes, that guarantees no repetition for
+ * well over five minutes of reading.
+ *
+ * The library can still be refreshed forever without a redeploy by hosting a
+ * JSON array of {text, author} and setting QUOTES_FEED_URL — /api/quotes
+ * serves the feed with this list as permanent fallback.
  */
 
 export interface Quote {
   text: string;
-  author: string;
+  author: string; // internal curation key only — never rendered
 }
 
 export const BUILTIN_QUOTES: Quote[] = [
-  // Steve Jobs — focus & simplicity
-  { text: 'Focus is about saying no to the hundred other good ideas.', author: 'Steve Jobs' },
-  { text: 'Simple can be harder than complex — but it moves mountains.', author: 'Steve Jobs' },
-  { text: 'Deciding what not to do is as important as deciding what to do.', author: 'Steve Jobs' },
-  { text: 'Real artists ship.', author: 'Steve Jobs' },
-  { text: 'Quality is more important than quantity. One home run beats two doubles.', author: 'Steve Jobs' },
-  // Naval Ravikant — leverage & clarity
-  { text: 'Clear thinker is a better compliment than smart.', author: 'Naval Ravikant' },
-  { text: 'Earn with your mind, not your time.', author: 'Naval Ravikant' },
+  // ── High Output Management ──────────────────────────────────────────────
   {
-    text: 'The most important skill for getting rich is becoming a perpetual learner.',
-    author: 'Naval Ravikant',
+    text: 'A manager’s output is the output of his organization plus the output of the neighboring organizations under his influence.',
+    author: 'High Output Management',
   },
-  { text: 'Impatience with actions, patience with results.', author: 'Naval Ravikant' },
   {
-    text: 'Simple heuristic: if you’re evenly split on a decision, take the path more painful in the short term.',
-    author: 'Naval Ravikant',
+    text: 'The art of management lies in selecting the one, two, or three activities that provide leverage well beyond the others — and concentrating on them.',
+    author: 'High Output Management',
   },
-  // Jeff Bezos — ownership & long term
-  { text: 'It is always Day 1.', author: 'Jeff Bezos' },
-  { text: 'Good intentions don’t work. Mechanisms do.', author: 'Jeff Bezos' },
-  { text: 'Be stubborn on vision, flexible on details.', author: 'Jeff Bezos' },
   {
-    text: 'If you double the number of experiments you do per year, you double your inventiveness.',
-    author: 'Jeff Bezos',
+    text: 'Stressing output is the key to improving productivity; looking to increase activity can result in just the opposite.',
+    author: 'High Output Management',
   },
-  { text: 'Complaining is not a strategy.', author: 'Jeff Bezos' },
-  // Elon Musk — urgency & first principles
-  { text: 'The best part is no part. The best process is no process.', author: 'Elon Musk' },
-  { text: 'If a schedule is long, it’s wrong. If it’s tight, it’s right.', author: 'Elon Musk' },
-  { text: 'Constantly think about how you could be doing things better.', author: 'Elon Musk' },
   {
-    text: 'When something is important enough, you do it even if the odds are not in your favor.',
-    author: 'Elon Musk',
+    text: 'How you handle your own time is the single most important aspect of being a role model and leader.',
+    author: 'High Output Management',
   },
-  // Benjamin Franklin — discipline & time
-  { text: 'Lost time is never found again.', author: 'Benjamin Franklin' },
-  { text: 'Well done is better than well said.', author: 'Benjamin Franklin' },
-  { text: 'By failing to prepare, you are preparing to fail.', author: 'Benjamin Franklin' },
-  { text: 'Little strokes fell great oaks.', author: 'Benjamin Franklin' },
-  { text: 'Never confuse motion with action.', author: 'Benjamin Franklin' },
-  // Jensen Huang — pace & standards
+  {
+    text: 'Training is, quite simply, one of the highest-leverage activities a manager can perform.',
+    author: 'High Output Management',
+  },
+  {
+    text: 'A genuinely effective indicator covers the output of the work, not simply the activity involved.',
+    author: 'High Output Management',
+  },
+  {
+    text: 'Reports are more a medium of self-discipline than a way to communicate information.',
+    author: 'High Output Management',
+  },
+  {
+    text: 'When a person is not doing his job, there can only be two reasons: he either can’t do it, or won’t.',
+    author: 'High Output Management',
+  },
+  // ── Only the Paranoid Survive ───────────────────────────────────────────
+  {
+    text: 'Success breeds complacency. Complacency breeds failure. Only the paranoid survive.',
+    author: 'Only the Paranoid Survive',
+  },
+  {
+    text: 'A strategic inflection point is when the fundamentals of a business are about to change.',
+    author: 'Only the Paranoid Survive',
+  },
+  {
+    text: 'Bad companies are destroyed by crisis. Good companies survive them. Great companies are improved by them.',
+    author: 'Only the Paranoid Survive',
+  },
+  { text: 'Let chaos reign, then rein in chaos.', author: 'Only the Paranoid Survive' },
+  {
+    text: 'The person who is the star of a previous era is often the last one to adapt to change.',
+    author: 'Only the Paranoid Survive',
+  },
+  // ── The Hard Thing About Hard Things ────────────────────────────────────
+  {
+    text: 'Hard things are hard because there are no easy answers or recipes.',
+    author: 'The Hard Thing About Hard Things',
+  },
+  {
+    text: 'Take care of the people, the products, and the profits — in that order.',
+    author: 'The Hard Thing About Hard Things',
+  },
+  {
+    text: 'Every time you make the hard, correct decision you become a bit more courageous; every time you make the easy, wrong decision you become a bit more cowardly.',
+    author: 'The Hard Thing About Hard Things',
+  },
+  {
+    text: 'Spend zero time on what you could have done, and devote all of your time on what you might do.',
+    author: 'The Hard Thing About Hard Things',
+  },
+  {
+    text: 'There are no shortcuts to knowledge, especially knowledge gained from personal experience.',
+    author: 'The Hard Thing About Hard Things',
+  },
+  {
+    text: 'Build a culture that rewards people for getting problems into the open, where they can be solved.',
+    author: 'The Hard Thing About Hard Things',
+  },
+  {
+    text: 'Sometimes an organization doesn’t need a solution; it just needs clarity.',
+    author: 'The Hard Thing About Hard Things',
+  },
+  // ── The Innovator's Dilemma ─────────────────────────────────────────────
+  { text: 'Markets that do not exist cannot be analyzed.', author: "The Innovator's Dilemma" },
+  {
+    text: 'The very decision-making processes that are key to the success of established companies are the same processes that reject disruptive ideas.',
+    author: "The Innovator's Dilemma",
+  },
+  {
+    text: 'Disruption starts simpler and cheaper at the low end — and then it climbs.',
+    author: "The Innovator's Dilemma",
+  },
+  {
+    text: 'Listening only to your best customers can be precisely how you lose the future.',
+    author: "The Innovator's Dilemma",
+  },
+  // ── Outliers ────────────────────────────────────────────────────────────
+  {
+    text: 'Practice isn’t the thing you do once you’re good. It’s the thing you do that makes you good.',
+    author: 'Outliers',
+  },
+  {
+    text: 'Success arises out of a predictable and powerful set of circumstances and opportunities — and the readiness to seize them.',
+    author: 'Outliers',
+  },
+  {
+    text: 'Hard work is a prison sentence only if it does not have meaning.',
+    author: 'Outliers',
+  },
+  {
+    text: 'Autonomy, complexity, and a connection between effort and reward — the three qualities work must have to be satisfying.',
+    author: 'Outliers',
+  },
+  {
+    text: 'No one who rises before dawn three hundred sixty days a year fails to make his family rich.',
+    author: 'Outliers',
+  },
+  // ── The Singularity Is Near ─────────────────────────────────────────────
+  {
+    text: 'We won’t experience a hundred years of progress in this century — it will be more like twenty thousand years of progress, at today’s rate.',
+    author: 'The Singularity Is Near',
+  },
+  {
+    text: 'Our intuition about the future is linear. The reality of technology is exponential.',
+    author: 'The Singularity Is Near',
+  },
+  {
+    text: 'An invention has to make sense in the world in which it is finished, not the world in which it is started.',
+    author: 'The Singularity Is Near',
+  },
+  // ── Snow Crash ──────────────────────────────────────────────────────────
+  {
+    text: 'The world is full of power and energy, and a person can go far by just skimming off a tiny bit of it.',
+    author: 'Snow Crash',
+  },
+  { text: 'Condense fact from the vapor of nuance.', author: 'Snow Crash' },
+  // ── Positioning ─────────────────────────────────────────────────────────
+  {
+    text: 'Positioning is not what you do to a product. It is what you do to the mind.',
+    author: 'Positioning',
+  },
+  { text: 'It is better to be first than it is to be better.', author: 'Positioning' },
+  {
+    text: 'The mind screens and rejects much of the information offered it. It accepts only what matches its prior state.',
+    author: 'Positioning',
+  },
+  {
+    text: 'Don’t try to create something new and different in the mind. Work with what’s already there.',
+    author: 'Positioning',
+  },
+  // ── Jensen Huang ────────────────────────────────────────────────────────
   { text: 'I want you to be in a state of urgency. Not panic — urgency.', author: 'Jensen Huang' },
   { text: 'Run. Don’t walk.', author: 'Jensen Huang' },
-  { text: 'Expectations lead to disappointment. Determination leads to results.', author: 'Jensen Huang' },
-  { text: 'The ability to learn is the most important quality a leader can have.', author: 'Jensen Huang' },
-  // Larry Ellison — conviction
+  { text: 'The mission is the boss.', author: 'Jensen Huang' },
   {
-    text: 'When you innovate, you’ve got to be prepared for everyone telling you you’re nuts.',
-    author: 'Larry Ellison',
+    text: 'I don’t wear a watch, because the most important time is now.',
+    author: 'Jensen Huang',
   },
   {
-    text: 'Great achievers are driven not so much by the pursuit of success, but by the fear of failure.',
-    author: 'Larry Ellison',
-  },
-  {
-    text: 'When you’re the first person whose beliefs are different from what everyone else believes, you’re basically saying, “I’m right and everyone else is wrong.” That’s a very unpleasant position to be in — it’s at once exhilarating and at the same time an invitation to be attacked.',
-    author: 'Larry Ellison',
+    text: 'Greatness is not intelligence. Greatness comes from character — and character is formed through struggle.',
+    author: 'Jensen Huang',
   },
 ];
 

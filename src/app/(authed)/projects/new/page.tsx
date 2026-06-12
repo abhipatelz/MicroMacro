@@ -383,8 +383,6 @@ export default function NewProjectPage() {
     teamId: '',
     startDate: '',
     dueDate: '',
-    ccNo: '',
-    refLabel: '',
   });
   const [phases, setPhases] = useState<Phase[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -511,8 +509,6 @@ export default function NewProjectPage() {
           teamId: finalPersonal ? undefined : form.teamId || undefined,
           startDate: form.startDate || undefined,
           dueDate: form.dueDate || undefined,
-          ccNo: form.ccNo.trim() || undefined,
-          refLabel: form.refLabel.trim() || undefined,
           useTemplate: false,
           customPhases: phases.map((ph) => ({ name: ph.name, tasks: ph.tasks })),
         },
@@ -648,43 +644,6 @@ export default function NewProjectPage() {
                 />
               </div>
             </div>
-            {!personal && (
-              <div>
-                <label className="label">
-                  Reference number
-                  <span className="normal-case font-normal text-slate-300 ml-1">(optional)</span>
-                </label>
-                <div className="flex gap-2">
-                  {/* The reference TYPE is yours to pick — not every project is
-                      a Change Control, so the label isn't hardwired to CC#. */}
-                  <datalist id="new-reflabel-suggestions">
-                    {['CC#', 'SOP#', 'CAPA#', 'DEV#', 'INC#', 'DOC#', 'Ref #'].map((v) => (
-                      <option key={v} value={v} />
-                    ))}
-                  </datalist>
-                  <input
-                    className="input font-mono w-28 shrink-0"
-                    list="new-reflabel-suggestions"
-                    placeholder="Type"
-                    aria-label="Reference type"
-                    maxLength={20}
-                    value={form.refLabel}
-                    onChange={(e) => up('refLabel', e.target.value)}
-                  />
-                  <input
-                    className="input font-mono flex-1"
-                    placeholder="e.g. CC-2025-042"
-                    maxLength={60}
-                    value={form.ccNo}
-                    onChange={(e) => up('ccNo', e.target.value)}
-                  />
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Pick what the reference is (CC#, SOP#, CAPA#, …) and your own number. Shown everywhere
-                  instead of the system-generated code.
-                </p>
-              </div>
-            )}
             {/* Personal toggle — flips the project between a private personal
                 project (no team) and a shared team project. The privacy of
                 personal projects is intentionally not advertised in the copy

@@ -83,7 +83,7 @@ function RotatingQuote() {
         });
         setShow(true);
       }, 400);
-    }, 7000);
+    }, 8000);
     return () => clearInterval(t);
   }, [quotes.length]);
 
@@ -99,7 +99,6 @@ function RotatingQuote() {
       className="text-white/40 tracking-wide max-w-[320px] mx-auto leading-snug"
     >
       <span style={{ fontStyle: 'italic' }}>“{q.text}”</span>
-      <span className="block text-[10px] text-white/25 mt-0.5 not-italic">— {q.author}</span>
     </div>
   );
 }

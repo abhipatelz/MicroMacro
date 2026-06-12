@@ -148,7 +148,7 @@ describe('renderDigestEmail', () => {
       appUrl: '',
       dateLabel: 'Monday, 8 June',
     });
-    assert.match(out.subject, /nothing due today/);
+    assert.match(out.subject, /all clear/);
     assert.match(out.html, /all clear/i);
   });
 });

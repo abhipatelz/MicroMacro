@@ -184,7 +184,22 @@ before(async () => {
   const { DigestSetting } = await import('../../src/models/DigestSetting');
 
   (User as any).find = (f: any) => chain(() => users.filter((u) => matches(u, f)));
+  // Idempotency stamp writes (lastDigestSentOn) — accept and ignore.
+  (User as any).updateOne = async () => ({ acknowledged: true });
   (Task as any).find = (f: any) => chain(() => tasks.filter((t) => matches(t, f)));
+  // The momentum (wins-yesterday) aggregate: $match with the same operator
+  // semantics, then a count-by-assignee $group.
+  (Task as any).aggregate = async (pipeline: any[]) => {
+    const match = pipeline.find((st) => st.$match)?.$match || {};
+    const group = pipeline.find((st) => st.$group)?.$group;
+    const rows = tasks.filter((t) => matches(t, match));
+    if (group && group._id === '$assigneeId') {
+      const m = new Map<string, number>();
+      rows.forEach((t: any) => m.set(String(t.assigneeId), (m.get(String(t.assigneeId)) || 0) + 1));
+      return [...m].map(([k, n]) => ({ _id: k, n }));
+    }
+    return [];
+  };
   (Project as any).find = (f: any) => chain(() => projects.filter((p) => matches(p, f)));
   (DigestSetting as any).findByIdAndUpdate = () => ({ lean: async () => settings });
   // Last-run persistence — record what the sender writes back.
@@ -228,7 +243,7 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     assert.equal(mail.apiKey, 'test-api-key', 'API key travels in the api-key header');
     assert.equal(mail.to, 'asha@example.com', 'notifyEmail wins over the placeholder login');
     assert.equal(mail.toName, 'Asha Tester');
-    assert.equal(mail.subject, 'Pragati — 2 due today · 1 overdue');
+    assert.match(mail.subject, /^Your \w+ brief — 2 due today · 1 overdue$/);
 
     // Included tasks…
     assert.match(mail.html, /Approve URS revision/);
@@ -249,7 +264,7 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     const summary = await digest.buildAndSendDailyDigests({ now });
 
     assert.equal(summary.sent, 1);
-    assert.equal(inbox[0].subject, 'Pragati — 2 due today · 1 overdue · 1 due soon');
+    assert.match(inbox[0].subject, /2 due today · 1 overdue · 1 due soon$/);
     assert.match(inbox[0].html, /QA sign-off rehearsal/);
   });
 
@@ -258,7 +273,7 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     const summary = await digest.buildAndSendDailyDigests({ now });
 
     assert.equal(summary.sent, 1);
-    assert.equal(inbox[0].subject, 'Pragati — 2 due today');
+    assert.match(inbox[0].subject, /brief — 2 due today$/);
     assert.doesNotMatch(inbox[0].html, /Close out deviation DEV-101/);
   });
 
@@ -278,7 +293,7 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     assert.equal(summary.sent, 1);
     assert.equal(inbox.length, 1);
     assert.equal(inbox[0].to, 'bola@example.com');
-    assert.match(inbox[0].subject, /^\[Test\] Pragati — /);
+    assert.match(inbox[0].subject, /^\[Test\] Your \w+ brief — /);
     assert.match(inbox[0].html, /all clear|nothing due/i, 'bola has no tasks — empty-state body');
   });
 
