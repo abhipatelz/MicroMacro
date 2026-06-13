@@ -819,7 +819,7 @@ function CalendarFeedSection() {
       <Section
         icon={CalendarDays}
         title="Pragati calendar"
-        subtitle="Subscribe once and a calendar named Pragati appears in Outlook / Google / Apple — every dated task, present and future. Reschedule in Pragati and the calendar follows on its next refresh (clients poll a few times a day)."
+        subtitle="Subscribe once — a Pragati calendar appears in Outlook, Google or Apple with every dated task. Reschedule here and it follows automatically."
       >
         {!state ? (
           <div className="text-xs text-slate-400 py-2">Loading…</div>
@@ -877,11 +877,9 @@ function CalendarFeedSection() {
               </a>
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              One click subscribes you to a <strong>live</strong> feed — date changes in Pragati flow through
-              automatically on your calendar app’s next refresh (Outlook: every few hours; Google: up to a
-              day; Apple: configurable, down to every 5 minutes). The feed itself is always current — the wait
-              is purely your calendar’s polling schedule. Or paste the link above into any app via “Subscribe
-              / Add calendar from URL”. Anyone with the URL can read your task agenda — rotate it if it leaks.
+              One click opens your calendar’s subscribe flow with the link filled in. Changes in Pragati flow
+              through on your app’s next refresh. Anyone with this link can read your agenda — rotate it if it
+              leaks.
             </p>
             <div className="flex gap-2">
               <button className="btn-ghost text-xs" onClick={mint} disabled={busy}>
