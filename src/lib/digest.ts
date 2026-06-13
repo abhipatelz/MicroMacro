@@ -194,7 +194,10 @@ export function bucketTasks(
     } else if (ms < window.end.getTime()) {
       today.push({ ...base, bucket: 'today', label: 'Today' });
     } else if (ms < soonEnd) {
-      const d = Math.max(1, Math.round((ms - window.start.getTime()) / DAY_MS));
+      // Calendar-day offset from today's local midnight — floor, not round, so a
+      // task due tomorrow afternoon reads "Tomorrow", not "in 2d" (rounding the
+      // half-day up was the bug).
+      const d = Math.max(1, Math.floor((ms - window.start.getTime()) / DAY_MS));
       soon.push({ ...base, bucket: 'soon', label: d === 1 ? 'Tomorrow' : `in ${d}d` });
     }
   }

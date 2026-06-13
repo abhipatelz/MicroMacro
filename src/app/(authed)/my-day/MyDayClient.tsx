@@ -30,6 +30,7 @@ import {
 import { WhiteboardIcon } from '@/components/WhiteboardIcon';
 import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
+import { notifyCalendarChange } from '@/components/SidebarCalendar';
 import dynamicImport from 'next/dynamic';
 
 const Whiteboard = dynamicImport(() => import('@/components/Whiteboard').then((m) => m.Whiteboard), {
@@ -218,7 +219,10 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
     setNotes((n) => n.filter((x) => x.id !== id));
     try {
       await api(`/scratch/notes/${id}`, { method: 'DELETE' });
-    } catch {}
+    } catch {
+      // Server rejected the delete — resync so the note doesn't vanish locally.
+      load();
+    }
   }
 
   async function togglePin(note: UserNote) {
@@ -228,7 +232,10 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
     );
     try {
       await api(`/scratch/notes/${note.id}`, { method: 'PATCH', body: { pinned: !note.pinned } });
-    } catch {}
+    } catch {
+      // Revert to the server's truth on failure.
+      load();
+    }
   }
 
   function startEdit(note: UserNote) {
@@ -251,7 +258,10 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
         method: 'PATCH',
         body: { content, title: editTitle.trim() || undefined },
       });
-    } catch {}
+    } catch {
+      // Keep the list consistent with the server if the edit didn't persist.
+      load();
+    }
   }
 
   return (
@@ -957,6 +967,9 @@ function PromoteModal({
       if (due) body.dueDate = due;
       const task = await api<{ id: string }>('/tasks', { method: 'POST', body });
       await api(`/scratch/${note.id}`, { method: 'PATCH', body: { done: true, promotedTaskId: task.id } });
+      // A promoted task can carry a due date — refresh the sidebar calendar so
+      // its dot appears immediately (the app's convention for date changes).
+      if (due) notifyCalendarChange();
       onDone();
     } catch (e: any) {
       setErr(e.message || 'Could not create the task.');
