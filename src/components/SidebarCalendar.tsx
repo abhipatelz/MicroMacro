@@ -183,7 +183,10 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
     for (const t of list) {
       if (t.mine) mine = true;
       else team = true;
-      if (new Date(t.due) < new Date(todayKey) && t.status !== 'done') overdue = true;
+      // Compare day-keys as strings (both via the same local dayKey) so a task
+      // due *today* in a non-UTC zone (e.g. IST) isn't mis-flagged overdue —
+      // new Date('YYYY-MM-DD') parses as UTC midnight and drifts by the offset.
+      if (dayKey(new Date(t.due)) < todayKey && t.status !== 'done') overdue = true;
     }
     return { mine, team, overdue };
   }
@@ -262,7 +265,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
         <span className={`ml-auto font-semibold ${dark ? 'text-white/30' : 'text-slate-300'}`}>
           {monthName}
         </span>
-        <ChevronDown size={12} className={`transition-transform ${openCal ? '' : 'rotate-180'}`} />
+        <ChevronDown size={12} className={`transition-transform ${openCal ? 'rotate-180' : ''}`} />
       </button>
 
       {openCal && (
@@ -415,7 +418,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
               </div>
               <div className="space-y-1.5 max-h-[200px] overflow-y-auto no-scrollbar">
                 {hoverList.slice(0, 5).map((t) => {
-                  const overdue = new Date(t.due) < new Date(todayKey) && t.status !== 'done';
+                  const overdue = dayKey(new Date(t.due)) < todayKey && t.status !== 'done';
                   return (
                     <button
                       key={t.id}

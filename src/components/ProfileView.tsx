@@ -50,7 +50,9 @@ export default function ProfileView({
     avatarLetter?: string;
     avatarBg?: string;
     avatarFont?: number;
+    avatarImage?: string;
     githubUrl?: string;
+    links?: { url: string; label?: string }[];
     followingCount?: number;
     followerCount?: number;
     viewerIsFollowing?: boolean;
@@ -172,6 +174,7 @@ export default function ProfileView({
             letter={profile.avatarLetter}
             bg={profile.avatarBg}
             font={profile.avatarFont}
+            image={profile.avatarImage}
           />
         }
         actions={

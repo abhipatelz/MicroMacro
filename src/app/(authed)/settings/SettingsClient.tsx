@@ -1466,7 +1466,14 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
             className="space-y-4"
           >
             <div className="flex items-center gap-3">
-              <Avatar name={user.name} size={52} letter={avatarLetter} bg={avatarBg} font={avatarFont} />
+              <Avatar
+                name={user.name}
+                size={52}
+                letter={avatarLetter}
+                bg={avatarBg}
+                font={avatarFont}
+                image={avatarImage}
+              />
               <p className="text-xs text-slate-400 dark:text-white/30">
                 Tap your avatar on the profile page to change it.
               </p>
