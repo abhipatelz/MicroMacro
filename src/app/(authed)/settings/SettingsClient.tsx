@@ -596,6 +596,7 @@ function DailyDigestToggle({ initialUser }: { initialUser: any }) {
   const canEnable = !!effectiveEmail;
   const [enabled, setEnabled] = useState<boolean>(!!initialUser.notifDailyDigest);
   const [saving, setSaving] = useState(false);
+  const [, setTestMsg] = useState('');
   // Delivery health — lets the toggle be honest when the deployment can't
   // actually send (no mail provider / no cron secret) instead of silently
   // accepting an opt-in that will never produce an email.

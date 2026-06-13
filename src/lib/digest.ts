@@ -519,7 +519,18 @@ export function renderWelcomeEmail(input: {
  *  compresses the rest into scannable rows, and closes with a single line of
  *  judgment. Value first, inventory second. */
 export function renderDigestEmail(input: RenderInput): { subject: string; html: string; text: string } {
-  const { name, sections, projectName, appUrl, test, dateLabel, winsYesterday = 0 } = input;
+  const {
+    name,
+    sections,
+    projectName,
+    appUrl,
+    test,
+    dateLabel,
+    winsYesterday = 0,
+    role,
+    insight,
+    leadershipBrief,
+  } = input;
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   const weekday = dateLabel.split(/[ ,]/)[0] || 'daily';
 

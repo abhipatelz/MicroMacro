@@ -10,6 +10,7 @@ import {
   Card,
   LifecycleTag,
   PriorityTag,
+  StatusPillRow,
   StatusSelect,
   PROJECT_STATUS_OPTIONS,
   TaskLink,
