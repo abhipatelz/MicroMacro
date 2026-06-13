@@ -153,7 +153,13 @@ describe('renderDigestEmail', () => {
   });
 });
 
-import { hourInTz, localDateKey, digestHourMatches, defaultDigestHour } from '../../src/lib/digest';
+import {
+  hourInTz,
+  localDateKey,
+  digestHourMatches,
+  digestTimeMatches,
+  defaultDigestHour,
+} from '../../src/lib/digest';
 
 describe('per-user digest scheduling', () => {
   it('hourInTz returns the wall-clock hour in the zone', () => {
@@ -184,5 +190,12 @@ describe('per-user digest scheduling', () => {
 
   it('defaultDigestHour is 8 unless overridden', () => {
     assert.equal(defaultDigestHour(), 8);
+  });
+
+  it('catches up delayed minute-level runs without sending before the requested time', () => {
+    assert.equal(digestTimeMatches(8, 30, 8, 29, 8), false);
+    assert.equal(digestTimeMatches(8, 30, 8, 31, 8), true);
+    assert.equal(digestTimeMatches(8, 30, 9, 5, 8), true);
+    assert.equal(digestTimeMatches(9, 30, 8, 55, 8), false);
   });
 });

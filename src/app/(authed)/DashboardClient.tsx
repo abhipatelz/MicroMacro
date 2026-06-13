@@ -43,6 +43,7 @@ const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) 
 });
 import type { BirdsEyeData } from '@/components/BirdsEyeView';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
+import { ExportMenu } from '@/components/ExportMenu';
 import { StreakChip } from '@/components/StreakChip';
 import { FlowSignalStrip, type FlowSignalPayload } from '@/components/FlowSignalStrip';
 // The Morning Brief stays available through its other channels (push, email,
@@ -363,6 +364,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
         <div className="flex items-center gap-2 shrink-0">
           {!isFirstRun && <StreakChip />}
           {!isFirstRun && <BirdEyeButton scopeKey="dashboard" onClick={() => setBirdsEyeOpen(true)} />}
+          {!isFirstRun && <ExportMenu onBirdEyeSvg={() => setBirdsEyeOpen(true)} />}
         </div>
       </div>
       {/* Subline removed. The summary chips below (Ongoing / Open / Overdue

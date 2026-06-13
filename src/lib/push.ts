@@ -1,4 +1,5 @@
 import { PushSubscription } from '@/models/PushSubscription';
+import { digestTimeZone, localDateKey } from '@/lib/digest';
 
 /**
  * Web Push via VAPID — the free-forever notification channel.
@@ -33,18 +34,28 @@ export interface PushPayload {
  * same "silence is a feature" rule applies — users with nothing material get
  * nothing. Dynamic imports keep brief/user modules off the cold-start path.
  */
-export async function sendDailyBriefPushes(): Promise<{ users: number; delivered: number }> {
+export async function sendDailyBriefPushes(
+  opts: { now?: Date } = {},
+): Promise<{ users: number; delivered: number }> {
   if (!pushConfigured()) return { users: 0, delivered: 0 };
   const { buildDailyBrief } = await import('@/lib/brief');
   const { User } = await import('@/models/User');
+  const now = opts.now ?? new Date();
+  const sentOn = localDateKey(now, digestTimeZone());
 
   const userIds = await PushSubscription.distinct('userId');
   let users = 0;
   let delivered = 0;
   for (const uid of userIds.slice(0, 500)) {
-    const u = await User.findById(uid).select('role active').lean();
+    const u = await User.findById(uid).select('role active lastBriefPushSentOn').lean();
     if (!u || (u as any).active === false) continue;
-    const brief = await buildDailyBrief(String(uid), (u as any).role);
+    if ((u as any).lastBriefPushSentOn === sentOn) continue;
+    const claim = await User.updateOne(
+      { _id: uid, lastBriefPushSentOn: { $ne: sentOn } },
+      { $set: { lastBriefPushSentOn: sentOn } },
+    );
+    if (claim.modifiedCount !== 1) continue;
+    const brief = await buildDailyBrief(String(uid), (u as any).role, now);
     if (!brief.hasContent) continue;
     users += 1;
     delivered += await sendPushToUser(String(uid), {

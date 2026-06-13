@@ -487,13 +487,6 @@ function ChecklistItem({ ok, label, hint }: { ok: boolean; label: string; hint?:
 /* ── Daily task email — personal opt-in (all users) ─────────────────────────
    The destination address can now be self-managed; the user also controls
    whether the 08:30 digest is sent. */
-/** "8 AM" / "1 PM" / "12 AM" for an hour 0–23. */
-function hourLabel(h: number): string {
-  const period = h < 12 ? 'AM' : 'PM';
-  const display = h % 12 === 0 ? 12 : h % 12;
-  return `${display} ${period}`;
-}
-
 function DailyDigestToggle({ initialUser }: { initialUser: any }) {
   const loginEmail = initialUser.email || '';
   const [notifyEmail, setNotifyEmail] = useState<string>(initialUser.notifyEmail || '');
@@ -520,11 +513,18 @@ function DailyDigestToggle({ initialUser }: { initialUser: any }) {
   const [digestHour, setDigestHour] = useState<number | null>(
     typeof (initialUser as any).digestHour === 'number' ? (initialUser as any).digestHour : null,
   );
+  const [digestMinute, setDigestMinute] = useState<number>(
+    typeof (initialUser as any).digestMinute === 'number' ? (initialUser as any).digestMinute : 0,
+  );
 
-  async function saveHour(next: number | null) {
-    setDigestHour(next);
+  async function saveTime(nextHour: number | null, nextMinute: number) {
+    setDigestHour(nextHour);
+    setDigestMinute(nextMinute);
     try {
-      await api('/users/me', { method: 'PATCH', body: { digestHour: next } });
+      await api('/users/me', {
+        method: 'PATCH',
+        body: { digestHour: nextHour, digestMinute: nextMinute },
+      });
     } catch {
       /* keep optimistic value; a refresh will reconcile */
     }
@@ -571,29 +571,40 @@ function DailyDigestToggle({ initialUser }: { initialUser: any }) {
 
   return (
     <div id="daily-email" className="scroll-mt-6">
-      <Section
-        icon={Mail}
-        title="Daily task email"
-        subtitle="A morning email of the tasks you have due that day."
-      >
+      <Section icon={Mail} title="Daily task email" subtitle="Your focused daily brief, when you want it.">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 text-sm text-slate-600 dark:text-white/60 leading-relaxed flex-1">
-            <p>A morning email with the tasks assigned to you that are due that day.</p>
             {enabled && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <span className="text-[12px] text-slate-500 dark:text-white/50">Send it at</span>
+                <span className="text-[12px] font-semibold text-slate-500 dark:text-white/50">Send at</span>
                 <select
                   value={digestHour === null ? '' : String(digestHour)}
-                  onChange={(e) => saveHour(e.target.value === '' ? null : Number(e.target.value))}
+                  onChange={(e) =>
+                    saveTime(e.target.value === '' ? null : Number(e.target.value), digestMinute)
+                  }
                   className="text-[12px] rounded-lg border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 >
-                  <option value="">Default ({hourLabel(health?.defaultHour ?? 8)})</option>
+                  <option value="">Default ({String(health?.defaultHour ?? 8).padStart(2, '0')}:00)</option>
                   {Array.from({ length: 24 }, (_, h) => (
                     <option key={h} value={String(h)}>
-                      {hourLabel(h)}
+                      {String(h).padStart(2, '0')}
                     </option>
                   ))}
                 </select>
+                <span className="text-slate-300">:</span>
+                <select
+                  value={String(digestMinute)}
+                  onChange={(e) => saveTime(digestHour, Number(e.target.value))}
+                  aria-label="Daily email minute"
+                  className="text-[12px] rounded-lg border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                >
+                  {Array.from({ length: 12 }, (_, index) => index * 5).map((minute) => (
+                    <option key={minute} value={minute}>
+                      {String(minute).padStart(2, '0')}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">24h</span>
                 <span className="text-[11px] text-slate-400 dark:text-white/35">
                   {health?.timeZoneLabel ? `(${health.timeZoneLabel})` : ''}
                 </span>
@@ -772,7 +783,7 @@ function CalendarFeedSection() {
       <Section
         icon={CalendarDays}
         title="Pragati calendar"
-        subtitle="Subscribe once and a calendar named Pragati appears in Outlook / Google / Apple — every dated task, present and future. Reschedule in Pragati and the calendar follows on its next refresh (clients poll a few times a day)."
+        subtitle="Keep dated Pragati tasks in the calendar you already use."
       >
         {!state ? (
           <div className="text-xs text-slate-400 py-2">Loading…</div>
@@ -829,13 +840,7 @@ function CalendarFeedSection() {
                 <CalendarDays size={13} /> Apple
               </a>
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              One click subscribes you to a <strong>live</strong> feed — date changes in Pragati flow through
-              automatically on your calendar app’s next refresh (Outlook: every few hours; Google: up to a
-              day; Apple: configurable, down to every 5 minutes). The feed itself is always current — the wait
-              is purely your calendar’s polling schedule. Or paste the link above into any app via “Subscribe
-              / Add calendar from URL”. Anyone with the URL can read your task agenda — rotate it if it leaks.
-            </p>
+            <p className="text-[11px] text-slate-400">Choose your calendar to open its subscription flow.</p>
             <div className="flex gap-2">
               <button className="btn-ghost text-xs" onClick={mint} disabled={busy}>
                 Rotate link

@@ -75,6 +75,9 @@ export interface BirdsEyeTask {
   dueDate?: string | null;
   /** Project-scope only: groups tasks under a phase row. Ignored elsewhere. */
   phaseName?: string | null;
+  /** Explicit project-detail ordering, retained in project-scope exports. */
+  position?: number;
+  phasePosition?: number;
   subtaskCount?: number;
   subtasksDone?: number;
   /** First few subtask titles for inline rendering inside the task node. */
@@ -146,8 +149,8 @@ interface Edge {
 // Top-down org-chart geometry. Nodes shrink at deeper levels so a wide tree
 // stays scannable from above. Sizes tuned to keep the default (tasks-collapsed)
 // view clean — individual projects expand to show task detail on demand.
-const NODE_WIDTH = { root: 280, team: 218, project: 230, phase: 192, task: 202, count: 192 } as const;
-const NODE_HEIGHT = { root: 68, team: 54, project: 60, phase: 38, task: 46, count: 32 } as const;
+const NODE_WIDTH = { root: 280, team: 226, project: 240, phase: 210, task: 220, count: 202 } as const;
+const NODE_HEIGHT = { root: 68, team: 66, project: 68, phase: 58, task: 46, count: 32 } as const;
 // Air between things is what separates "aerial view" from "circuit diagram".
 // These gaps were widened after the dense first pass read as congested: the
 // auto-fit always frames the whole tree anyway, so extra whitespace costs a
@@ -190,6 +193,10 @@ function wrapText(text: string, maxChars: number, maxLines: number): string[] {
     lines[lines.length - 1] = last.replace(/[\s.]+$/, '') + '…';
   }
   return lines.length ? lines : [''];
+}
+
+function truncateText(text: string, maxChars: number): string {
+  return text.length <= maxChars ? text : `${text.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
 }
 
 /**
@@ -356,7 +363,12 @@ function layout(
   function buildPhaseSubtrees(): Subtree[] {
     const byPhase = new Map<string, BirdsEyeTask[]>();
     const order: string[] = [];
-    for (const t of [...data.tasks].sort(sortTasks)) {
+    const projectOrder = [...data.tasks].sort(
+      (a, b) =>
+        (a.phasePosition ?? Number.MAX_SAFE_INTEGER) - (b.phasePosition ?? Number.MAX_SAFE_INTEGER) ||
+        (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER),
+    );
+    for (const t of projectOrder) {
       const name = (t.phaseName && t.phaseName.trim()) || 'Unphased';
       if (!byPhase.has(name)) {
         byPhase.set(name, []);
@@ -364,8 +376,6 @@ function layout(
       }
       byPhase.get(name)!.push(t);
     }
-    // Stable, readable order: named phases alphabetically, "Unphased" last.
-    order.sort((a, b) => (a === 'Unphased' ? 1 : b === 'Unphased' ? -1 : a.localeCompare(b)));
     return order.map((name, i) => {
       const phaseId = `phase:${i}`;
       const collapsed = collapsedIds.has(phaseId);
@@ -553,7 +563,7 @@ function NodeShape({ n }: { n: PositionedNode }) {
             fontSize={11}
             fill="rgba(255,255,255,0.88)"
           >
-            {n.sub}
+            {truncateText(n.sub, 40)}
           </text>
         )}
       </g>
@@ -581,7 +591,7 @@ function NodeShape({ n }: { n: PositionedNode }) {
         </text>
         {n.sub && (
           <text x={n.x + 14} y={n.y + n.height - 12} fontSize={10.5} fill="#6366f1">
-            {n.sub}
+            {truncateText(n.sub, 32)}
           </text>
         )}
       </g>
@@ -609,7 +619,7 @@ function NodeShape({ n }: { n: PositionedNode }) {
         </text>
         {n.sub && (
           <text x={n.x + 13} y={n.y + n.height - 11} fontSize={10} fill="#64748b">
-            {n.sub}
+            {truncateText(n.sub, 30)}
           </text>
         )}
       </g>
@@ -800,7 +810,7 @@ export function BirdsEyeView({
   // Default collapsed — shows compact count chips per project so the initial
   // view is clean. The user can expand all tasks with "Show tasks" or collapse
   // individual project task stacks with the − button on each project node.
-  const [collapseTasks, setCollapseTasks] = useState(true);
+  const [collapseTasks, setCollapseTasks] = useState(data.scope !== 'project');
   const [editing, setEditing] = useState<{ node: PositionedNode; clientX: number; clientY: number } | null>(
     null,
   );
@@ -833,6 +843,8 @@ export function BirdsEyeView({
       return new Set();
     }
   });
+  const [svgExportPending, setSvgExportPending] = useState(false);
+  const svgExportRestore = useRef<{ collapseTasks: boolean; collapsedIds: Set<string> } | null>(null);
   // Brush / annotation layer — freeform polylines over the canvas so a lead
   // can sketch on top of the structure during a brainstorm. Persists per scope.
   type BrushStroke = { color: string; width: number; points: { x: number; y: number }[] };
@@ -1204,7 +1216,7 @@ export function BirdsEyeView({
     setBrushStrokes([]);
   }
 
-  function exportSvg() {
+  const exportSvg = useCallback(() => {
     if (!svgRef.current) return;
     const clone = svgRef.current.cloneNode(true) as SVGSVGElement;
     const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -1219,7 +1231,34 @@ export function BirdsEyeView({
     a.download = `pragati-birds-eye-${new Date().toISOString().slice(0, 10)}.svg`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }, [height, width]);
+
+  function requestExpandedSvgExport() {
+    if (svgExportPending) return;
+    svgExportRestore.current = {
+      collapseTasks,
+      collapsedIds: new Set(collapsedIds),
+    };
+    setSvgExportPending(true);
+    // The SVG must be laid out from expanded state before it is cloned.
+    setCollapseTasks(false);
+    setCollapsedIds(new Set());
   }
+
+  useEffect(() => {
+    if (!svgExportPending || collapseTasks || collapsedIds.size > 0) return;
+    const timer = window.setTimeout(() => {
+      exportSvg();
+      const restore = svgExportRestore.current;
+      if (restore) {
+        setCollapseTasks(restore.collapseTasks);
+        setCollapsedIds(restore.collapsedIds);
+      }
+      svgExportRestore.current = null;
+      setSvgExportPending(false);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [svgExportPending, collapseTasks, collapsedIds, exportSvg]);
 
   function printAsPdf() {
     if (!svgRef.current) return;
@@ -1406,11 +1445,12 @@ export function BirdsEyeView({
             )}
             <span className="w-px h-5 bg-slate-200 mx-0.5 hidden sm:block" />
             <button
-              onClick={exportSvg}
-              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"
-              title="Download SVG"
+              onClick={requestExpandedSvgExport}
+              disabled={svgExportPending}
+              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+              title="Download SVG with all nodes expanded"
             >
-              <Download size={15} />
+              <Download size={15} className={svgExportPending ? 'animate-pulse' : ''} />
             </button>
             <button
               onClick={printAsPdf}

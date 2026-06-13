@@ -152,10 +152,14 @@ const UserSchema = new Schema(
     // hourly scheduled runs; minute granularity is intentionally not offered
     // (a daily summary doesn't need it, and it keeps the trigger cadence sane).
     digestHour: { type: Number, default: null, min: 0, max: 23 },
+    // Minute within the chosen hour (0–59). Scheduled runners may tick more
+    // frequently than once an hour; idempotency still guarantees one send/day.
+    digestMinute: { type: Number, default: 0, min: 0, max: 59 },
     // Idempotency stamp: the local-day key (YYYY-MM-DD) of the user's last
     // successful digest. Guarantees at-most-once delivery per day regardless of
     // how many triggers fire. Cleared implicitly by the date rolling over.
     lastDigestSentOn: { type: String, default: '' },
+    lastBriefPushSentOn: { type: String, default: '' },
     // Capability token for the personal read-only calendar feed
     // (/api/calendar/<token>/agenda.ics). Calendar clients can't send auth
     // cookies, so the URL itself is the secret — random, per-user, rotatable

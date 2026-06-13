@@ -1,12 +1,11 @@
-name: Daily-digest hourly trigger
+name: Daily-digest scheduled trigger
 
 # The per-user digest send-time feature needs the digest endpoint to be hit
-# every hour: on each tick the server sends only to the users whose chosen
-# hour it is, and is idempotent per day, so hitting it hourly is safe.
+# every five minutes: on each tick the server sends only to users whose chosen
+# 24-hour time matches, and is idempotent per day, so repeated ticks are safe.
 #
 # Vercel Hobby crons run at most once a day, so this free GitHub Action is the
-# hourly trigger. It just curls the endpoint with the shared secret — no build,
-# no minutes-hungry job.
+# five-minute trigger. It just curls the endpoint with the shared secret.
 #
 # Setup (one time):
 #   Repo → Settings → Secrets and variables → Actions → New repository secret
@@ -16,11 +15,11 @@ name: Daily-digest hourly trigger
 
 on:
   schedule:
-    - cron: '0 * * * *' # top of every hour (UTC)
+    - cron: '*/5 * * * *'
   workflow_dispatch: {} # manual "Run workflow" button for testing
 
 concurrency:
-  group: digest-hourly
+  group: digest-scheduled
   cancel-in-progress: false
 
 jobs:

@@ -6,6 +6,7 @@ import { Project } from '@/models/Project';
 import { DigestSetting, type DigestSettingDoc } from '@/models/DigestSetting';
 import { sendEmail, mailerConfigured } from '@/lib/mailer';
 import { resolveIndustry, pickInsight } from '@/lib/insights';
+import { normalizeRole } from '@/lib/auth';
 
 /**
  * Daily "tasks due today" email digest.
@@ -57,6 +58,10 @@ export function hourInTz(now: Date, tz: string): number {
   return n === 24 ? 0 : n; // 'en-US' renders midnight as 24
 }
 
+export function minuteInTz(now: Date, tz: string): number {
+  return Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, minute: '2-digit' }).format(now));
+}
+
 /** Local calendar day key (YYYY-MM-DD) in `tz` — the idempotency key that
  *  guarantees at-most-once delivery per user per local day, no matter how
  *  many times (or from how many triggers) the endpoint is hit. Pure. */
@@ -81,6 +86,24 @@ export function digestHourMatches(
   if (scheduledHour === undefined) return true;
   const h = typeof userHour === 'number' && userHour >= 0 && userHour <= 23 ? userHour : fallbackHour;
   return h === scheduledHour;
+}
+
+export function digestTimeMatches(
+  userHour: number | null | undefined,
+  userMinute: number | null | undefined,
+  scheduledHour: number | undefined,
+  scheduledMinute: number | undefined,
+  fallbackHour: number,
+): boolean {
+  if (scheduledHour === undefined) return true;
+  const hour = typeof userHour === 'number' && userHour >= 0 && userHour <= 23 ? userHour : fallbackHour;
+  const minute = typeof userMinute === 'number' && userMinute >= 0 && userMinute <= 59 ? userMinute : 0;
+  if (scheduledMinute === undefined) return hour === scheduledHour;
+
+  // Scheduled runners are not guaranteed to start on the exact requested
+  // minute. Treat every later tick on the same local day as a catch-up
+  // opportunity; lastDigestSentOn provides the at-most-once guard.
+  return scheduledHour * 60 + scheduledMinute >= hour * 60 + minute;
 }
 
 /** Absolute base URL for in-email links, or '' when none is configured (links
@@ -270,6 +293,20 @@ export interface RenderInput {
   /** Optional curated industry insight (see lib/insights) — the continuous
    *  "thought worth a minute" feed, tuned to the workspace's niche. */
   insight?: { tag: string; title: string; body: string } | null;
+  leadershipBrief?: {
+    headline: string;
+    team?: {
+      blocked: { id: string; title: string; projectName: string | null; days: number }[];
+      signoffsPending: number;
+      overdueByMember: { name: string; count: number }[];
+    };
+    workspace?: {
+      doneYesterday: number;
+      overdueTotal: number;
+      activeProjects: number;
+      risky: { id: string; name: string; overdue: number }[];
+    };
+  } | null;
 }
 
 /** One line of role framing under the greeting. Deliberately copy, not data —
@@ -490,6 +527,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     winsYesterday = 0,
     role,
     insight,
+    leadershipBrief,
   } = input;
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   const weekday = dateLabel.split(/[ ,]/)[0] || 'daily';
@@ -500,7 +538,11 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   if (sections.today.length) counts.push(`${sections.today.length} due today`);
   if (sections.overdue.length) counts.push(`${sections.overdue.length} overdue`);
   if (sections.soon.length) counts.push(`${sections.soon.length} due soon`);
-  const subject = `${test ? '[Test] ' : ''}Your ${weekday} brief — ${counts.join(' · ') || 'all clear'}`;
+  const leadershipSubject =
+    leadershipBrief && (role === 'lead' || role === 'admin' || role === 'master_admin')
+      ? leadershipBrief.headline
+      : counts.join(' · ') || 'all clear';
+  const subject = `${test ? '[Test] ' : ''}Your ${weekday} brief — ${leadershipSubject}`;
 
   // The focus item leads alone; don't list it twice.
   const rest = {
@@ -536,6 +578,56 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     roleFraming(role),
   )}</p>`;
 
+  const leadershipHtml = leadershipBrief?.team
+    ? `<div style="margin:0 0 22px;padding:16px;border:1px solid #dbeafe;border-radius:14px;background:#f8fbff;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:5px;">Team pulse</div>
+        <div style="font-size:15px;font-weight:750;color:#0f172a;line-height:1.45;margin-bottom:12px;">${escapeHtml(leadershipBrief.headline)}</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#dc2626;">${leadershipBrief.team.blocked.length}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Blocked</div></td>
+          <td width="8"></td>
+          <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#7c3aed;">${leadershipBrief.team.signoffsPending}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Sign-offs</div></td>
+          <td width="8"></td>
+          <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#ea580c;">${leadershipBrief.team.overdueByMember.reduce((sum, member) => sum + member.count, 0)}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Team overdue</div></td>
+        </tr></table>
+        ${
+          leadershipBrief.team.blocked.length
+            ? `<div style="margin-top:12px;font-size:12px;color:#475569;"><strong>Needs intervention:</strong> ${leadershipBrief.team.blocked
+                .map(
+                  (item) =>
+                    `${escapeHtml(item.title)}${item.projectName ? ` · ${escapeHtml(item.projectName)}` : ''}`,
+                )
+                .join(' &nbsp;•&nbsp; ')}</div>`
+            : ''
+        }
+        ${
+          leadershipBrief.team.overdueByMember.length
+            ? `<div style="margin-top:7px;font-size:12px;color:#475569;"><strong>Overdue load:</strong> ${leadershipBrief.team.overdueByMember
+                .map((member) => `${escapeHtml(member.name)} ${member.count}`)
+                .join(' &nbsp;•&nbsp; ')}</div>`
+            : ''
+        }
+      </div>`
+    : leadershipBrief?.workspace
+      ? `<div style="margin:0 0 22px;padding:16px;border:1px solid #dbeafe;border-radius:14px;background:#f8fbff;">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:5px;">Workspace pulse</div>
+          <div style="font-size:15px;font-weight:750;color:#0f172a;line-height:1.45;margin-bottom:12px;">${escapeHtml(leadershipBrief.headline)}</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#16a34a;">${leadershipBrief.workspace.doneYesterday}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Closed yesterday</div></td>
+            <td width="8"></td>
+            <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#dc2626;">${leadershipBrief.workspace.overdueTotal}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Overdue</div></td>
+            <td width="8"></td>
+            <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#2563eb;">${leadershipBrief.workspace.activeProjects}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Active projects</div></td>
+          </tr></table>
+          ${
+            leadershipBrief.workspace.risky.length
+              ? `<div style="margin-top:12px;font-size:12px;color:#475569;"><strong>Projects to watch:</strong> ${leadershipBrief.workspace.risky
+                  .map((project) => `${escapeHtml(project.name)} (${project.overdue} overdue)`)
+                  .join(' &nbsp;•&nbsp; ')}</div>`
+              : ''
+          }
+        </div>`
+      : '';
+
   // ── The one thing ─────────────────────────────────────────────────────
   const focusHtml = focus
     ? `<div style="margin:0 0 22px;border:1px solid ${focus.bucket === 'overdue' ? '#fecaca' : '#bfdbfe'};border-left:4px solid ${focus.bucket === 'overdue' ? '#dc2626' : '#1565C0'};border-radius:12px;padding:14px 16px;background:${focus.bucket === 'overdue' ? '#fff7f7' : '#f8fbff'};">
@@ -561,17 +653,22 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     ? ''
     : `<div style="font-size:15px;color:#16a34a;font-weight:600;margin:6px 0 18px;">You're all clear — nothing due today. Use the room: pick the one thing with the most leverage and move it.</div>`;
 
-  const intro =
-    introNote && introNote.trim()
-      ? `<div style="font-size:14px;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin:0 0 20px;">${escapeHtml(introNote.trim())}</div>`
+  const cleanIntro =
+    introNote &&
+    introNote.trim() &&
+    !(/^\S{12,}$/.test(introNote.trim()) && !/[aeiou]/i.test(introNote.trim()))
+      ? introNote.trim()
       : '';
+  const intro = cleanIntro
+    ? `<div style="font-size:14px;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin:0 0 20px;">${escapeHtml(cleanIntro)}</div>`
+    : '';
 
   const openBtn = appUrl
     ? `<a href="${appUrl}/my-day" style="display:inline-block;background:#1565C0;color:#fff;font-weight:700;font-size:14px;text-decoration:none;padding:10px 18px;border-radius:10px;">Open My Day</a>`
     : '';
 
   const manage = appUrl
-    ? `<a href="${appUrl}/settings" style="color:#64748b;">your profile settings</a>`
+    ? `<a href="${appUrl}/settings#daily-email" style="color:#64748b;font-weight:600;">unsubscribe or change delivery</a>`
     : 'your profile settings';
 
   const aphorism = closingLine();
@@ -586,6 +683,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
       <tr><td style="padding:26px;">
         <div style="font-size:16px;color:#0f172a;font-weight:700;margin:0 0 6px;">Good morning, ${escapeHtml(first)}</div>
         ${framingHtml}
+        ${leadershipHtml}
         ${intro}
         ${momentum}
         ${emptyNote}
@@ -608,7 +706,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
       <tr><td style="padding:16px 26px;background:#f8fafc;border-top:1px solid #e2e8f0;">
         <div style="font-size:12px;color:#94a3b8;line-height:1.5;">
           You're receiving this because the daily task email is on for your account.
-          Change the time, or turn it off, in ${manage}.
+          ${manage}.
         </div>
       </td></tr>
     </table>
@@ -624,6 +722,21 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   ];
   if (winsYesterday > 0) {
     lines.push(`You closed ${winsYesterday} task${winsYesterday === 1 ? '' : 's'} yesterday.`, '');
+  }
+  if (leadershipBrief?.team) {
+    lines.push(
+      'TEAM PULSE',
+      leadershipBrief.headline,
+      `Blocked: ${leadershipBrief.team.blocked.length} · Sign-offs: ${leadershipBrief.team.signoffsPending} · Team overdue: ${leadershipBrief.team.overdueByMember.reduce((sum, member) => sum + member.count, 0)}`,
+      '',
+    );
+  } else if (leadershipBrief?.workspace) {
+    lines.push(
+      'WORKSPACE PULSE',
+      leadershipBrief.headline,
+      `Closed yesterday: ${leadershipBrief.workspace.doneYesterday} · Overdue: ${leadershipBrief.workspace.overdueTotal} · Active projects: ${leadershipBrief.workspace.activeProjects}`,
+      '',
+    );
   }
   if (focus) {
     const pn = projectName(focus.projectId);
@@ -685,6 +798,8 @@ export interface RunOptions {
    *  this (workspace-tz) hour, and stamp each as sent-today so re-ticks never
    *  double-send. Omit for a manual "send now" run, which serves everyone. */
   scheduledHour?: number;
+  /** Current minute for a frequent scheduler. Matched in five-minute windows. */
+  scheduledMinute?: number;
 }
 
 export interface RunSummary {
@@ -754,7 +869,7 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
     : { active: { $ne: false }, notifDailyDigest: true };
 
   const users = await User.find(recipientFilter)
-    .select('_id name email notifyEmail digestHour lastDigestSentOn')
+    .select('_id name email notifyEmail role digestHour digestMinute lastDigestSentOn')
     .limit(1000)
     .lean();
 
@@ -763,7 +878,16 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
     .filter((r) => {
       summary.considered += 1;
       // Per-user send time: on an hourly scheduled run, only this hour's users.
-      if (!opts.test && !digestHourMatches((r.user as any).digestHour, opts.scheduledHour, fallbackHour)) {
+      if (
+        !opts.test &&
+        !digestTimeMatches(
+          (r.user as any).digestHour,
+          (r.user as any).digestMinute,
+          opts.scheduledHour,
+          opts.scheduledMinute,
+          fallbackHour,
+        )
+      ) {
         summary.skippedWrongHour += 1;
         return false;
       }
@@ -869,9 +993,20 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       continue;
     }
 
+    const role = normalizeRole((r.user as any).role);
+    let leadershipBrief: RenderInput['leadershipBrief'] = null;
+    if (role === 'lead' || role === 'admin' || role === 'master_admin') {
+      try {
+        const { buildDailyBrief } = await import('@/lib/brief');
+        leadershipBrief = await buildDailyBrief(uid, role, now);
+      } catch {
+        // The personal brief still sends if a leadership roll-up is unavailable.
+      }
+    }
+
     const { subject, html, text } = renderDigestEmail({
       name: (r.user as any).name || '',
-      role: (r.user as any).role,
+      role,
       sections,
       projectName: (pid) => (pid ? projName.get(pid) || null : null),
       appUrl,
@@ -880,6 +1015,7 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       dateLabel,
       winsYesterday: winsByUser.get(uid) || 0,
       insight: dailyInsight,
+      leadershipBrief,
     });
 
     const res = await sendEmail({ to: r.email, toName: (r.user as any).name, subject, html, text });

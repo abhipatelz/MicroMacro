@@ -106,52 +106,40 @@ function useDateLabel() {
 }
 
 function ProgressRing({ done, total }: { done: number; total: number }) {
-  const r = 22;
-  const circ = 2 * Math.PI * r;
-  const pct = total ? done / total : 0;
-  const offset = circ * (1 - pct);
   const allDone = total > 0 && done === total;
+  const pct = total ? Math.round((done / total) * 100) : 0;
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: 60, height: 60 }}>
-      <svg width={60} height={60} className="-rotate-90">
-        <circle
-          cx={30}
-          cy={30}
-          r={r}
-          fill="none"
-          strokeWidth={3.5}
-          className="stroke-slate-200 dark:stroke-white/[0.08]"
-        />
-        <circle
-          cx={30}
-          cy={30}
-          r={r}
-          fill="none"
-          strokeWidth={3.5}
-          strokeDasharray={circ}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          className="transition-all duration-700 ease-out"
-          style={{ stroke: allDone ? '#22c55e' : '#1769C8' }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        {total === 0 ? (
-          <Target size={14} className="text-slate-300 dark:text-white/20" />
-        ) : allDone ? (
-          <Check size={16} className="text-green-500" strokeWidth={3} />
-        ) : (
-          <>
-            <span className="text-[14px] font-black leading-none text-slate-700 dark:text-white/85 tabular-nums">
-              {done}
-            </span>
-            <span className="text-[9px] font-bold text-slate-400 dark:text-white/30 leading-none mt-px tabular-nums">
-              /{total}
-            </span>
-          </>
-        )}
+    <div className="w-[116px] rounded-2xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.03]">
+      <div className="flex items-center gap-2">
+        <div
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ${
+            allDone
+              ? 'bg-emerald-500 text-white'
+              : total > 0
+                ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400'
+                : 'bg-slate-50 text-slate-300 dark:bg-white/[0.04] dark:text-white/20'
+          }`}
+        >
+          {allDone ? <Check size={16} strokeWidth={3} /> : <Target size={15} />}
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-black tabular-nums text-slate-800 dark:text-white/85">
+            {total > 0 ? `${done}/${total}` : 'Clear'}
+          </div>
+          <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">
+            {allDone ? 'Complete' : total > 0 ? `${pct}% done` : 'No tasks'}
+          </div>
+        </div>
       </div>
+      {total > 0 && !allDone && (
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.07]">
+          <div
+            className="h-full rounded-full bg-blue-600 transition-all duration-700"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -524,15 +512,14 @@ function WhiteboardFAB() {
         onClick={() => setOpen(true)}
         title="Open whiteboard"
         aria-label="Open whiteboard"
-        className="fixed bottom-6 right-6 z-40 w-13 h-13 rounded-full shadow-xl grid place-items-center text-white transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 z-40 rounded-2xl border border-slate-200 bg-white grid place-items-center text-blue-700 transition-all hover:-translate-y-0.5 hover:border-blue-200 active:scale-95 dark:border-white/10 dark:bg-[#262624] dark:text-blue-300"
         style={{
           width: 52,
           height: 52,
-          background: 'linear-gradient(135deg, #1565C0 0%, #22C55E 100%)',
-          boxShadow: '0 4px 16px rgba(21,101,192,0.35)',
+          boxShadow: '0 12px 32px rgba(15,23,42,0.16), 0 2px 8px rgba(15,23,42,0.08)',
         }}
       >
-        <WhiteboardIcon size={24} className="text-white" filled />
+        <WhiteboardIcon size={24} className="text-current" />
       </button>
 
       {/* Whiteboard drawer */}
@@ -568,6 +555,51 @@ function WhiteboardFAB() {
                 <Whiteboard />
               </div>
             </div>
+          </div>
+        </ModalPortal>
+      )}
+    </>
+  );
+}
+
+function NotesFAB() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Open notes"
+        aria-label="Open notes"
+        className="fixed bottom-6 right-[5.5rem] z-40 grid h-[52px] w-[52px] place-items-center rounded-2xl border border-amber-200 bg-white text-amber-600 transition-all hover:-translate-y-0.5 hover:border-amber-300 active:scale-95 dark:border-amber-500/20 dark:bg-[#262624] dark:text-amber-400"
+        style={{ boxShadow: '0 12px 32px rgba(15,23,42,0.14), 0 2px 8px rgba(15,23,42,0.07)' }}
+      >
+        <FileText size={22} />
+      </button>
+      {open && (
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={() => setOpen(false)}>
+            <aside
+              className="h-full w-full max-w-md overflow-y-auto bg-slate-50 p-5 shadow-2xl dark:bg-[#1e1e1c]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-black text-slate-800 dark:text-white/90">Notes</div>
+                  <div className="text-[11px] text-slate-400">
+                    Ideas and decisions, out of your task flow.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/70 hover:text-slate-700 dark:hover:bg-white/5"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <NotesPanel />
+            </aside>
           </div>
         </ModalPortal>
       )}
@@ -722,17 +754,14 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
             )}
           </div>
 
-          <div className="shrink-0 flex flex-col items-center gap-1 mt-0.5">
+          <div className="shrink-0 mt-0.5">
             <ProgressRing done={done.length} total={total} />
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/25">
-              {done.length === total && total > 0 ? 'Done' : 'Today'}
-            </span>
           </div>
         </div>
       </div>
 
-      {/* ── 2-column layout: tasks (left) + notes (right) ────────────── */}
-      <div className="lg:grid lg:gap-6" style={{ gridTemplateColumns: '1fr 300px' }}>
+      {/* Tasks stay full-width; secondary tools live in unobtrusive hanging buttons. */}
+      <div>
         {/* ── Left: capture + todo list ────────────────────────────── */}
         <div className="min-w-0">
           {/* ── Capture bar ────────────────────────────────────────── */}
@@ -943,14 +972,9 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
             </div>
           )}
         </div>
-
-        {/* ── Right: permanent notes panel (collapsed by default) ─ */}
-        <div className="hidden lg:flex flex-col pt-0">
-          <NotesPanel />
-        </div>
       </div>
 
-      {/* Whiteboard FAB — floating bottom-right, blinks on first open */}
+      <NotesFAB />
       <WhiteboardFAB />
 
       {/* Promote modal */}

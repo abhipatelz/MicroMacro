@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole, requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
-import { buildAndSendDailyDigests, hourInTz, digestTimeZone } from '@/lib/digest';
+import {
+  buildAndSendDailyDigests,
+  defaultDigestHour,
+  digestTimeMatches,
+  hourInTz,
+  minuteInTz,
+  digestTimeZone,
+} from '@/lib/digest';
 import { sendDailyBriefPushes } from '@/lib/push';
 
 export const runtime = 'nodejs';
@@ -58,14 +65,28 @@ export async function GET(req: NextRequest) {
     // no secret) serves everyone now, ignoring the hour. `?force=1` lets an
     // admin override the hour filter on a secret-authed call too.
     const force = req.nextUrl.searchParams.get('force') === '1';
-    const scheduledHour = cronAuthed && !force ? hourInTz(new Date(), digestTimeZone()) : undefined;
+    const now = new Date();
+    const tz = digestTimeZone();
+    const scheduledHour = cronAuthed && !force ? hourInTz(now, tz) : undefined;
+    const scheduledMinute = cronAuthed && !force ? minuteInTz(now, tz) : undefined;
 
-    const summary = await buildAndSendDailyDigests({ scheduledHour });
+    const summary = await buildAndSendDailyDigests({ scheduledHour, scheduledMinute });
     // Same beat, second channel: the zero-cost Web Push fan-out. Failures
     // here must never fail the email run — push is best-effort by design.
-    const push = await sendDailyBriefPushes().catch(() => ({ users: 0, delivered: 0 }));
+    const pushWindowOpen =
+      scheduledHour === undefined ||
+      digestTimeMatches(defaultDigestHour(), 0, scheduledHour, scheduledMinute, defaultDigestHour());
+    const push = pushWindowOpen
+      ? await sendDailyBriefPushes({ now }).catch(() => ({ users: 0, delivered: 0 }))
+      : { users: 0, delivered: 0 };
     return NextResponse.json(
-      { mode: cronAuthed ? 'cron' : 'manual', scheduledHour: scheduledHour ?? null, ...summary, push },
+      {
+        mode: cronAuthed ? 'cron' : 'manual',
+        scheduledHour: scheduledHour ?? null,
+        scheduledMinute: scheduledMinute ?? null,
+        ...summary,
+        push,
+      },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (e) {

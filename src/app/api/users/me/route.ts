@@ -31,6 +31,7 @@ const EditableBody = z.object({
   notifDailyDigest: z.boolean().optional(),
   // Preferred digest hour (0–23, workspace tz). null clears it → default hour.
   digestHour: z.number().int().min(0).max(23).nullable().optional(),
+  digestMinute: z.number().int().min(0).max(59).optional(),
   // The address where the daily digest is sent. Users can set this themselves
   // so they can choose a delivery address (work vs personal inbox) without
   // asking an admin. Admins can still override it via the People page.
@@ -110,6 +111,7 @@ export async function PATCH(req: NextRequest) {
     const digestJustEnabled = d.notifDailyDigest === true && !(user as any).notifDailyDigest;
     if (d.notifDailyDigest !== undefined) (user as any).notifDailyDigest = d.notifDailyDigest;
     if (d.digestHour !== undefined) (user as any).digestHour = d.digestHour;
+    if (d.digestMinute !== undefined) (user as any).digestMinute = d.digestMinute;
     if (d.notifyEmail !== undefined) (user as any).notifyEmail = d.notifyEmail.trim();
     if (d.avatarLetter !== undefined) (user as any).avatarLetter = d.avatarLetter.toUpperCase();
     if (d.avatarBg !== undefined) (user as any).avatarBg = d.avatarBg;
@@ -138,7 +140,8 @@ export async function PATCH(req: NextRequest) {
         const { resolveIndustry, pickInsight } = await import('@/lib/insights');
         const hour = (user as any).digestHour ?? defaultDigestHour();
         const h12 = hour % 12 === 0 ? 12 : hour % 12;
-        const hourLabel = `${h12}:30 ${hour < 12 ? 'AM' : 'PM'} (${digestTimeZone()})`;
+        const minute = (user as any).digestMinute ?? 0;
+        const hourLabel = `${h12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'} (${digestTimeZone()})`;
         // Industry-tuned insight (single-tenant reads PRAGATI_INDUSTRY; the
         // multi-tenant path will pass the tenant's stored niche here). seed=1
         // so the welcome's insight differs from the day's brief insight.

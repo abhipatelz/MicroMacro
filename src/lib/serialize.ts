@@ -78,6 +78,7 @@ export function u(user: any) {
     notifyEmail: user.notifyEmail || '',
     notifDailyDigest: !!user.notifDailyDigest,
     digestHour: typeof user.digestHour === 'number' ? user.digestHour : null,
+    digestMinute: typeof user.digestMinute === 'number' ? user.digestMinute : 0,
   };
 }
 
