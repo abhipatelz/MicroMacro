@@ -7,10 +7,9 @@ import { MapPin, Building2, Briefcase, Fingerprint } from 'lucide-react';
  * Shared profile hero — used on both the editable settings page (self) and
  * the read-only public profile at /[username].
  *
- * Design: a flat identity row, not a cover banner. The old gradient-banner
- * treatment read as a social-network relic; this one leads with the person —
- * a brand-ring avatar, name + role side by side, and quiet metadata — so the
- * page gets to the substance (impact numbers, activity) one beat sooner.
+ * Design: a soft brand-gradient cover that the brand-ring avatar straddles,
+ * then name + role and quiet metadata — crafted enough to feel like "mine"
+ * while keeping the substance below (impact numbers, activity) uncrowded.
  * Keeping one component means a user's profile looks identical whether
  * they're editing their own or viewing a colleague's.
  */
