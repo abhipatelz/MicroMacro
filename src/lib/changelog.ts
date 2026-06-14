@@ -38,6 +38,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Profiles and the daily email now carry Delivery Foresight: a forward-looking, plain-language read on whether your dates will hold — “on pace to clear your plate by ~Jun 20”, or “this task is trending to miss its date — start it today”.',
       'Behind one quiet line sits a real model: log-normal duration fits with empirical-Bayes shrinkage, Holt’s-linear velocity forecasting, an inter-completion-gap throughput model, a seeded Monte-Carlo schedule simulation, and a robust MAD control-chart anomaly detector — fully deterministic and auditable, with no LLM on the path.',
       'Team detail pages get a redesigned hero (function-tinted cover, summary strip) plus a Team Foresight panel — each member’s pace vs. their plate rolled into one capacity read, with the people to look at first floated to the top. Lead/admin only, shared work only.',
+      'My Day opens with a Foresight strip — a “start here” pointer at the one task most likely to slip — and the Settings profile now shows the same impact tiles (delivered, this year, projects, streak) as the public profile.',
       'Your own profile and brief get the full forecast (plate-clear date and the single riskiest task); a colleague’s profile shows only your delivery rhythm and reliability, never your current workload.',
       'Retired the profile Highlights (story-style cards) in favour of this — substance over a status update.',
     ],

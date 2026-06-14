@@ -45,6 +45,7 @@ import { MonogramEditor } from '@/components/MonogramEditor';
 import { linkMeta, type LinkBrand } from '@/lib/links';
 import { ProfileHero } from '@/components/ProfileHero';
 import { DeliveryForesight } from '@/components/DeliveryForesight';
+import { SelfImpactTiles } from '@/components/ProfileStatTiles';
 
 /* ── Profile avatar wrapper ───────────────────────────────────────────────
    Renders the user's monogram avatar with a hover-overlay "edit" hint.
@@ -1610,6 +1611,9 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
           </form>
         </Section>
       )}
+
+      {/* ── Impact row — your delivery at a glance (matches the public profile) ── */}
+      <SelfImpactTiles />
 
       {/* ── Delivery Foresight — predictive read over the heavy engine ──── */}
       <DeliveryForesight userId={user.id} isSelf />

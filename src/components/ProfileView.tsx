@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Avatar } from '@/components/ui';
@@ -14,15 +14,12 @@ import {
   Youtube,
   Mail,
   Globe,
-  CheckCircle2,
-  CalendarRange,
-  FolderKanban,
-  Flame,
   Link as LinkIcon,
   Check,
 } from 'lucide-react';
 import { linkMeta, type LinkBrand } from '@/lib/links';
 import { DeliveryForesight } from '@/components/DeliveryForesight';
+import { ProfileStatTiles } from '@/components/ProfileStatTiles';
 
 // Map a detected brand to a lucide icon. Anything without a dedicated mark
 // (Medium, Dribbble, a personal site, …) renders the clean Globe chip — its
@@ -48,71 +45,6 @@ const ActivityGraph = dynamic(() => import('@/components/ActivityGraph').then((m
   ssr: false,
   loading: () => <div className="h-40 rounded-xl bg-slate-50 animate-pulse" />,
 });
-
-/* Animate a number from 0 → target on mount (easeOutCubic). Honours
-   prefers-reduced-motion by jumping straight to the value, so the figure is
-   never withheld from anyone who's opted out of motion. */
-function useCountUp(target: number, durationMs = 900): number {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setValue(target);
-      return;
-    }
-    let raf = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - start) / durationMs);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setValue(Math.round(target * eased));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, durationMs]);
-  return value;
-}
-
-type StatTileData = {
-  label: string;
-  value: number;
-  sub: string;
-  icon: typeof CheckCircle2;
-  color: string;
-  bg: string;
-};
-
-/* A single impact figure — gradient accent line, tinted icon chip and a
-   counting-up number. Staggered in via the shared .fade-up-stagger utility so
-   the row reveals left-to-right as the profile settles. */
-function StatTile({ s, index }: { s: StatTileData; index: number }) {
-  const shown = useCountUp(s.value);
-  return (
-    <div
-      className="card fade-up-stagger relative overflow-hidden p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-      style={{ animationDelay: `${120 + index * 70}ms` }}
-    >
-      <span
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-[3px]"
-        style={{ background: `linear-gradient(90deg, ${s.color}, ${s.color}00)` }}
-      />
-      <div className="flex items-center gap-2">
-        <span
-          className="w-8 h-8 rounded-xl grid place-items-center shrink-0"
-          style={{ background: s.bg, color: s.color }}
-        >
-          <s.icon size={15} />
-        </span>
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{s.label}</span>
-      </div>
-      <div className="mt-3 text-[26px] leading-none font-black text-slate-900 dark:text-white tabular-nums">
-        {shown}
-      </div>
-      <div className="text-[11px] text-slate-400 mt-1">{s.sub}</div>
-    </div>
-  );
-}
 
 /**
  * Read-only public profile, shown at /[username]. Any signed-in member can
@@ -185,42 +117,6 @@ export default function ProfileView({
   // Impact row — server-rendered numbers so the first impression of a profile
   // is what this person delivers, before the heatmap streams in below.
   const stats = profile.stats;
-  const statTiles: StatTileData[] = stats
-    ? [
-        {
-          label: 'Delivered',
-          value: stats.totalDone,
-          sub: 'tasks all-time',
-          icon: CheckCircle2,
-          color: '#16a34a',
-          bg: '#f0fdf4',
-        },
-        {
-          label: 'This year',
-          value: stats.doneThisYear,
-          sub: new Date().getFullYear().toString(),
-          icon: CalendarRange,
-          color: '#1565C0',
-          bg: '#eff6ff',
-        },
-        {
-          label: 'Projects',
-          value: stats.projectCount,
-          sub: 'contributed to',
-          icon: FolderKanban,
-          color: '#7B1FA2',
-          bg: '#f3e5f5',
-        },
-        {
-          label: 'Streak',
-          value: stats.streak,
-          sub: stats.streak === 1 ? 'active day' : 'active days',
-          icon: Flame,
-          color: '#d97706',
-          bg: '#fffbeb',
-        },
-      ]
-    : [];
 
   // ── Frosted action pill over the cover — Edit (self) only ──────────────────
   const coverAction = isSelf ? (
@@ -298,13 +194,7 @@ export default function ProfileView({
       />
 
       {/* ── Impact row — what this person delivers, at a glance ─────────── */}
-      {statTiles.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {statTiles.map((s, i) => (
-            <StatTile key={s.label} s={s} index={i} />
-          ))}
-        </div>
-      )}
+      {stats && <ProfileStatTiles stats={stats} />}
 
       {/* ── Delivery Foresight — forward-looking read over the heavy engine.
           Backward (the impact tiles above) meets forward (where they're
