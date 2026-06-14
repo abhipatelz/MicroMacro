@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, X, ChevronLeft, ChevronRight, Sparkles, Trash2 } from 'lucide-react';
+import { Plus, X, ChevronLeft, ChevronRight, Sparkles, Trash2, Pencil } from 'lucide-react';
 import { api } from '@/lib/client/api';
 
 /**
@@ -10,13 +10,31 @@ import { api } from '@/lib/client/api';
  * A glanceable row of rings at the top of a profile. Each ring is a short
  * highlight of what the person is building, an insight, or a high-value goal.
  * Tapping opens a minimal full-screen reader (tap right/left to move, like a
- * story). The owner gets a "+" ring to add one and can delete from the reader.
+ * story). The owner gets a "+" ring to add one and can edit / delete from the
+ * reader; colleagues can cheer with a lightweight reaction.
  *
  * Deliberately not fancy: no images, no auto-advancing timers — just the
- * person's own words, framed nicely. Minimal and free-forever.
+ * person's own words, framed nicely, with a little encouragement.
  */
 
-type Highlight = { id: string; title: string; body: string; accent: string; createdAt?: string };
+// Curated reaction set — mirrors src/lib/highlights.ts (server validates).
+const REACTIONS = ['👏', '❤️', '💡', '🚀', '🎯'] as const;
+// A highlight posted within this window gets a "new" dot on its ring.
+const NEW_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+function isNew(createdAt?: string) {
+  return !!createdAt && Date.now() - new Date(createdAt).getTime() < NEW_WINDOW_MS;
+}
+
+type Highlight = {
+  id: string;
+  title: string;
+  body: string;
+  accent: string;
+  createdAt?: string;
+  reactions: { emoji: string; count: number }[];
+  totalReactions: number;
+  myReaction: string | null;
+};
 
 const ACCENTS: Record<string, { grad: string; text: string }> = {
   blue: { grad: 'from-blue-500 to-indigo-500', text: '#1d4ed8' },
@@ -36,6 +54,7 @@ export function ProfileHighlights({ userId, isSelf }: { userId: string; isSelf: 
   const [items, setItems] = useState<Highlight[] | null>(null);
   const [viewer, setViewer] = useState<number | null>(null);
   const [composing, setComposing] = useState(false);
+  const [editing, setEditing] = useState<Highlight | null>(null);
 
   const load = useCallback(() => {
     api<{ highlights: Highlight[] }>(`/users/${userId}/highlights`)
@@ -51,6 +70,31 @@ export function ProfileHighlights({ userId, isSelf }: { userId: string; isSelf: 
     setItems((xs) => (xs || []).filter((x) => x.id !== id));
     setViewer(null);
     await api(`/users/${userId}/highlights/${id}`, { method: 'DELETE' }).catch(() => load());
+  }
+
+  // Toggle a reaction. Server returns the authoritative summary (counts +
+  // the viewer's own selection), so we just swap the reaction fields in.
+  async function react(id: string, emoji: string) {
+    try {
+      const updated = await api<Highlight>(`/users/${userId}/highlights/${id}/react`, {
+        method: 'POST',
+        body: { emoji },
+      });
+      setItems((xs) =>
+        (xs || []).map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                reactions: updated.reactions,
+                totalReactions: updated.totalReactions,
+                myReaction: updated.myReaction,
+              }
+            : x,
+        ),
+      );
+    } catch {
+      /* best-effort — a failed cheer shouldn't surface an error */
+    }
   }
 
   // Nothing to show and not the owner → render nothing (no empty shell).
@@ -77,6 +121,7 @@ export function ProfileHighlights({ userId, isSelf }: { userId: string; isSelf: 
 
         {(items || []).map((h, i) => {
           const a = accentOf(h.accent);
+          const top = h.reactions[0];
           return (
             <button
               key={h.id}
@@ -85,7 +130,7 @@ export function ProfileHighlights({ userId, isSelf }: { userId: string; isSelf: 
               className="flex flex-col items-center gap-1.5 shrink-0 w-[72px] group"
               title={h.title}
             >
-              <span className={`w-16 h-16 rounded-full p-[2.5px] bg-gradient-to-br ${a.grad}`}>
+              <span className={`relative w-16 h-16 rounded-full p-[2.5px] bg-gradient-to-br ${a.grad}`}>
                 <span className="w-full h-full rounded-full bg-white dark:bg-[#1e1e1c] flex items-center justify-center">
                   <span
                     className={`w-[54px] h-[54px] rounded-full bg-gradient-to-br ${a.grad} opacity-[0.12] flex items-center justify-center`}
@@ -93,6 +138,20 @@ export function ProfileHighlights({ userId, isSelf }: { userId: string; isSelf: 
                     <Sparkles size={20} style={{ color: a.text }} className="opacity-90" />
                   </span>
                 </span>
+                {/* "New" dot — posted within the last week. */}
+                {isNew(h.createdAt) && (
+                  <span
+                    aria-label="New"
+                    className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-blue-500 ring-2 ring-white dark:ring-[#1e1e1c]"
+                  />
+                )}
+                {/* Reaction tally — top emoji + total. */}
+                {h.totalReactions > 0 && (
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 inline-flex items-center gap-0.5 rounded-full bg-white dark:bg-[#262624] border border-slate-200 dark:border-white/10 px-1.5 py-px text-[10px] font-bold text-slate-600 dark:text-white/70 shadow-sm leading-none">
+                    <span>{top?.emoji || '👏'}</span>
+                    {h.totalReactions}
+                  </span>
+                )}
               </span>
               <span className="text-[11px] text-slate-600 dark:text-white/55 font-medium leading-tight text-center line-clamp-2 w-full group-hover:text-slate-800 dark:group-hover:text-white/80 transition-colors">
                 {h.title}
@@ -110,16 +169,29 @@ export function ProfileHighlights({ userId, isSelf }: { userId: string; isSelf: 
           onIndex={setViewer}
           onClose={() => setViewer(null)}
           onDelete={remove}
+          onReact={react}
+          onEdit={(h) => {
+            setViewer(null);
+            setEditing(h);
+          }}
         />
       )}
 
-      {composing && (
+      {(composing || editing) && (
         <HighlightComposer
           userId={userId}
-          onClose={() => setComposing(false)}
+          initial={editing || undefined}
+          onClose={() => {
+            setComposing(false);
+            setEditing(null);
+          }}
           onCreated={(h) => {
             setItems((xs) => [h, ...(xs || [])]);
             setComposing(false);
+          }}
+          onSaved={(h) => {
+            setItems((xs) => (xs || []).map((x) => (x.id === h.id ? h : x)));
+            setEditing(null);
           }}
         />
       )}
@@ -135,6 +207,8 @@ function HighlightViewer({
   onIndex,
   onClose,
   onDelete,
+  onReact,
+  onEdit,
 }: {
   items: Highlight[];
   index: number;
@@ -142,6 +216,8 @@ function HighlightViewer({
   onIndex: (i: number) => void;
   onClose: () => void;
   onDelete: (id: string) => void;
+  onReact: (id: string, emoji: string) => void;
+  onEdit: (h: Highlight) => void;
 }) {
   const h = items[index];
   const a = accentOf(h.accent);
@@ -231,8 +307,59 @@ function HighlightViewer({
               {h.body}
             </p>
           )}
+
+          {/* Reactions — colleagues cheer; the owner sees the tally read-only. */}
+          <div className="mt-6 flex items-center gap-1.5 flex-wrap">
+            {REACTIONS.map((e) => {
+              const found = h.reactions.find((r) => r.emoji === e);
+              const count = found?.count || 0;
+              const mine = h.myReaction === e;
+              if (isSelf) {
+                if (!count) return null;
+                return (
+                  <span
+                    key={e}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] px-2.5 py-1 text-[13px] font-semibold text-slate-600 dark:text-white/70 leading-none"
+                  >
+                    <span>{e}</span> {count}
+                  </span>
+                );
+              }
+              return (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => onReact(h.id, e)}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[14px] leading-none transition-all hover:scale-105 ${
+                    mine
+                      ? 'border-blue-300 bg-blue-50 dark:bg-blue-500/15 dark:border-blue-400/40'
+                      : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] hover:border-slate-300'
+                  }`}
+                  aria-pressed={mine}
+                  aria-label={`React ${e}`}
+                >
+                  <span>{e}</span>
+                  {count > 0 && (
+                    <span className="text-[12px] font-bold text-slate-600 dark:text-white/70">{count}</span>
+                  )}
+                </button>
+              );
+            })}
+            {isSelf && h.totalReactions === 0 && (
+              <span className="text-[12px] text-slate-400">
+                No reactions yet — share what you're building.
+              </span>
+            )}
+          </div>
+
           {isSelf && (
-            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/[0.06] flex justify-end">
+            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-end gap-4">
+              <button
+                onClick={() => onEdit(h)}
+                className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-slate-400 hover:text-blue-500 transition-colors"
+              >
+                <Pencil size={14} /> Edit
+              </button>
               <button
                 onClick={() => onDelete(h.id)}
                 className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-slate-400 hover:text-red-500 transition-colors"
@@ -251,16 +378,21 @@ function HighlightViewer({
 /* ── Composer ───────────────────────────────────────────────────────────────── */
 function HighlightComposer({
   userId,
+  initial,
   onClose,
   onCreated,
+  onSaved,
 }: {
   userId: string;
+  initial?: Highlight;
   onClose: () => void;
   onCreated: (h: Highlight) => void;
+  onSaved: (h: Highlight) => void;
 }) {
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [accent, setAccent] = useState('blue');
+  const editingId = initial?.id;
+  const [title, setTitle] = useState(initial?.title || '');
+  const [body, setBody] = useState(initial?.body || '');
+  const [accent, setAccent] = useState(initial?.accent || 'blue');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
@@ -269,11 +401,19 @@ function HighlightComposer({
     setSaving(true);
     setErr('');
     try {
-      const h = await api<Highlight>(`/users/${userId}/highlights`, {
-        method: 'POST',
-        body: { title: title.trim(), body: body.trim(), accent },
-      });
-      onCreated(h);
+      if (editingId) {
+        const h = await api<Highlight>(`/users/${userId}/highlights/${editingId}`, {
+          method: 'PATCH',
+          body: { title: title.trim(), body: body.trim(), accent },
+        });
+        onSaved(h);
+      } else {
+        const h = await api<Highlight>(`/users/${userId}/highlights`, {
+          method: 'POST',
+          body: { title: title.trim(), body: body.trim(), accent },
+        });
+        onCreated(h);
+      }
     } catch (e: any) {
       setErr(e.message || 'Could not save.');
       setSaving(false);
@@ -299,7 +439,9 @@ function HighlightComposer({
             >
               <Sparkles size={16} className="text-white" />
             </span>
-            <h3 className="text-base font-black text-slate-900 dark:text-white">New highlight</h3>
+            <h3 className="text-base font-black text-slate-900 dark:text-white">
+              {editingId ? 'Edit highlight' : 'New highlight'}
+            </h3>
             <button
               onClick={onClose}
               className="ml-auto p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white/70 transition-colors"
@@ -355,7 +497,7 @@ function HighlightComposer({
               Cancel
             </button>
             <button onClick={save} disabled={saving || !title.trim()} className="btn-primary text-sm">
-              {saving ? 'Posting…' : 'Post highlight'}
+              {saving ? 'Saving…' : editingId ? 'Save changes' : 'Post highlight'}
             </button>
           </div>
         </div>
