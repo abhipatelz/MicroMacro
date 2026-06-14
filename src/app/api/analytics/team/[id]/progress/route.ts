@@ -6,6 +6,7 @@ import { Team } from '@/models/Team';
 import { User } from '@/models/User';
 import { isLead, requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
+import { projectRef } from '@/lib/projectRef';
 
 export const runtime = 'nodejs';
 
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!team) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const projects = await Project.find({ teamId: params.id })
-      .select('code name status lifecycle dueDate')
+      .select('code ccNo name status lifecycle dueDate')
       .lean();
     const projectIds = projects.map((p) => p._id);
     const now = new Date();
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({
       projects: [...pMap.values()].map((p) => ({
         id: String(p._id),
-        code: p.code,
+        code: projectRef(p),
         name: p.name,
         status: p.status,
         lifecycle: p.lifecycle,

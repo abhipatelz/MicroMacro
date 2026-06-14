@@ -5,6 +5,7 @@ import { Project } from '@/models/Project';
 import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
+import { projectRef } from '@/lib/projectRef';
 import { NOT_PERSONAL } from '@/lib/leadScope';
 
 export const runtime = 'nodejs';
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     const [tasks, allProjects] = await Promise.all([
       Task.find({ assigneeId: userId }).lean(),
       Project.find({ $or: [NOT_PERSONAL, { ownerId: userId }] })
-        .select('_id code name lifecycle')
+        .select('_id code ccNo name lifecycle')
         .lean(),
     ]);
     const pMap = new Map(allProjects.map((p) => [String(p._id), p]));
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
             completedAt: s.completedAt,
             taskTitle: t.title,
             taskId: String(t._id),
-            projectCode: p?.code,
+            projectCode: projectRef(p),
             projectName: p?.name,
           });
         }
@@ -66,7 +67,7 @@ export async function GET(req: NextRequest) {
       tasks: sortedTasks.map((t) => {
         const p = pMap.get(String(t.projectId));
         return taskS(t, {
-          projectCode: p?.code,
+          projectCode: projectRef(p),
           projectName: p?.name,
           lifecycle: p?.lifecycle,
           subtaskCount: ((t as any).subtasks || []).length,

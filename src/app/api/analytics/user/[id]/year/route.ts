@@ -6,6 +6,7 @@ import { Project } from '@/models/Project';
 import { isLead, requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { NOT_PERSONAL } from '@/lib/leadScope';
+import { projectRef } from '@/lib/projectRef';
 import { cached } from '@/lib/cache';
 
 export const runtime = 'nodejs';
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           _id: { $in: rawProjectIds.map((id) => new mongoose.Types.ObjectId(id)) },
           ...(viewingSelf ? {} : NOT_PERSONAL),
         })
-          .select('_id code name lifecycle')
+          .select('_id code ccNo name lifecycle')
           .lean();
         const pMap = new Map(projects.map((p) => [String(p._id), p]));
         const completedTasks = viewingSelf
@@ -85,7 +86,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
                   ? Math.round((new Date(s.dueDate).getTime() - new Date(s.completedAt).getTime()) / 86400000)
                   : null,
                 taskTitle: t.title,
-                projectCode: p?.code,
+                projectCode: projectRef(p),
                 projectName: p?.name,
               });
             }
@@ -108,7 +109,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
             completedAt: t.completedAt,
             daysEarly,
             isBig,
-            projectCode: p?.code,
+            projectCode: projectRef(p),
             projectName: p?.name,
             lifecycle: p?.lifecycle,
           };

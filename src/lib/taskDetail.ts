@@ -4,6 +4,7 @@ import { Project } from '@/models/Project';
 import { User } from '@/models/User';
 import { task as taskS, date as toIso } from '@/lib/serialize';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
+import { projectRef } from '@/lib/projectRef';
 
 /**
  * Assemble the full task-detail payload for `id`, scoped to the viewer.
@@ -35,7 +36,7 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
 
     const [project, assignee, qa, commentUsers, flowConfirmer] = await Promise.all([
       Project.findById((t as any).projectId)
-        .select('code name teamId')
+        .select('code ccNo name teamId')
         .lean(),
       (t as any).assigneeId ? User.findById((t as any).assigneeId).lean() : Promise.resolve(null),
       (t as any).qaSignoffUserId ? User.findById((t as any).qaSignoffUserId).lean() : Promise.resolve(null),
@@ -80,7 +81,7 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
         assigneeName: (assignee as any)?.name || null,
         assigneeActive: assignee ? (assignee as any).active !== false : null,
         qaSignoffName: (qa as any)?.name || null,
-        projectCode: (project as any)?.code,
+        projectCode: projectRef(project as any),
         projectName: (project as any)?.name,
         projectTeamId: (project as any)?.teamId ? String((project as any).teamId) : null,
         flowPendingConfirmedByName: (flowConfirmer as any)?.name || null,

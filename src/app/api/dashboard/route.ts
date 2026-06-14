@@ -6,6 +6,7 @@ import { Task } from '@/models/Task';
 import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { task as taskS } from '@/lib/serialize';
+import { projectRef } from '@/lib/projectRef';
 import { NOT_PERSONAL } from '@/lib/leadScope';
 import mongoose from 'mongoose';
 
@@ -108,7 +109,7 @@ export async function GET(req: NextRequest) {
     const taskList = sortedTasks.map((t) => {
       const p = pMap.get(String(t.projectId));
       return taskS(t, {
-        projectCode: p?.code,
+        projectCode: projectRef(p),
         projectName: p?.name,
         lifecycle: p?.lifecycle,
         subtaskCount: ((t as any).subtasks || []).length,

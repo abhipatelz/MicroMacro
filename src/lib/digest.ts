@@ -6,6 +6,7 @@ import { Project } from '@/models/Project';
 import { DigestSetting, type DigestSettingDoc } from '@/models/DigestSetting';
 import { sendEmail, mailerConfigured } from '@/lib/mailer';
 import { resolveIndustry, pickInsight } from '@/lib/insights';
+import { projectRef } from '@/lib/projectRef';
 import { normalizeRole } from '@/lib/auth';
 
 /**
@@ -283,6 +284,9 @@ export interface RenderInput {
   name: string;
   sections: DigestSections;
   projectName: (projectId: string | null) => string | null;
+  /** The user-facing reference (ccNo||code) shown on task rows. Falls back to
+   *  projectName when a caller doesn't supply it. */
+  projectRef?: (projectId: string | null) => string | null;
   appUrl: string;
   introNote?: string;
   test?: boolean;
@@ -528,6 +532,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     name,
     sections,
     projectName,
+    projectRef,
     appUrl,
     test,
     dateLabel,
@@ -537,6 +542,9 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     leadershipBrief,
     foresightLine,
   } = input;
+  // Task rows show the project *reference* (ccNo||code) to match the app; fall
+  // back to the name when a caller predates the projectRef resolver.
+  const projLabel = (pid: string | null) => (projectRef ? projectRef(pid) : projectName(pid));
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   const weekday = dateLabel.split(/[ ,]/)[0] || 'daily';
 
@@ -559,7 +567,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     soon: sections.soon,
   };
 
-  const row = (t: DigestTask) => renderTaskRow(t, projectName(t.projectId), appUrl);
+  const row = (t: DigestTask) => renderTaskRow(t, projLabel(t.projectId), appUrl);
   const sectionsHtml = [
     renderSection('Also overdue', rest.overdue.map(row).join(''), '#b91c1c'),
     renderSection(
@@ -646,7 +654,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
             : escapeHtml(focus.title)
         }</div>
         <div style="font-size:12px;color:#64748b;margin-top:3px;">${escapeHtml(focus.label)}${
-          projectName(focus.projectId) ? ` · ${escapeHtml(projectName(focus.projectId)!)}` : ''
+          projLabel(focus.projectId) ? ` · ${escapeHtml(projLabel(focus.projectId)!)}` : ''
         } — clear this and the day tilts your way.</div>
       </div>`
     : '';
@@ -746,7 +754,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     );
   }
   if (focus) {
-    const pn = projectName(focus.projectId);
+    const pn = projLabel(focus.projectId);
     lines.push('START HERE', `  → [${focus.label}] ${focus.title}${pn ? ` (${pn})` : ''}`, '');
   }
   if (foresightLine) {
@@ -756,7 +764,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     if (!items.length) return;
     lines.push(heading.toUpperCase());
     for (const t of items) {
-      const pn = projectName(t.projectId);
+      const pn = projLabel(t.projectId);
       lines.push(`  • [${t.label}] ${t.title}${pn ? ` (${pn})` : ''}`);
     }
     lines.push('');
@@ -965,10 +973,13 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
   for (const list of projectUpdatesByUser.values()) for (const p of list) projectIds.add(p.projectId);
   const projDocs = projectIds.size
     ? await Project.find({ _id: { $in: [...projectIds] } })
-        .select('_id name')
+        .select('_id name code ccNo')
         .lean()
     : [];
   const projName = new Map<string, string>(projDocs.map((p: any) => [String(p._id), p.name]));
+  // The user-facing reference (ccNo when set, else system code) — shown on task
+  // rows so the digest matches whatever the member changed it to in the app.
+  const projRef = new Map<string, string>(projDocs.map((p: any) => [String(p._id), projectRef(p)]));
 
   const forceSend = isOneShot;
 
@@ -1077,6 +1088,7 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       role,
       sections,
       projectName: (pid) => (pid ? projName.get(pid) || null : null),
+      projectRef: (pid) => (pid ? projRef.get(pid) || null : null),
       appUrl,
       introNote: settings.introNote || '',
       test: opts.test,
