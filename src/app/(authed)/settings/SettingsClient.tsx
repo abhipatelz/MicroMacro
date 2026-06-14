@@ -45,7 +45,6 @@ import { MonogramEditor } from '@/components/MonogramEditor';
 import { ProfileHighlights } from '@/components/ProfileHighlights';
 import { linkMeta, type LinkBrand } from '@/lib/links';
 import { ProfileHero } from '@/components/ProfileHero';
-import { ProfileQuickLinks } from '@/components/ProfileQuickLinks';
 
 /* ── Profile avatar wrapper ───────────────────────────────────────────────
    Renders the user's monogram avatar with a hover-overlay "edit" hint.
@@ -1501,7 +1500,6 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
         location={user.location}
         organisation={user.organisation}
         linkUsername
-        accent={avatarBg}
         avatar={
           <ProfileAvatar
             name={user.name}
@@ -1556,7 +1554,6 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
             </button>
           </div>
         }
-        footer={<ProfileQuickLinks />}
       />
 
       {/* Highlights — story-style, text-only. Owner can add/remove here. */}

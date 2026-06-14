@@ -45,27 +45,20 @@ export default async function PublicProfilePage({ params }: { params: { username
   if (!profile?.id) notFound();
   const isSelf = profile.id === jwt.sub;
 
-  // Social + impact numbers, all in one parallel burst. The impact row is
-  // server-rendered so a profile makes its first impression instantly —
-  // the heatmap below streams in later. Counts only cover shared work the
-  // viewer could navigate to anyway; personal-project tasks are assigned to
-  // their owner inside owner-private projects and carry no titles here, so
-  // aggregate counts leak nothing actionable.
+  // Impact numbers, in one parallel burst. The impact row is server-rendered
+  // so a profile makes its first impression instantly — the heatmap below
+  // streams in later. Counts only cover shared work the viewer could navigate
+  // to anyway; personal-project tasks are assigned to their owner inside
+  // owner-private projects and carry no titles here, so aggregate counts leak
+  // nothing actionable.
   const targetId = String((doc as any)._id);
   const startOfYear = new Date(new Date().getFullYear(), 0, 1);
-  const [followerCount, viewerDoc, totalDone, doneThisYear, projectIds, momentum] = await Promise.all([
-    User.countDocuments({ following: (doc as any)._id }),
-    isSelf ? Promise.resolve(null) : User.findById(jwt.sub).select('following').lean(),
+  const [totalDone, doneThisYear, projectIds, momentum] = await Promise.all([
     Task.countDocuments({ assigneeId: targetId, status: 'done' }),
     Task.countDocuments({ assigneeId: targetId, status: 'done', completedAt: { $gte: startOfYear } }),
     Task.distinct('projectId', { assigneeId: targetId }),
     momentumStats(targetId),
   ]);
-
-  // Does the logged-in viewer already follow this profile?
-  const viewerIsFollowing = isSelf
-    ? false
-    : ((viewerDoc as any)?.following || []).some((id: any) => String(id) === profile.id);
 
   return (
     <ProfileView
@@ -73,9 +66,6 @@ export default async function PublicProfilePage({ params }: { params: { username
         ...profile,
         id: profile.id,
         githubUrl: profile.githubUrl || '',
-        followingCount: profile.following?.length ?? 0,
-        followerCount,
-        viewerIsFollowing,
         joinedAt: (doc as any).createdAt ? new Date((doc as any).createdAt).toISOString() : null,
         stats: {
           totalDone,

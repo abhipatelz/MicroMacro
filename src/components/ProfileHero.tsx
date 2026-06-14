@@ -3,43 +3,20 @@ import Link from 'next/link';
 import { ReactNode } from 'react';
 import { MapPin, Building2, Briefcase, Fingerprint } from 'lucide-react';
 
-/* ── Accent helpers ─────────────────────────────────────────────────────────
-   Derive a cohesive cover gradient, avatar ring and soft glow from one base
-   colour — the member's own monogram colour — so every profile feels like
-   *theirs* instead of sharing a single brand band. Missing / invalid colours
-   fall back to the Pragati blue→green brand gradient, so callers that pass no
-   accent (e.g. the settings page) look exactly as before. */
-type RGB = [number, number, number];
-function parseHex(hex?: string | null): RGB | null {
-  if (!hex) return null;
-  let h = hex.trim().replace('#', '');
-  if (h.length === 3)
-    h = h
-      .split('')
-      .map((c) => c + c)
-      .join('');
-  if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
-}
-/** Mix a colour toward white (p>0) or black (p<0) by |p| (0–1). */
-function shade([r, g, b]: RGB, p: number): RGB {
-  const t = p < 0 ? 0 : 255;
-  const a = Math.abs(p);
-  return [Math.round((t - r) * a + r), Math.round((t - g) * a + g), Math.round((t - b) * a + b)];
-}
-const rgbStr = ([r, g, b]: RGB, a = 1) =>
-  a === 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${a})`;
-
 /**
  * Shared profile hero — used on both the editable settings page (self) and
  * the read-only public profile at /[username].
  *
- * Design: a layered, per-member brand-gradient cover that the glowing
- * brand-ring avatar straddles, then name + role and quiet metadata, with an
- * optional footer strip for social proof / links so the whole identity reads
- * as one self-contained unit. Keeping one component means a user's profile
- * looks consistent whether they're editing their own or viewing a colleague's.
+ * Design: a layered brand-gradient cover that the glowing brand-ring avatar
+ * straddles, then name + role and quiet metadata, with an optional footer
+ * strip for links so the whole identity reads as one self-contained unit. One
+ * consistent Pragati cover for everyone — deliberately not tinted per person,
+ * which read as noisy. Keeping one component means a user's profile looks
+ * consistent whether they're editing their own or viewing a colleague's.
  */
+const COVER = 'linear-gradient(115deg, #1565C0 0%, #1976D2 38%, #2E7D32 100%)';
+const RING = 'conic-gradient(from 210deg, #1565C0, #2E7D32, #1976D2, #1565C0)';
+const GLOW = 'rgba(21, 101, 192, 0.32)';
 export function ProfileHero({
   name,
   username,
@@ -53,7 +30,6 @@ export function ProfileHero({
   avatarExtra,
   actions,
   footer,
-  accent,
   linkUsername = false,
   showMemberId = true,
 }: {
@@ -72,23 +48,16 @@ export function ProfileHero({
   avatarExtra?: ReactNode;
   /** Right-side action slot over the cover — Edit (self) or Follow (public). */
   actions?: ReactNode;
-  /** Optional strip below the identity block — social proof, links, share. */
+  /** Optional strip below the identity block — links, share, etc. */
   footer?: ReactNode;
-  /** Base accent colour (hex). Personalises the cover/ring/glow per member. */
-  accent?: string | null;
   /** When true, @username links to the public profile route. */
   linkUsername?: boolean;
   /** Member ID is internal — hidden on the public profile view. */
   showMemberId?: boolean;
 }) {
-  const base = parseHex(accent);
-  const cover = base
-    ? `linear-gradient(120deg, ${rgbStr(shade(base, -0.3))} 0%, ${rgbStr(base)} 48%, ${rgbStr(shade(base, 0.2))} 100%)`
-    : 'linear-gradient(115deg, #1565C0 0%, #1976D2 38%, #2E7D32 100%)';
-  const ring = base
-    ? `conic-gradient(from 210deg, ${rgbStr(shade(base, -0.12))}, ${rgbStr(shade(base, 0.22))}, ${rgbStr(base)}, ${rgbStr(shade(base, -0.12))})`
-    : 'conic-gradient(from 210deg, #1565C0, #2E7D32, #1976D2, #1565C0)';
-  const glow = base ? rgbStr(base, 0.4) : 'rgba(21, 101, 192, 0.32)';
+  const cover = COVER;
+  const ring = RING;
+  const glow = GLOW;
 
   const meta = [
     title ? { icon: Briefcase, text: title } : null,

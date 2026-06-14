@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
 import { Highlight } from '@/models/Highlight';
-import { User } from '@/models/User';
 import { requireUser } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
-import { notify } from '@/lib/notify';
 import { HIGHLIGHT_ACCENTS, serializeHighlight } from '@/lib/highlights';
 
 export const runtime = 'nodejs';
@@ -54,26 +52,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
     const { title, body, accent } = await readBody(req, CreateBody);
     const h = await Highlight.create({ userId: user.sub, title, body: body || '', accent: accent || 'blue' });
-
-    // Reach: let followers know there's something new to see. Best-effort —
-    // a notification hiccup must never fail the post. Workspace-scale fan-out.
-    try {
-      const followers = await User.find({ following: user.sub }).select('_id').lean();
-      await Promise.all(
-        followers.map((f) =>
-          notify({
-            userId: String(f._id),
-            actorId: user.sub,
-            type: 'general',
-            title: `${user.name} shared a new highlight`,
-            body: title,
-          }),
-        ),
-      );
-    } catch {
-      /* ignore — best-effort */
-    }
-
     return NextResponse.json(serializeHighlight(h, user.sub));
   } catch (e) {
     return handleError(e);

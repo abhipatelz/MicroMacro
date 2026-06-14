@@ -14,9 +14,6 @@ import {
   Youtube,
   Mail,
   Globe,
-  Users,
-  UserCheck,
-  UserPlus,
   CheckCircle2,
   CalendarRange,
   FolderKanban,
@@ -24,11 +21,8 @@ import {
   Link as LinkIcon,
   Check,
 } from 'lucide-react';
-import { api } from '@/lib/client/api';
 import { linkMeta, type LinkBrand } from '@/lib/links';
 import { ProfileHighlights } from '@/components/ProfileHighlights';
-import { ConnectionsModal, type ConnectionTab } from '@/components/ConnectionsModal';
-import { ProfileQuickLinks } from '@/components/ProfileQuickLinks';
 
 // Map a detected brand to a lucide icon. Anything without a dedicated mark
 // (Medium, Dribbble, a personal site, …) renders the clean Globe chip — its
@@ -54,25 +48,6 @@ const ActivityGraph = dynamic(() => import('@/components/ActivityGraph').then((m
   ssr: false,
   loading: () => <div className="h-40 rounded-xl bg-slate-50 animate-pulse" />,
 });
-
-/* A readable text colour from the member's accent: dark accents are used as-is;
-   very light ones (peach, sky, mint…) are darkened so accent-coloured text
-   stays legible on a white pill. */
-function readableAccent(hex?: string | null): string {
-  const m = /^#?([0-9a-fA-F]{6})$/.exec((hex || '').trim());
-  if (!m) return '#1565C0';
-  const n = parseInt(m[1], 16);
-  let r = (n >> 16) & 255;
-  let g = (n >> 8) & 255;
-  let b = n & 255;
-  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-  if (luminance > 150) {
-    r = Math.round(r * 0.5);
-    g = Math.round(g * 0.5);
-    b = Math.round(b * 0.5);
-  }
-  return `rgb(${r}, ${g}, ${b})`;
-}
 
 /* Animate a number from 0 → target on mount (easeOutCubic). Honours
    prefers-reduced-motion by jumping straight to the value, so the figure is
@@ -166,9 +141,6 @@ export default function ProfileView({
     avatarImage?: string;
     githubUrl?: string;
     links?: { url: string; label?: string }[];
-    followingCount?: number;
-    followerCount?: number;
-    viewerIsFollowing?: boolean;
     joinedAt?: string | null;
     stats?: {
       totalDone: number;
@@ -182,41 +154,6 @@ export default function ProfileView({
   const isLeadOrAdmin = profile.role === 'lead' || profile.role === 'admin';
   const roleText =
     profile.role === 'admin' ? 'Admin' : isLeadOrAdmin ? 'Team Lead' : 'Individual Contributor';
-
-  // Per-member accent, derived from their monogram colour. Personalises the
-  // hero cover/ring (handled in ProfileHero) and the Follow CTA / link hovers.
-  const accent =
-    profile.avatarBg && /^#[0-9a-fA-F]{6}$/.test(profile.avatarBg) ? profile.avatarBg : undefined;
-  const accentText = readableAccent(profile.avatarBg);
-
-  // Follow / unfollow state — initialised from the server-rendered prop.
-  const [following, setFollowing] = useState(!!profile.viewerIsFollowing);
-  const [hoveringFollow, setHoveringFollow] = useState(false);
-  const [busy, setBusy] = useState(false);
-  // Optimistic follower count
-  const [followerCount, setFollowerCount] = useState(profile.followerCount ?? 0);
-  // Which connection list (if any) is open in the modal.
-  const [connTab, setConnTab] = useState<ConnectionTab | null>(null);
-
-  async function toggleFollow() {
-    if (busy) return;
-    setBusy(true);
-    const wasFollowing = following;
-    // Optimistic update
-    setFollowing(!wasFollowing);
-    setFollowerCount((c) => c + (wasFollowing ? -1 : 1));
-    try {
-      await api(`/users/${profile.id}/follow`, {
-        method: wasFollowing ? 'DELETE' : 'POST',
-      });
-    } catch {
-      // Revert on error
-      setFollowing(wasFollowing);
-      setFollowerCount((c) => c + (wasFollowing ? 1 : -1));
-    } finally {
-      setBusy(false);
-    }
-  }
 
   const firstName = profile.name.split(/\s+/)[0];
 
@@ -285,7 +222,7 @@ export default function ProfileView({
       ]
     : [];
 
-  // ── Frosted action pill over the cover — legible on any accent colour ──────
+  // ── Frosted action pill over the cover — Edit (self) only ──────────────────
   const coverAction = isSelf ? (
     <Link
       href="/settings"
@@ -293,73 +230,16 @@ export default function ProfileView({
     >
       <Pencil size={12} /> Edit profile
     </Link>
-  ) : (
-    <button
-      onClick={toggleFollow}
-      disabled={busy}
-      onMouseEnter={() => setHoveringFollow(true)}
-      onMouseLeave={() => setHoveringFollow(false)}
-      className="inline-flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-black/30 backdrop-blur px-3.5 py-1.5 text-[12px] font-bold shadow-sm ring-1 ring-black/5 transition hover:scale-[1.03] disabled:opacity-60"
-      style={{
-        color: following ? (hoveringFollow ? '#dc2626' : '#16a34a') : accentText,
-      }}
-    >
-      {following ? (
-        hoveringFollow ? (
-          <>
-            <UserCheck size={13} /> Unfollow
-          </>
-        ) : (
-          <>
-            <UserCheck size={13} /> Following
-          </>
-        )
-      ) : (
-        <>
-          <UserPlus size={13} /> Follow
-        </>
-      )}
-    </button>
-  );
+  ) : null;
 
-  // ── Hero footer — social proof + links + share, folded into the hero card ──
+  // ── Hero footer — tenure + links + share, folded into the hero card ────────
   const heroFooter = (
     <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
       <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
-        <button
-          onClick={() => setConnTab('followers')}
-          className="flex items-center gap-1.5 rounded-md -mx-1 px-1 hover:text-slate-700 dark:hover:text-white/80 transition-colors"
-        >
-          <Users size={14} className="text-slate-400" />
-          <span>
-            <strong className="font-bold text-slate-700 dark:text-white/80">{followerCount}</strong>{' '}
-            {followerCount === 1 ? 'follower' : 'followers'}
-          </span>
-        </button>
-        <span className="text-slate-300">·</span>
-        <button
-          onClick={() => setConnTab('following')}
-          className="flex items-center gap-1.5 rounded-md -mx-1 px-1 hover:text-slate-700 dark:hover:text-white/80 transition-colors"
-        >
-          <UserCheck size={14} className="text-slate-400" />
-          <span>
-            follows{' '}
-            <strong className="font-bold text-slate-700 dark:text-white/80">
-              {profile.followingCount ?? 0}
-            </strong>
-          </span>
-        </button>
-        {joined && (
-          <>
-            <span className="text-slate-300">·</span>
-            <span className="text-slate-400">Joined {joined}</span>
-          </>
-        )}
+        {joined && <span className="text-slate-400">Joined {joined}</span>}
       </div>
 
       <div className="flex items-center gap-2.5 flex-wrap">
-        <ProfileQuickLinks />
-        {allLinks.length > 0 && <span className="w-px h-5 bg-slate-200 dark:bg-white/10" aria-hidden />}
         {allLinks.map((l, i) => {
           const m = linkMeta(l.url, l.label);
           const Icon = BRAND_ICON[m.brand] || Globe;
@@ -403,7 +283,6 @@ export default function ProfileView({
         department={profile.department}
         location={profile.location}
         organisation={profile.organisation}
-        accent={accent}
         avatar={
           <Avatar
             name={profile.name}
@@ -453,17 +332,6 @@ export default function ProfileView({
           </div>
         </div>
       </div>
-
-      {connTab && (
-        <ConnectionsModal
-          userId={profile.id}
-          name={profile.name}
-          tab={connTab}
-          followerCount={followerCount}
-          followingCount={profile.followingCount ?? 0}
-          onClose={() => setConnTab(null)}
-        />
-      )}
     </div>
   );
 }

@@ -16,7 +16,7 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
-  Target,
+  ChevronRight,
   BookmarkCheck,
   Shield,
   PenLine,
@@ -104,45 +104,6 @@ function useDateLabel() {
     return () => clearInterval(t);
   }, []);
   return label;
-}
-
-function ProgressRing({ done, total }: { done: number; total: number }) {
-  const allDone = total > 0 && done === total;
-  const pct = total ? Math.round((done / total) * 100) : 0;
-
-  return (
-    <div className="w-[116px] rounded-2xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.03]">
-      <div className="flex items-center gap-2">
-        <div
-          className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ${
-            allDone
-              ? 'bg-emerald-500 text-white'
-              : total > 0
-                ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400'
-                : 'bg-slate-50 text-slate-300 dark:bg-white/[0.04] dark:text-white/20'
-          }`}
-        >
-          {allDone ? <Check size={16} strokeWidth={3} /> : <Target size={15} />}
-        </div>
-        <div className="min-w-0">
-          <div className="text-sm font-black tabular-nums text-slate-800 dark:text-white/85">
-            {total > 0 ? `${done}/${total}` : 'Clear'}
-          </div>
-          <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">
-            {allDone ? 'Complete' : total > 0 ? `${pct}% done` : 'No tasks'}
-          </div>
-        </div>
-      </div>
-      {total > 0 && !allDone && (
-        <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.07]">
-          <div
-            className="h-full rounded-full bg-blue-600 transition-all duration-700"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      )}
-    </div>
-  );
 }
 
 /* ── Notes panel (collapsible section) ───────────────────────────────────── */
@@ -622,9 +583,8 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
   const [editText, setEditText] = useState('');
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [justDone, setJustDone] = useState<string | null>(null);
+  const [showDone, setShowDone] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const total = open.length + done.length;
 
   function markSaved() {
     setSavedAt(new Date());
@@ -752,10 +712,6 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
                 <span className="text-[12px] text-slate-500 dark:text-white/40 font-medium">{dateLabel}</span>
               </div>
             )}
-          </div>
-
-          <div className="shrink-0 mt-0.5">
-            <ProgressRing done={done.length} total={total} />
           </div>
         </div>
       </div>
@@ -919,6 +875,60 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* ── Completed — tucked into an expandable section below ─────── */}
+          {done.length > 0 && (
+            <div className="mt-5">
+              <button
+                onClick={() => setShowDone((v) => !v)}
+                className="inline-flex items-center gap-1.5 text-[12px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-white/60 transition-colors"
+              >
+                <ChevronRight
+                  size={14}
+                  className={`shrink-0 transition-transform ${showDone ? 'rotate-90' : ''}`}
+                />
+                Completed ({done.length})
+              </button>
+              {showDone && (
+                <div className="mt-2 space-y-1 fade-in-soft">
+                  {done.map((n) => (
+                    <div
+                      key={n.id}
+                      className="group flex items-center min-w-0 gap-3 rounded-xl border border-slate-200/60 px-3.5 py-2.5 dark:border-white/[0.05] bg-slate-50/50 dark:bg-white/[0.02]"
+                    >
+                      <button
+                        onClick={() => toggle(n)}
+                        aria-label="Mark not done"
+                        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border border-emerald-500 bg-emerald-500 transition-opacity hover:opacity-80"
+                      >
+                        <Check size={11} className="text-white" strokeWidth={3} />
+                      </button>
+                      <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-400 line-through dark:text-white/40">
+                        {n.text}
+                      </span>
+                      <div className="flex shrink-0 items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                        {n.promotedTaskId && (
+                          <a
+                            href={`/tasks/${n.promotedTaskId}`}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                          >
+                            <BookmarkCheck size={12} /> task
+                          </a>
+                        )}
+                        <button
+                          onClick={() => remove(n)}
+                          aria-label="Delete"
+                          className="rounded p-0.5 text-slate-300 transition-colors hover:text-red-500 dark:text-white/15 dark:hover:text-red-400"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
