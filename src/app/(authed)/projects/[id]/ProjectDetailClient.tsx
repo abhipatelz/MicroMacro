@@ -42,6 +42,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
+import { ForecastChip } from '@/components/ForecastChip';
 import { chimeIfEnabled, playDropTick } from '@/lib/sound';
 import { Celebration } from '@/components/Celebration';
 import { TaskCompletePop } from '@/components/TaskCompletePop';
@@ -1827,7 +1828,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
               )}
             </div>
           )}
-          <div className="flex flex-wrap gap-1.5 mt-2">
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {!project.isPersonal && !project.archived && <ForecastChip projectId={project.id} />}
             {project.isPersonal && (
               <span className="tag border border-violet-200 bg-violet-50 text-violet-700 font-semibold inline-flex items-center gap-1.5">
                 <Lock size={11} /> Private
