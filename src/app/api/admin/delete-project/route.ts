@@ -3,6 +3,8 @@ import { getCurrentUserFromCookie, isAdmin } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
+import { Notification } from '@/models/Notification';
+import { TaskFlowEvent } from '@/models/TaskFlowEvent';
 import { User } from '@/models/User';
 import { logOperation } from '@/lib/audit';
 import { NOT_PERSONAL } from '@/lib/leadScope';
@@ -56,8 +58,13 @@ export async function DELETE(req: NextRequest) {
 
   const projectId = String((project as any)._id);
 
-  // Delete all tasks in the project
+  // Delete all tasks in the project, cascading to every record that points at
+  // them or at the project — notifications and flow events — so nothing is
+  // left dangling (a notification deep-linking a deleted task would 404).
+  const taskIds = (await Task.find({ projectId }, '_id').lean()).map((t: any) => String(t._id));
   const deletedTasks = await Task.deleteMany({ projectId });
+  await Notification.deleteMany({ $or: [{ projectId }, { taskId: { $in: taskIds } }] });
+  await TaskFlowEvent.deleteMany({ taskId: { $in: taskIds } });
 
   // Delete the project itself
   await Project.deleteOne({ _id: (project as any)._id });

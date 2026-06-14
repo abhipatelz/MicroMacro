@@ -84,13 +84,11 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
   };
 
   return (
-    <div className="space-y-5 max-w-[1120px]">
+    <div className="space-y-5 max-w-6xl">
       {/* Header */}
       <div className="flex items-start justify-between pt-1">
         <div>
-          <h1 className="text-[1.75rem] font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-            Projects
-          </h1>
+          <h1 className="page-title">Projects</h1>
           <p className="text-sm text-slate-500 dark:text-white/40 mt-1">
             All quality projects across teams &amp; lifecycles.
           </p>
@@ -200,7 +198,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
       {!loaded && (
         <div
           className="grid gap-5"
-          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))' }}
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}
           aria-busy="true"
           aria-live="polite"
         >
@@ -229,7 +227,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
 
       {/* Grid */}
       {loaded && (
-        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))' }}>
+        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
           {projects.map((p) => {
             const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
             const overdueRatio = p.taskCount ? (p.tasksOverdue || 0) / p.taskCount : 0;

@@ -15,7 +15,11 @@ export const runtime = 'nodejs';
 const Patch = z.object({
   title: z.string().max(300).optional(),
   status: z.enum(['todo', 'in_progress', 'done']).optional(),
-  assigneeId: z.string().nullable().optional(),
+  // ObjectId, empty, or null — never free text (avoids dangling references).
+  assigneeId: z
+    .union([z.string().regex(/^[a-f\d]{24}$/i, 'Invalid assignee'), z.literal('')])
+    .nullable()
+    .optional(),
   dueDate: z.string().nullable().optional(),
 });
 

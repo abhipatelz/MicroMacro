@@ -171,6 +171,10 @@ TaskSchema.index({ status: 1, completedAt: -1 });
 // the equality pair + range directly, keeping those per-request reads
 // index-only as task history grows.
 TaskSchema.index({ assigneeId: 1, status: 1, completedAt: -1 });
+// Serves the daily digest / calendar-feed query: a user's open tasks by due
+// date (assigneeId equality + status filter + dueDate range), so the digest
+// stays index-only as the task collection grows.
+TaskSchema.index({ assigneeId: 1, status: 1, dueDate: 1 });
 // Covers the dashboard aggregate: match on projectId, group on status/dueDate
 TaskSchema.index({ projectId: 1, status: 1, dueDate: 1 });
 TaskSchema.index({ projectId: 1, assigneeId: 1, status: 1 });

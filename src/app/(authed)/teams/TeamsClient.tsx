@@ -95,13 +95,11 @@ export default function TeamsClient({
   const filtered = teams;
 
   return (
-    <div className="space-y-5 max-w-[1120px]">
+    <div className="space-y-5 max-w-6xl">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap pt-1">
         <div>
-          <h1 className="text-[1.75rem] font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-            Teams
-          </h1>
+          <h1 className="page-title">Teams</h1>
           <p className="text-sm text-slate-500 dark:text-white/40 mt-1">
             Cross-functional groups — people, projects, and shared accountability.
           </p>
@@ -132,7 +130,7 @@ export default function TeamsClient({
           )}
         </div>
       ) : (
-        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))' }}>
+        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
           {filtered.map((t) => (
             <TeamCard
               key={t.id}
@@ -207,7 +205,7 @@ function TeamCard({
   const extra = Math.max(0, members.length - visibleMembers.length);
 
   return (
-    <div className="card p-6 group hover:shadow-md hover:-translate-y-0.5 transition-[transform,box-shadow] flex flex-col min-h-[220px]">
+    <div className="card p-5 group hover:shadow-md hover:-translate-y-0.5 transition-[transform,box-shadow] flex flex-col min-h-[180px]">
       {/* Top row: avatar + name + function tag + manage actions */}
       <div className="flex items-start gap-4">
         <Avatar name={team.name} size={48} />

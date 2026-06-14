@@ -14,7 +14,10 @@ export const runtime = 'nodejs';
 
 const Body = z.object({
   title: z.string().min(1).max(300),
-  assigneeId: z.string().optional(),
+  // Must be a real ObjectId (or empty) — a free-text string here would store a
+  // dangling reference that $in/$pull silently miss, leaving a subtask
+  // "assigned" to a phantom user.
+  assigneeId: z.union([z.string().regex(/^[a-f\d]{24}$/i, 'Invalid assignee'), z.literal('')]).optional(),
   dueDate: z.string().optional(),
 });
 

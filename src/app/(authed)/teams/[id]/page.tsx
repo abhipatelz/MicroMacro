@@ -383,7 +383,7 @@ export default function TeamDetailPage() {
             />
           )}
           <div>
-            <h1 className="text-2xl font-bold">{team.name}</h1>
+            <h1 className="page-title">{team.name}</h1>
             {team.description && <p className="text-slate-600 mt-1">{team.description}</p>}
             {/* Human label + tone for the team's operating function — the raw
                 enum value ("rtb") is a database detail, not UI copy. */}

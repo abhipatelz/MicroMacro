@@ -904,26 +904,14 @@ function CalendarFeedSection() {
         {!state ? (
           <div className="text-xs text-slate-400 py-2">Loading…</div>
         ) : state.enabled && state.url ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <code className="text-[11px] font-mono bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] rounded-lg px-2 py-1.5 break-all flex-1 min-w-[200px]">
-                {state.url}
-              </code>
-              <button
-                className="btn-ghost text-xs inline-flex items-center gap-1.5"
-                onClick={() => {
-                  navigator.clipboard?.writeText(state.url!);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-              >
-                {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            {/* One-click subscribe — each button lands the user INSIDE their
-                calendar's own "add subscription" flow with the URL pre-filled:
-                Outlook via its addfromweb deep link (work first, personal
-                fallback), Google via the cid handoff, Apple via webcal://. */}
+          <div className="space-y-3">
+            {/* First-timer path: pick your app, one click adds it. The raw link
+                + management controls are tucked below so the primary action is
+                unmistakable. */}
+            <p className="text-[12.5px] text-slate-500 dark:text-white/50">
+              Pick your calendar app — one click adds <strong>Pragati</strong>, then it keeps itself up to
+              date.
+            </p>
             <div className="flex flex-wrap gap-2">
               <a
                 className="btn-primary text-xs inline-flex items-center gap-1.5"
@@ -956,10 +944,33 @@ function CalendarFeedSection() {
                 <CalendarDays size={13} /> Apple
               </a>
             </div>
+
+            {/* Secondary: the raw link, behind a quiet disclosure. Most people
+                never need it; power users / unlisted apps can copy it. */}
+            <details className="group">
+              <summary className="cursor-pointer list-none text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-white/60 inline-flex items-center gap-1">
+                Other app, or copy the link
+              </summary>
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <code className="text-[11px] font-mono bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] rounded-lg px-2 py-1.5 break-all flex-1 min-w-[200px]">
+                  {state.url}
+                </code>
+                <button
+                  className="btn-ghost text-xs inline-flex items-center gap-1.5"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(state.url!);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                >
+                  {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </details>
+
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              One click opens your calendar’s subscribe flow with the link filled in. Changes in Pragati flow
-              through on your app’s next refresh. Anyone with this link can read your agenda — rotate it if it
-              leaks.
+              Changes in Pragati flow through on your calendar app’s next refresh. Anyone with the link can
+              read your agenda — rotate it if it leaks.
             </p>
             <div className="flex gap-2">
               <button className="btn-ghost text-xs" onClick={mint} disabled={busy}>

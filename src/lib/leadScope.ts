@@ -57,7 +57,12 @@ export async function getLeadScope(userId: string, role?: string | null): Promis
 // starts with "PRSN-". Spread into any raw Project query that an admin or
 // other user can see, to keep personal projects out of cross-user rollups.
 export const NOT_PERSONAL = {
+  // Defence in depth: a project is private if EITHER personal flag is set, or
+  // (legacy) its code is PRSN-prefixed. Checking both `isPersonal` and the
+  // duplicate `personal` field means the two can never disagree and leak a
+  // private project into a cross-user rollup, even if one were edited directly.
   isPersonal: { $ne: true },
+  personal: { $ne: true },
   code: { $not: /^PRSN-/ },
 } as const;
 

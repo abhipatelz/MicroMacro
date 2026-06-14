@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
+import { Notification } from '@/models/Notification';
+import { TaskFlowEvent } from '@/models/TaskFlowEvent';
 import { Team } from '@/models/Team';
 import { User } from '@/models/User';
 import { isLead, requireUser } from '@/lib/auth';
@@ -170,7 +172,16 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }
 
     const existingFull = await Project.findById(params.id).select('isPersonal code').lean();
+    // Cascade: remove the project's tasks and every record that references
+    // them or the project, so nothing dangles after the delete.
+    const doomedTaskIds = (await Task.find({ projectId: params.id }, '_id').lean()).map((t: any) =>
+      String(t._id),
+    );
     await Task.deleteMany({ projectId: params.id });
+    await Notification.deleteMany({
+      $or: [{ projectId: params.id }, { taskId: { $in: doomedTaskIds } }],
+    });
+    await TaskFlowEvent.deleteMany({ taskId: { $in: doomedTaskIds } });
     await Project.deleteOne({ _id: params.id });
 
     if (
